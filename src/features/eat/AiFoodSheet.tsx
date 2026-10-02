@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, Loader2, Sparkles } from 'lucide-react'
 import type { MealSlot } from '@/db/db'
 import { estimateFromPhoto, estimateFromText, type FoodEstimate, type FoodEstimateItem } from '@/state/ai'
@@ -62,9 +62,14 @@ export function AiFoodSheet({
   const [error, setError] = useState<string | null>(null)
   const abort = useRef<AbortController | null>(null)
   const photo = request?.mode === 'photo' ? request.photo : null
-  const photoUrl = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo])
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
 
-  useEffect(() => () => void (photoUrl && URL.revokeObjectURL(photoUrl)), [photoUrl])
+  useEffect(() => {
+    if (!photo) return
+    const url = URL.createObjectURL(photo)
+    setPhotoUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [photo])
 
   const close = () => {
     abort.current?.abort()

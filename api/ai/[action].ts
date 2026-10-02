@@ -88,8 +88,12 @@ export async function POST(req: Request): Promise<Response> {
           if (r.done) controller.close()
           else controller.enqueue(line(r.value))
         } catch (e) {
-          controller.enqueue(line({ type: 'error', error: describeError(e).error }))
-          controller.close()
+          try {
+            controller.enqueue(line({ type: 'error', error: describeError(e).error }))
+            controller.close()
+          } catch {
+            // The phone already hung up: nobody left to tell.
+          }
         }
       },
       cancel() {

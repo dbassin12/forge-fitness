@@ -36,6 +36,8 @@ const sdk = vi.hoisted(() => {
     /** Errors thrown by the next requests, in order (undefined = succeed). */
     failures: [] as (Error | undefined)[],
     listError: null as Error | null,
+    /** Thrown after the scripted events, as if the connection broke mid-reply. */
+    midError: null as Error | null,
     cap,
   }
 
@@ -83,7 +85,9 @@ const sdk = vi.hoisted(() => {
             [Symbol.asyncIterator]: () => ({
               next: async () => {
                 if (err) throw err
-                return i < events.length ? { done: false, value: events[i++] } : { done: true, value: undefined }
+                if (i < events.length) return { done: false, value: events[i++] }
+                if (state.midError) throw state.midError
+                return { done: true, value: undefined }
               },
             }),
             finalMessage: async () => ({ model: 'claude-opus-test', stop_reason: state.streamStop, usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } }),
@@ -92,7 +96,7 @@ const sdk = vi.hoisted(() => {
       },
     }
   }
-  return { Anthropic, state, AnthropicError, BadRequestError, AuthenticationError }
+  return { Anthropic, state, AnthropicError, BadRequestError, AuthenticationError, InternalServerError }
 })
 
 vi.mock('@anthropic-ai/sdk', () => ({ default: sdk.Anthropic }))
@@ -140,6 +144,7 @@ beforeEach(() => {
   s.streamCalls = []
   s.failures = []
   s.listError = null
+  s.midError = null
   s.parseResult = { model: 'claude-opus-9-1', stop_reason: 'end_turn', parsed_output: estimate }
   s.streamEvents = [
     { type: 'message_start', message: {} },
@@ -301,6 +306,13 @@ describe('AI API', () => {
     s.streamStop = 'refusal'
     const events = await readEvents(await POST(req('coach', { messages: [{ role: 'user', text: 'Hi' }], context: '' })))
     expect(events.at(-1)).toEqual({ type: 'refusal' })
+  })
+
+  it('reports an error that happens mid-reply as a final event', async () => {
+    s.midError = new sdk.InternalServerError(529, 'overloaded')
+    const events = await readEvents(await POST(req('coach', { messages: [{ role: 'user', text: 'Hi' }], context: '' })))
+    expect(events.filter((e) => e.type === 'text')).toHaveLength(2)
+    expect(events.at(-1)).toEqual({ type: 'error', error: 'Claude is overloaded right now. Try again shortly.' })
   })
 
   it('rate-limits each phone', async () => {
