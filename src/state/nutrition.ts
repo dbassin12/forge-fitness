@@ -10,6 +10,7 @@ import { dailyTargets, type Targets } from '@/engines/nutrition/targets'
 import { addDays, todayISO } from '@/lib/dates'
 import { uid } from '@/lib/id'
 import { addXp } from './gamification'
+import { ackReminder } from './reminders'
 
 export const OZ_ML = 29.5735
 /** Grams of fruit or vegetables that count as one "serving" for the habit tracker. */
@@ -87,6 +88,7 @@ async function updateHits(date: ISODate, profile: Profile) {
     waterSet.add(date)
     changed = true
     await addXp('water-goal', XP.waterGoal, date)
+    if (date === todayISO()) void ackReminder('water', date).catch(() => undefined)
   }
   if (changed) await kvSet('nutrition.hits', { protein: [...protein].sort(), water: [...waterSet].sort() })
 }
@@ -101,6 +103,7 @@ export type NewEntry = Omit<FoodLogEntry, 'id' | 'createdAt'>
 export async function addEntry(e: NewEntry, profile: Profile): Promise<string> {
   const id = uid('f')
   await db.foodLogs.add({ ...e, id, createdAt: Date.now() })
+  if ((e.meal === 'lunch' || e.meal === 'dinner') && e.date === todayISO()) void ackReminder(`meal-${e.meal}`, e.date).catch(() => undefined)
   await logXp(e.date)
   await updateHits(e.date, profile)
   return id

@@ -8,6 +8,7 @@ import { todayISO } from '@/lib/dates'
 import { uid } from '@/lib/id'
 import { addXp, computeStats, unlockAchievements } from '@/state/gamification'
 import { KEYS, saveProgress } from '@/state/store'
+import { ackReminder } from '@/state/reminders'
 import type { Step, WorkStep } from './steps'
 
 /** Recorded value per work step id (reps, or seconds). */
@@ -115,7 +116,10 @@ export async function finishWorkout(args: {
   await addXp(snack ? 'snack' : 'workout', base, date)
   for (let i = 0; i < prs; i++) await addXp('pr', XP.pr, date)
   for (let i = 0; i < levelUps; i++) await addXp('levelup', XP.levelUp, date)
-  if (planned) await db.kv.delete(KEYS.swaps)
+  if (planned) {
+    await db.kv.delete(KEYS.swaps)
+    void ackReminder('workout', date).catch(() => undefined)
+  }
   const achievements = await unlockAchievements(await computeStats(profile, state, date))
   return { log, changes, achievements, xp: xp + achievements.length * XP.achievement, minutes }
 }

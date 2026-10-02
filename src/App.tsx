@@ -13,6 +13,7 @@ const GroceryPage = lazy(() => import('@/features/eat/GroceryPage'))
 const RecipePage = lazy(() => import('@/features/eat/RecipePage'))
 const ProgressPage = lazy(() => import('@/features/progress/ProgressPage'))
 const MorePage = lazy(() => import('@/features/more/MorePage'))
+const RemindersPage = lazy(() => import('@/features/more/RemindersPage'))
 const AnimationLab = lazy(() => import('@/lab/AnimationLab'))
 const LibraryPage = lazy(() => import('@/features/train/LibraryPage'))
 const ExerciseDetailPage = lazy(() => import('@/features/train/ExerciseDetailPage'))
@@ -65,6 +66,7 @@ const router = createHashRouter([
       { path: 'recipe/:id', element: <Page><RecipePage /></Page> },
       { path: 'progress', element: <Page><ProgressPage /></Page> },
       { path: 'more', element: <Page><MorePage /></Page> },
+      { path: 'more/reminders', element: <Page><RemindersPage /></Page> },
     ],
   },
   {

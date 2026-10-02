@@ -3,6 +3,7 @@ import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute, type 
 import { NavigationRoute, registerRoute } from 'workbox-routing'
 import { CacheFirst, NetworkFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
+import { bridgeGet, personalize, type SwContext } from './sw-bridge'
 
 declare let self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<PrecacheEntry | string> }
 
@@ -46,6 +47,24 @@ interface PushPayload {
   url?: string
   tag?: string
   type?: string
+  meal?: string
+}
+
+async function show(data: PushPayload) {
+  let text: { title: string; body: string } | null = null
+  try {
+    text = personalize(data.type ?? '', await bridgeGet<SwContext>('context'), data.meal)
+  } catch {
+    /* fall back to the server's text */
+  }
+  // Always show a notification: iOS revokes push permission for silent pushes.
+  await self.registration.showNotification(text?.title || data.title || 'Forge', {
+    body: text?.body || data.body || 'Time for a quick check-in 💪',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    tag: data.tag,
+    data: { url: data.url || '/#/today' },
+  })
 }
 
 self.addEventListener('push', (event) => {
@@ -55,17 +74,7 @@ self.addEventListener('push', (event) => {
   } catch {
     data = { body: event.data?.text() }
   }
-  const title = data.title || 'Forge'
-  // Always show a notification: iOS revokes push permission for silent pushes.
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body: data.body || 'Time for a quick check-in 💪',
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      tag: data.tag,
-      data: { url: data.url || '/#/today' },
-    }),
-  )
+  event.waitUntil(show(data))
 })
 
 self.addEventListener('notificationclick', (event) => {

@@ -6,6 +6,7 @@ import { addDays, todayISO } from '@/lib/dates'
 import { uid } from '@/lib/id'
 import { addXp } from './gamification'
 import { saveProfile } from './store'
+import { ackReminder } from './reminders'
 
 export function useWeights(days = 365): WeightEntry[] | undefined {
   return useLiveQuery(() => db.weights.where('date').aboveOrEqual(addDays(todayISO(), -days)).sortBy('date'), [days])
@@ -16,6 +17,7 @@ export async function logWeight(kg: number, profile: Profile, date: ISODate = to
   const existed = await db.weights.get(date)
   await db.weights.put({ date, kg, at: Date.now() })
   if (!existed) await addXp('weigh-in', XP.weighIn, date)
+  if (date === todayISO()) void ackReminder('weighin', date).catch(() => undefined)
   const latest = await db.weights.orderBy('date').last()
   if (latest && latest.date === date) await saveProfile({ ...profile, weightKg: kg })
 }
