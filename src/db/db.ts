@@ -62,6 +62,8 @@ export interface FoodLogEntry {
   fiber?: number
   /** Counts toward the "veggies" habit in lite mode. */
   veg?: boolean
+  /** How many fruit/veg servings (~80 g each) this entry provides. */
+  produceServings?: number
   createdAt: number
 }
 

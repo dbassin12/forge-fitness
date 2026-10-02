@@ -7,6 +7,10 @@ const TodayPage = lazy(() => import('@/features/today/TodayPage'))
 const TrainPage = lazy(() => import('@/features/train/TrainPage'))
 const SessionPage = lazy(() => import('@/features/train/SessionPage'))
 const EatPage = lazy(() => import('@/features/eat/EatPage'))
+const AddFoodPage = lazy(() => import('@/features/eat/AddFoodPage'))
+const MealPlanPage = lazy(() => import('@/features/eat/MealPlanPage'))
+const GroceryPage = lazy(() => import('@/features/eat/GroceryPage'))
+const RecipePage = lazy(() => import('@/features/eat/RecipePage'))
 const ProgressPage = lazy(() => import('@/features/progress/ProgressPage'))
 const MorePage = lazy(() => import('@/features/more/MorePage'))
 const AnimationLab = lazy(() => import('@/lab/AnimationLab'))
@@ -54,6 +58,10 @@ const router = createHashRouter([
       { path: 'train/library', element: <Page><LibraryPage /></Page> },
       { path: 'exercise/:id', element: <Page><ExerciseDetailPage /></Page> },
       { path: 'eat', element: <Page><EatPage /></Page> },
+      { path: 'eat/add', element: <Page><AddFoodPage /></Page> },
+      { path: 'eat/plan', element: <Page><MealPlanPage /></Page> },
+      { path: 'eat/grocery', element: <Page><GroceryPage /></Page> },
+      { path: 'recipe/:id', element: <Page><RecipePage /></Page> },
       { path: 'progress', element: <Page><ProgressPage /></Page> },
       { path: 'more', element: <Page><MorePage /></Page> },
     ],
