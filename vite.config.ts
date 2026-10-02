@@ -60,7 +60,7 @@ export default defineConfig({
     sourcemap: true,
   },
   test: {
-    include: ['tests/unit/**/*.test.{ts,tsx}', 'api/**/*.test.ts', 'shared/**/*.test.ts'],
+    include: ['tests/unit/**/*.test.{ts,tsx}', 'tests/visual/**/*.test.ts', 'api/**/*.test.ts', 'server/**/*.test.ts', 'shared/**/*.test.ts'],
     environment: 'node',
     setupFiles: ['tests/unit/setup.ts'],
     restoreMocks: true,

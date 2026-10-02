@@ -23,6 +23,6 @@
       "@shared/*": ["./shared/*"]
     }
   },
-  "include": ["src", "shared", "tests/unit"],
+  "include": ["src", "shared", "tests/unit", "tests/visual"],
   "exclude": ["src/sw.ts"]
 }

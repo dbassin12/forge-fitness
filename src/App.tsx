@@ -1,12 +1,13 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { createHashRouter, Navigate, RouterProvider } from 'react-router'
-import { TabLayout } from '@/app/Layout'
+import { FullScreenLayout, TabLayout } from '@/app/Layout'
 
 const TodayPage = lazy(() => import('@/features/today/TodayPage'))
 const TrainPage = lazy(() => import('@/features/train/TrainPage'))
 const EatPage = lazy(() => import('@/features/eat/EatPage'))
 const ProgressPage = lazy(() => import('@/features/progress/ProgressPage'))
 const MorePage = lazy(() => import('@/features/more/MorePage'))
+const AnimationLab = lazy(() => import('@/lab/AnimationLab'))
 
 function Page({ children }: { children: ReactNode }) {
   return (
@@ -29,6 +30,10 @@ const router = createHashRouter([
       { path: 'progress', element: <Page><ProgressPage /></Page> },
       { path: 'more', element: <Page><MorePage /></Page> },
     ],
+  },
+  {
+    element: <FullScreenLayout />,
+    children: [{ path: 'lab', element: <Page><AnimationLab /></Page> }],
   },
   { path: '*', element: <Navigate to="/today" replace /> },
 ])
