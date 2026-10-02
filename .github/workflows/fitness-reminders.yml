@@ -1,0 +1,32 @@
+# Forge reminder clock: every 15 minutes, ask the app's server to send any due
+# push reminders. Authenticated with a short-lived GitHub OIDC token — no secrets to manage.
+# Scheduled workflows only run from the default branch.
+name: Fitness reminders
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: fitness-reminders
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Send due reminders
+        env:
+          TICK_URL: ${{ vars.FORGE_TICK_URL || 'https://forge-fitness.vercel.app/api/tick' }}
+        run: |
+          set -euo pipefail
+          TOKEN=$(curl -sS --fail -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=forge-fitness" | jq -r '.value')
+          curl -sS --fail-with-body --max-time 60 --retry 2 --retry-delay 5 \
+            -X POST -H "Authorization: Bearer $TOKEN" "$TICK_URL"

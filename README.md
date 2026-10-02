@@ -5,9 +5,6 @@ dumbbells), animated and voiced exercise guides, calorie and protein tracking, a
 that nudge you to train, eat well and drink water. It installs from the browser like a native
 app, works offline, and keeps your data on your phone.
 
-> This folder is self-contained and deploys to its own Vercel project (root directory
-> `fitness-app/`). The Mitzvah Calendar site at the repo root is unrelated and unaffected.
-
 ## What's inside
 
 - **A plan built around your time.** A 2-minute setup (goal, body stats, days per week,
@@ -57,9 +54,9 @@ Your data lives on the phone. Use **More → Backup & data → Export backup** n
 
 You need a free [Vercel](https://vercel.com) account connected to GitHub.
 
-1. **Create the project.** Vercel → **Add New… → Project** → import
-   `dbassin12/mitzvah-calendar`. Set **Project Name** to `forge-fitness` and **Root Directory**
-   to `fitness-app` (the Vite preset and build settings come from `vercel.json`). Deploy.
+1. **Create the project.** Vercel → **Add New… → Project** → import `dbassin12/forge-fitness`
+   and keep the project name `forge-fitness` (the Vite preset and build settings come from
+   `vercel.json`). Deploy.
 2. **Add storage for reminders.** In the project → **Storage** → **Create** → **Blob**, choose
    **Private** access, and connect it to the project (all environments). This adds
    `BLOB_READ_WRITE_TOKEN` automatically.
@@ -109,7 +106,7 @@ stays on your phone. Requests need your access code and are rate-limited per pho
 ## How it's built
 
 ```
-Phone (PWA, offline-first)                     Vercel project (root dir fitness-app/)
+Phone (PWA, offline-first)                     Vercel project
 ┌─────────────────────────────────────┐        ┌───────────────────────────────────────────┐
 │ React UI · plan/progression/        │  HTTPS │ Static app (CDN)                          │
 │ nutrition/meal/XP engines           ├───────►│ /api/push/*  config · sync · ack · test   │──► push services
@@ -135,7 +132,6 @@ Phone (PWA, offline-first)                     Vercel project (root dir fitness-
 ## Develop
 
 ```sh
-cd fitness-app
 npm install
 npm run dev        # http://localhost:5173 (API routes need `vercel dev`)
 npm run check      # typecheck + lint + unit/API tests

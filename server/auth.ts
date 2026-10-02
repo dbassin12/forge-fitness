@@ -36,8 +36,8 @@ const GITHUB_ISSUER = 'https://token.actions.githubusercontent.com'
 const jwks = createRemoteJWKSet(new URL(`${GITHUB_ISSUER}/.well-known/jwks`))
 
 export const OIDC_AUDIENCE = 'forge-fitness'
-/** dbassin12/mitzvah-calendar (the id survives renames and transfers). */
-export const DEFAULT_REPOSITORY_ID = '1266981387'
+/** dbassin12/forge-fitness (the id survives renames and transfers). */
+export const DEFAULT_REPOSITORY_ID = '1402038559'
 export const WORKFLOW_PATH = '.github/workflows/fitness-reminders.yml'
 
 export interface GithubClaims {

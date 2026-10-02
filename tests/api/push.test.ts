@@ -133,7 +133,7 @@ describe('tick', () => {
 })
 
 describe('scheduler auth', () => {
-  const good = { repository_id: '1266981387', ref: 'refs/heads/main', event_name: 'schedule', workflow_ref: 'dbassin12/mitzvah-calendar/.github/workflows/fitness-reminders.yml@refs/heads/main' }
+  const good = { repository_id: '1402038559', ref: 'refs/heads/main', event_name: 'schedule', workflow_ref: 'dbassin12/forge-fitness/.github/workflows/fitness-reminders.yml@refs/heads/main' }
   it('only trusts the reminders workflow on main in this repo', () => {
     expect(githubClaimsOk(good)).toBe(true)
     expect(githubClaimsOk({ ...good, ref: 'refs/heads/feature' })).toBe(false)

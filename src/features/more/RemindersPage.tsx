@@ -167,7 +167,7 @@ export default function RemindersPage() {
             {stale && githubAt ? (
               <p className="mt-2">
                 GitHub pauses scheduled workflows after 60 days without repository activity. Open{' '}
-                <a className="text-sky underline" href="https://github.com/dbassin12/mitzvah-calendar/actions/workflows/fitness-reminders.yml" target="_blank" rel="noreferrer">
+                <a className="text-sky underline" href="https://github.com/dbassin12/forge-fitness/actions/workflows/fitness-reminders.yml" target="_blank" rel="noreferrer">
                   the Fitness reminders workflow
                 </a>{' '}
                 and tap “Enable workflow”.

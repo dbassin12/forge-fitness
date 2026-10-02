@@ -3,7 +3,7 @@
  * The search endpoint doesn't send CORS headers, so the app asks us instead. Responses are
  * trimmed to the fields the app needs and cached at the edge for a day.
  */
-const UA = 'Forge/0.1 (personal fitness PWA; https://github.com/dbassin12/mitzvah-calendar)'
+const UA = 'Forge/0.1 (personal fitness PWA; https://github.com/dbassin12/forge-fitness)'
 const FIELDS = 'code,product_name,product_name_en,brands,nutriments,serving_size,serving_quantity,product_quantity_unit'
 const KEEP = ['energy-kcal_100g', 'energy_100g', 'proteins_100g', 'carbohydrates_100g', 'fat_100g', 'fiber_100g'] as const
 
