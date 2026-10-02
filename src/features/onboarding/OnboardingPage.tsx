@@ -9,10 +9,8 @@ import {
   Dumbbell,
   Flame,
   HeartPulse,
-  Plus,
   Sparkles,
   Timer,
-  Trash2,
   TrendingUp,
   Video,
 } from 'lucide-react'
@@ -24,7 +22,6 @@ import {
   DEFAULT_EQUIPMENT,
   type Ache,
   type DietStyle,
-  type Dumbbell as DumbbellT,
   type Experience,
   type Goal,
   type Lifestyle,
@@ -35,18 +32,18 @@ import {
 import { describeTarget, generateSession, mainExercises, planInputsFromProfile, splitName, type FitnessTest as TestResult } from '@/engines/plan'
 import { initialProgress } from '@/engines/progression/progress'
 import { WEEKDAY_SHORT } from '@/lib/dates'
-import { uid } from '@/lib/id'
 import { cmToIn, inToCm, kgToLb, lbToKg } from '@/lib/units'
 import { saveProfile, saveProgress } from '@/state/store'
+import { requestPersistence } from '@/state/backup'
 import { Button } from '@/ui/Button'
 import { Card } from '@/ui/Card'
 import { Chip } from '@/ui/Chip'
 import { cx } from '@/ui/cx'
 import { Segmented } from '@/ui/Segmented'
 import { Stepper } from '@/ui/Stepper'
-import { Toggle } from '@/ui/Toggle'
 import { FitnessTest } from './FitnessTest'
 import { InstallGuide } from './InstallGuide'
+import { EquipmentEditor } from '../settings/EquipmentEditor'
 
 type Draft = Omit<Profile, 'createdAt'>
 
@@ -246,14 +243,9 @@ export default function OnboardingPage() {
     }
     await saveProfile(profile)
     await saveProgress(initialProgress(profile, test ?? undefined))
+    void requestPersistence()
     navigate('/train', { replace: true })
   }
-
-  const updateDb = (id: string, patch: Partial<DumbbellT>) =>
-    set(
-      'equipment',
-      { ...d.equipment, dumbbells: d.equipment.dumbbells.map((x) => (x.id === id ? { ...x, ...patch } : x)) },
-    )
 
   let body: ReactNode = null
   switch (step) {
@@ -468,63 +460,7 @@ export default function OnboardingPage() {
       body = (
         <>
           <Title sub="Your plan only uses what you have. Found the heavier dumbbell later? Flip it on in settings.">Your equipment</Title>
-          <Card>
-            <div className="mb-2 flex items-center gap-2 font-semibold">
-              <Dumbbell size={18} className="text-ember" /> Dumbbells
-            </div>
-            <ul className="divide-y divide-line/70">
-              {d.equipment.dumbbells.map((x) => (
-                <li key={x.id} className="py-3">
-                  <div className="flex items-center gap-2">
-                    <Segmented
-                      label="How many"
-                      className="w-28"
-                      value={x.count}
-                      onChange={(v) => updateDb(x.id, { count: v })}
-                      options={[
-                        { value: 1, label: '1' },
-                        { value: 2, label: '2' },
-                      ]}
-                    />
-                    <span className="text-muted">×</span>
-                    <Stepper value={x.weightLb} min={2.5} max={100} step={2.5} unit="lb" label="dumbbell weight" onChange={(v) => updateDb(x.id, { weightLb: v })} />
-                    <button
-                      type="button"
-                      aria-label="Remove"
-                      className="ml-auto grid h-9 w-9 place-items-center rounded-full text-faint hover:text-bad"
-                      onClick={() => set('equipment', { ...d.equipment, dumbbells: d.equipment.dumbbells.filter((y) => y.id !== x.id) })}
-                    >
-                      <Trash2 size={17} />
-                    </button>
-                  </div>
-                  <Toggle
-                    checked={x.found}
-                    onChange={(v) => updateDb(x.id, { found: v })}
-                    label={x.found ? 'Found it — use it' : "Can't find it yet"}
-                    description={x.found ? undefined : "We'll plan around it and switch it in when you find it."}
-                  />
-                </li>
-              ))}
-            </ul>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<Plus size={16} />}
-              onClick={() => set('equipment', { ...d.equipment, dumbbells: [...d.equipment.dumbbells, { id: uid(), weightLb: 15, count: 2, found: true }] })}
-            >
-              Add dumbbells
-            </Button>
-          </Card>
-          <Card className="mt-3">
-            <Toggle checked={d.equipment.chair} onChange={(v) => set('equipment', { ...d.equipment, chair: v })} label="Sturdy chair, bench or couch" />
-            <Toggle checked={d.equipment.wall} onChange={(v) => set('equipment', { ...d.equipment, wall: v })} label="Clear wall space" />
-            <Toggle checked={d.equipment.table} onChange={(v) => set('equipment', { ...d.equipment, table: v })} label="Very sturdy table" description="For inverted rows — it must hold your weight" />
-            <Toggle checked={d.equipment.stairs} onChange={(v) => set('equipment', { ...d.equipment, stairs: v })} label="Stairs or a sturdy step" />
-            <Toggle checked={d.equipment.mat} onChange={(v) => set('equipment', { ...d.equipment, mat: v })} label="Exercise mat or rug" />
-          </Card>
-          <Card className="mt-3">
-            <Toggle checked={!!d.quietMode} onChange={(v) => set('quietMode', v)} label="Quiet mode" description="No jumping — kind to neighbors and joints" />
-          </Card>
+          <EquipmentEditor equipment={d.equipment} quietMode={!!d.quietMode} onChange={(e) => set('equipment', e)} onQuietMode={(v) => set('quietMode', v)} />
         </>
       )
       break

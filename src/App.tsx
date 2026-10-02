@@ -18,6 +18,7 @@ const LibraryPage = lazy(() => import('@/features/train/LibraryPage'))
 const ExerciseDetailPage = lazy(() => import('@/features/train/ExerciseDetailPage'))
 const OnboardingPage = lazy(() => import('@/features/onboarding/OnboardingPage'))
 const WorkoutPlayer = lazy(() => import('@/features/player/WorkoutPlayer'))
+const RetestPage = lazy(() => import('@/features/progress/RetestPage'))
 
 function Splash() {
   return <div className="grid h-[60vh] place-items-center text-muted animate-pulse-soft">Loading…</div>
@@ -78,6 +79,16 @@ const router = createHashRouter([
               <OnboardingPage />
             </Page>
           </OnlyNewUsers>
+        ),
+      },
+      {
+        path: 'test',
+        element: (
+          <RequireProfile>
+            <Page>
+              <RetestPage />
+            </Page>
+          </RequireProfile>
         ),
       },
       {
