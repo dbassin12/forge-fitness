@@ -18,7 +18,7 @@
     "check": "npm run typecheck && npm run lint && npm run test",
     "e2e": "playwright test",
     "icons": "node scripts/gen-icons.mjs",
-    "anim:sheet": "node scripts/anim-contact-sheet.mjs"
+    "anim:sheet": "ANIM_SHEET=1 vitest run tests/visual/sheet.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

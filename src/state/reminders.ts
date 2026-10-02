@@ -3,7 +3,7 @@ import { kvGet, kvSet } from '@/db/db'
 import type { Profile } from '@/domain/types'
 import { isIOS, isStandalone } from '@/app/pwa'
 import { uid } from '@/lib/id'
-import { presetRules, type ReminderRule } from '@shared/reminders'
+import { presetRules, type ReminderRule } from '@shared/reminder-rules'
 
 export type ReminderStyleChoice = 'gentle' | 'coach' | 'custom'
 

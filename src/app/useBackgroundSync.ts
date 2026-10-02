@@ -5,7 +5,7 @@ import { db } from '@/db/db'
 import { getExercise } from '@/data/exercises'
 import { weeklyStreak } from '@/engines/gamification'
 import { generateSession, mainExercises } from '@/engines/plan'
-import { defaultText, dueOccurrences, presetRules } from '@shared/reminders'
+import { defaultText, presetRules } from '@shared/reminder-rules'
 import { todayISO } from '@/lib/dates'
 import { planDates } from '@/state/gamification'
 import { targetsFor, totalsOf, useDay } from '@/state/nutrition'
@@ -91,7 +91,11 @@ export function useBackgroundSync() {
   // 3. In-app reminders while the app is open and push is off.
   useEffect(() => {
     if (!settings || settings.enabled) return
-    const tick = () => {
+    let live = true
+    const tick = async () => {
+      // The scheduler (and its date library) loads only when in-app reminders are in use.
+      const { dueOccurrences } = await import('@shared/reminders')
+      if (!live) return
       let last: Record<string, number> = {}
       try {
         last = JSON.parse(localStorage.getItem(IN_APP_KEY) ?? '{}') as Record<string, number>
@@ -117,8 +121,11 @@ export function useBackgroundSync() {
       }
       localStorage.setItem(IN_APP_KEY, JSON.stringify(last))
     }
-    tick()
-    const id = window.setInterval(tick, 60_000)
-    return () => window.clearInterval(id)
+    void tick()
+    const id = window.setInterval(() => void tick(), 60_000)
+    return () => {
+      live = false
+      window.clearInterval(id)
+    }
   }, [settings])
 }
