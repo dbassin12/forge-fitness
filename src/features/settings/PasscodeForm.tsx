@@ -3,7 +3,7 @@ import { KeyRound } from 'lucide-react'
 import { setPasscode } from '@/state/reminders'
 import { Button } from '@/ui/Button'
 
-/** Saves the access code (APP_PASSCODE) that reminders and the AI coach send to the server. */
+/** Saves the access code (APP_PASSCODE) the phone sends to the server for reminders. */
 export function PasscodeForm({ className }: { className?: string }) {
   const [code, setCode] = useState('')
   return (

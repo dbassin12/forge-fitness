@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { expectNoErrors, mockAi, onboard, trackErrors } from './helpers'
+import { expectNoErrors, onboard, recordOpens, trackErrors } from './helpers'
 
 test('is an installable app with a manifest and service worker', async ({ page, request }) => {
   const manifest = (await (await request.get('/manifest.webmanifest')).json()) as { name: string; display: string; start_url: string; icons: { sizes: string; purpose?: string }[] }
@@ -53,17 +53,28 @@ test('logs food and water and shows them on the Eat tab', async ({ page }) => {
   await expectNoErrors(errors)
 })
 
-test('AI meal logging: describe → review → log', async ({ page }) => {
+test('meal estimate: Forge asks Claude, then reads the pasted answer', async ({ page, context }) => {
   const errors = trackErrors(page)
-  await mockAi(page)
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  const opens = await recordOpens(page)
   await onboard(page)
   await page.goto('/#/eat/add?meal=lunch')
-  await page.getByRole('button', { name: 'Describe it' }).click()
-  // First use on this phone asks for the access code.
-  await page.locator('#passcode').fill('letmein123')
-  await page.getByRole('button', { name: 'Save' }).click()
-  await page.locator('#ai-text').fill('2 scrambled eggs and toast with butter')
-  await page.getByRole('button', { name: 'Estimate' }).click()
+  await page.getByRole('button', { name: /Estimate with Claude/ }).click()
+  await page.getByRole('checkbox').uncheck()
+  await page.locator('#meal-text').fill('2 scrambled eggs and toast with butter')
+  await page.getByRole('button', { name: 'Open Claude' }).click()
+  const url = (await opens())[0]!
+  expect(url.startsWith('https://claude.ai/new?q=')).toBe(true)
+  expect(decodeURIComponent(url.split('q=')[1]!)).toContain('What I ate: 2 scrambled eggs and toast with butter')
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Reply with one short sentence')
+  const reply = [
+    'Assumed 1 tsp butter.',
+    '```json',
+    '{"items":[{"name":"Scrambled eggs","portion":"2 large eggs","grams":100,"kcal":182,"protein":12.6,"carbs":1.2,"fat":13.9,"fiber":0,"veg":0,"confidence":"high"},{"name":"Toast with butter","portion":"1 slice","grams":40,"kcal":115,"protein":4,"carbs":15,"fat":4.6,"fiber":2,"veg":0,"confidence":"medium"}],"notes":""}',
+    '```',
+  ].join('\n')
+  await page.getByRole('textbox', { name: 'Claude’s answer' }).fill(reply)
+  await page.getByRole('button', { name: 'Read estimate' }).click()
   await expect(page.getByText('Assumed 1 tsp butter.')).toBeVisible()
   await page.getByRole('button', { name: 'Leave out Toast with butter' }).click()
   await page.getByRole('button', { name: 'Add 1 to lunch' }).click()
@@ -74,24 +85,23 @@ test('AI meal logging: describe → review → log', async ({ page }) => {
   await expectNoErrors(errors)
 })
 
-test('coach chat streams a reply with the app context', async ({ page }) => {
+test('Ask Claude opens the Claude app with the question and a Forge summary', async ({ page, context }) => {
   const errors = trackErrors(page)
-  const { coachRequests } = await mockAi(page)
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  const opens = await recordOpens(page)
   await onboard(page)
   await page.goto('/#/coach')
-  await page.locator('#passcode').fill('letmein123')
-  await page.getByRole('button', { name: 'Save' }).click()
-  await page.getByRole('textbox', { name: 'Message' }).fill('My knees hurt, what instead of lunges?')
-  await page.getByRole('button', { name: 'Send' }).click()
-  await expect(page.locator('strong', { hasText: 'glute bridges' })).toBeVisible()
-  await expect(page.getByText('Slow on the way down')).toBeVisible()
-  const sent = coachRequests[0] as { messages: { role: string; text: string }[]; context: string }
-  expect(sent.messages).toEqual([{ role: 'user', text: 'My knees hurt, what instead of lunges?' }])
-  expect(sent.context).toContain('Goal: build muscle')
-  expect(sent.context).toContain('kosher-style')
-  // History stays on the phone across reloads.
-  await page.reload()
-  await expect(page.getByText('My knees hurt, what instead of lunges?')).toBeVisible()
+  await page.getByRole('button', { name: /My knees ache/ }).click()
+  await expect(page.getByRole('textbox', { name: 'Your question' })).toHaveValue('My knees ache. What can I do instead of lunges?')
+  await page.getByRole('button', { name: 'Ask in Claude' }).click()
+  const prompt = decodeURIComponent((await opens())[0]!.split('q=')[1]!)
+  expect(prompt).toContain('<forge_data>')
+  expect(prompt).toContain('Goal: build muscle')
+  expect(prompt).toContain('kosher-style')
+  expect(prompt).toContain('My question: My knees ache. What can I do instead of lunges?')
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(prompt)
+  await page.getByRole('button', { name: 'What Claude will see' }).click()
+  await expect(page.locator('pre')).toContainText('Current levels:')
   await expectNoErrors(errors)
 })
 

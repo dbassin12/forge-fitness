@@ -30,31 +30,15 @@ export async function expectNoErrors(errors: string[]): Promise<void> {
   expect(errors, errors.join('\n')).toEqual([])
 }
 
-/** Stand-ins for the optional AI endpoints (the real ones need an Anthropic key). */
-export async function mockAi(page: Page): Promise<{ coachRequests: unknown[] }> {
-  const coachRequests: unknown[] = []
-  await page.route('**/api/ai/config', (r) => r.fulfill({ json: { ok: true, configured: { apiKey: true, passcode: true } } }))
-  await page.route('**/api/ai/coach', async (r) => {
-    coachRequests.push(r.request().postDataJSON())
-    const pieces = ['Try **glute bridges** ', '3 × 15 instead.\n', '- Slow on the way down']
-    const body = pieces.map((t) => `${JSON.stringify({ type: 'text', text: t })}\n`).join('') + `${JSON.stringify({ type: 'done', model: 'test' })}\n`
-    await r.fulfill({ status: 200, headers: { 'content-type': 'application/x-ndjson' }, body })
+/** Records the URLs the page opens in new windows (the Claude hand-off) instead of opening them. */
+export async function recordOpens(page: Page): Promise<() => Promise<string[]>> {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __opened: string[] }
+    w.__opened = []
+    window.open = (url?: string | URL) => {
+      w.__opened.push(String(url))
+      return null
+    }
   })
-  await page.route('**/api/ai/food-*', (r) =>
-    r.fulfill({
-      json: {
-        ok: true,
-        model: 'test',
-        estimate: {
-          isFood: true,
-          notes: 'Assumed 1 tsp butter.',
-          items: [
-            { name: 'Scrambled eggs', portion: '2 large eggs', grams: 100, kcal: 182, protein: 12.6, carbs: 1.2, fat: 13.9, fiber: 0, produceServings: 0, confidence: 'high' },
-            { name: 'Toast with butter', portion: '1 slice', grams: 40, kcal: 115, protein: 4, carbs: 15, fat: 4.6, fiber: 2, produceServings: 0, confidence: 'medium' },
-          ],
-        },
-      },
-    }),
-  )
-  return { coachRequests }
+  return () => page.evaluate(() => (window as unknown as { __opened: string[] }).__opened)
 }

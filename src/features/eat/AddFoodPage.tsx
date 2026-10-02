@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Barcode, Camera, ChefHat, Clock, Globe, Loader2, PenLine, Plus, Search, Sparkles, Star, Zap } from 'lucide-react'
+import { Barcode, ChefHat, Clock, Globe, Loader2, PenLine, Plus, Search, Sparkles, Star, Zap } from 'lucide-react'
 import { db, type CustomFood, type MealSlot } from '@/db/db'
 import { FOOD_BY_ID } from '@/data/foods'
 import { RECIPES } from '@/data/recipes'
 import { defaultServing, foodMacros, recipeFits, recipeMacros, searchFoods } from '@/engines/nutrition/foods'
 import { todayISO } from '@/lib/dates'
 import { uid } from '@/lib/id'
-import { useAiAvailability } from '@/state/ai'
 import { useProfile } from '@/state/store'
 import { addEntry, toggleFavorite, useFavorites, useRecents, type NewEntry } from '@/state/nutrition'
 import { Button } from '@/ui/Button'
@@ -17,7 +16,7 @@ import { Chip } from '@/ui/Chip'
 import { PageHeader } from '@/ui/PageHeader'
 import { Sheet } from '@/ui/Sheet'
 import { cx } from '@/ui/cx'
-import { AiFoodSheet, type AiRequest } from './AiFoodSheet'
+import { ClaudeMealSheet, pendingClaudeMeal } from './ClaudeMealSheet'
 import { BarcodeScanner } from './BarcodeScanner'
 import { FoodSheet, pickableKey, type Pickable } from './FoodSheet'
 import { MEAL_LABEL, mealForHour } from './labels'
@@ -48,8 +47,9 @@ function Row({ title, sub, kcal, onClick, star }: { title: string; sub: string; 
 export default function AddFoodPage() {
   const profile = useProfile()
   const [params] = useSearchParams()
-  const date = params.get('d') ?? todayISO()
-  const [meal, setMeal] = useState<MealSlot>((params.get('meal') as MealSlot) || mealForHour(new Date().getHours()))
+  const [pending] = useState(pendingClaudeMeal)
+  const date = params.get('d') ?? pending?.date ?? todayISO()
+  const [meal, setMeal] = useState<MealSlot>((params.get('meal') as MealSlot) || pending?.meal || mealForHour(new Date().getHours()))
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<Tab>('recent')
   const [picked, setPicked] = useState<Pickable | null>(null)
@@ -62,9 +62,8 @@ export default function AddFoodPage() {
   const favorites = useFavorites()
   const customFoods = useLiveQuery(() => db.customFoods.orderBy('name').toArray(), [])
   const abort = useRef<AbortController | null>(null)
-  const ai = useAiAvailability()
-  const [aiReq, setAiReq] = useState<{ id: number; req: AiRequest } | null>(null)
-  const photoInput = useRef<HTMLInputElement>(null)
+  // Back from Claude with an estimate to paste (the phone may have unloaded Forge meanwhile).
+  const [claudeSheet, setClaudeSheet] = useState<{ id: number; resume: boolean } | null>(pending ? { id: 1, resume: true } : null)
 
   // Deep link from a nudge: open that food straight away.
   useEffect(() => {
@@ -164,27 +163,9 @@ export default function AddFoodPage() {
           <Search size={18} />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search foods, e.g. eggs, banana" className="h-full flex-1 bg-transparent text-ink outline-none placeholder:text-faint" />
         </label>
-        {ai.status === 'ready' || ai.status === 'needs-code' ? (
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <Button variant="secondary" size="sm" icon={<Camera size={16} />} onClick={() => photoInput.current?.click()}>
-              Snap a photo
-            </Button>
-            <Button variant="secondary" size="sm" icon={<Sparkles size={16} />} onClick={() => setAiReq({ id: Date.now(), req: { mode: 'text' } })}>
-              Describe it
-            </Button>
-            <input
-              ref={photoInput}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                e.target.value = ''
-                if (f) setAiReq({ id: Date.now(), req: { mode: 'photo', photo: f } })
-              }}
-            />
-          </div>
-        ) : null}
+        <Button className="mt-3" block variant="secondary" size="sm" icon={<Sparkles size={16} />} onClick={() => setClaudeSheet({ id: Date.now(), resume: false })}>
+          Estimate with Claude: photo or description
+        </Button>
         <div className="mt-2 grid grid-cols-3 gap-2">
           <Button variant="secondary" size="sm" icon={<Barcode size={16} />} onClick={() => setScan(true)}>
             Scan
@@ -334,7 +315,15 @@ export default function AddFoodPage() {
         }}
       />
       {scan ? <BarcodeScanner onCode={(c) => void onBarcode(c)} onClose={() => setScan(false)} /> : null}
-      <AiFoodSheet key={aiReq?.id ?? 0} request={aiReq?.req ?? null} meal={meal} needsCode={ai.status === 'needs-code'} onClose={() => setAiReq(null)} onLog={(e) => void logMany(e)} />
+      <ClaudeMealSheet
+        key={claudeSheet?.id ?? 0}
+        open={!!claudeSheet}
+        resume={claudeSheet?.resume}
+        meal={meal}
+        date={date}
+        onClose={() => setClaudeSheet(null)}
+        onLog={(e) => void logMany(e)}
+      />
       <QuickAddSheet open={quick} onClose={() => setQuick(false)} onAdd={(e) => void log({ ...e, date, meal })} />
       <CustomFoodSheet
         open={!!custom}

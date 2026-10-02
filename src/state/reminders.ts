@@ -39,7 +39,7 @@ export async function saveReminderSettings(s: ReminderSettings): Promise<void> {
   await kvSet(KEY, s)
 }
 
-// ---- Access code (shared with the AI coach) -----------------------------------------------
+// ---- Access code -----------------------------------------------
 
 export function usePasscode(): string | null | undefined {
   return useLiveQuery(async () => (await kvGet<{ passcode?: string }>('auth'))?.passcode ?? null, [])

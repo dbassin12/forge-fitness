@@ -31,9 +31,9 @@ app, works offline, and keeps your data on your phone.
 - **Reminders.** Real push notifications (even with the app closed) for workouts, a streak
   saver, meals, water, movement snacks, an evening check-in, weigh-ins and the weekly review —
   plus an "Add to calendar" backup.
-- **Optional AI coach.** With your own Anthropic API key: chat with a coach that knows your
-  plan and logs, and log meals from a photo or a sentence ("2 eggs and toast"). You review
-  every estimate before it's saved.
+- **Ask Claude, on your Claude subscription.** Coach questions open the Claude app with a
+  summary of your plan, food and workouts attached. Meal estimates work the same way: snap
+  the photo in Claude, paste its answer back into Forge, then review and log. No API key.
 
 ## Install it on your phone
 
@@ -64,9 +64,7 @@ You need a free [Vercel](https://vercel.com) account connected to GitHub.
 
    | Variable | Needed for | Notes |
    |---|---|---|
-   | `APP_PASSCODE` | reminders, AI | Any long phrase. Your phone sends it with every request. |
-   | `ANTHROPIC_API_KEY` | AI coach (optional) | From [console.anthropic.com](https://console.anthropic.com) → API keys. Set a monthly spend limit there too. |
-   | `AI_MODEL` | optional | Pin a Claude model id. By default the newest Claude Opus model is used. |
+   | `APP_PASSCODE` | reminders | Any long phrase. Your phone sends it with every request. |
    | `CRON_SECRET` | recommended | Any long random string. Turns on the daily safety-net check and lets an outside scheduler call the reminder tick (see below). |
    | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | optional | Web-push keys. If unset, a pair is generated once and stored privately. |
 
@@ -96,12 +94,15 @@ clock stops, you'll get a notification saying so.
 - **Zero-setup backup:** **More → Reminders → Add workouts to my calendar** downloads an
   `.ics` file with alarms that your phone's calendar will always deliver.
 
-### AI costs and privacy
+### Ask Claude: how it works
 
-AI is optional and off until `ANTHROPIC_API_KEY` is set. A coach reply or a meal estimate
-typically costs about 1–3¢. Your question (or meal photo, shrunk to ~1024 px) and a short text
-summary of your profile, plan and recent logs are sent to Anthropic to answer; chat history
-stays on your phone. Requests need your access code and are rate-limited per phone.
+Forge never calls an AI service itself, and there's no API key to set. **Ask Claude** copies
+your question with a short text summary of your profile, plan and recent logs, then opens
+claude.ai, which opens the Claude app if it's installed, so it runs on your own Claude
+subscription. You can see exactly what's shared under "What Claude will see". For meal
+estimates, Forge copies a request that asks Claude to answer in a format Forge can read. You
+add your photo in Claude, then paste the reply back into Forge to check portions before
+anything is logged.
 
 ## How it's built
 
@@ -112,7 +113,7 @@ Phone (PWA, offline-first)                     Vercel project
 │ nutrition/meal/XP engines           ├───────►│ /api/push/*  config · sync · ack · test   │──► push services
 │ Animation + voice engines           │        │ /api/tick    send due reminders           │
 │ IndexedDB (Dexie): all your data    │        │ /api/food/search  Open Food Facts proxy   │
-│ Service worker: offline + push      │◄───────│ /api/ai/*    coach (stream) · food        │──► Anthropic API
+│ Service worker: offline + push      │◄───────│                                           │
 └─────────────────────────────────────┘  push  │ Private Blob: registry.json               │
                                                └───────────────▲───────────────────────────┘
                                    GitHub Actions every 15 min │ (OIDC-signed)
@@ -126,7 +127,7 @@ Phone (PWA, offline-first)                     Vercel project
 | `src/features` | Screens: onboarding, today, train, player, eat, progress, coach, more |
 | `src/state` | Dexie-backed state hooks and actions |
 | `src/sw.ts` | Service worker: precache, push, notification taps |
-| `shared` | Code used by both the app and the server (reminder rules and scheduling, AI types) |
+| `shared` | Code used by both the app and the server (reminder rules and scheduling) |
 | `server`, `api` | Vercel functions and their helpers |
 
 ## Develop

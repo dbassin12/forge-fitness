@@ -124,7 +124,7 @@ export default function MorePage() {
           <ul className="divide-y divide-line/60">
             <Row icon={<Bell size={18} />} title="Reminders" sub="Workouts, meals, water, streaks" to="/more/reminders" />
             <Row icon={<Volume2 size={18} />} title="Voice & sounds" sub="Voice, speed, beeps, rep counting" onClick={() => setPanel('voice')} />
-            <Row icon={<Bot size={18} />} title="AI coach" sub="Chat, photo and text food logging" to="/coach" />
+            <Row icon={<Bot size={18} />} title="Ask Claude" sub="Coach answers and meal estimates in your Claude app" to="/coach" />
           </ul>
         </Card>
 
