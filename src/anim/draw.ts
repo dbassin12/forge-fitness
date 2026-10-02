@@ -296,14 +296,63 @@ export function buildShapes(s: Skeleton, pose: Pose, opts: DrawOptions = {}): Sh
     ]
   }
 
-  // Back layer (side view: far limbs behind the torso).
+  // Muscle highlight overlays (always present; opacity carries the intensity). Each overlay is
+  // layered right after the body part it belongs to, so nearer limbs correctly cover it.
+  const H = pal.highlight
+  const torsoFront = dir(s.torsoAngle + 90)
+  const offsetPath = (offset: number, from = 0, to = 1) => {
+    const a = add(lerpV(s.hip, s.shoulder, from), scale(torsoFront, offset))
+    const b = add(lerpV(s.hip, s.shoulder, to), scale(torsoFront, offset))
+    const c = add(lerpV(s.spineCtrl, lerpV(s.hip, s.shoulder, (from + to) / 2), 0.15), scale(torsoFront, offset))
+    return `M${f(a[0])},${f(a[1])} Q${f(c[0])},${f(c[1])} ${f(b[0])},${f(b[1])}`
+  }
+  const op = (g: SegmentGroup, visible = true) => (visible ? Math.max(0, Math.min(1, hl[g] ?? 0)) * 0.9 : 0)
+  const torsoOverlays = (): Shape[] => {
+    const t = (id: string, g: SegmentGroup, offset: number, from: number, to: number, width: number): Shape => ({
+      id,
+      kind: 'path',
+      d: offsetPath(side ? offset : 0, from, to),
+      stroke: H,
+      width,
+      cap: 'round',
+      fill: 'none',
+      opacity: op(g),
+    })
+    return [
+      t('hl-chest', 'chest', 4.5, 0.55, 0.95, 9),
+      t('hl-back', 'back', -4.5, 0.35, 0.95, 9),
+      t('hl-core', 'core', 4, 0.12, 0.55, 9),
+      { id: 'hl-glutes', kind: 'circle', cx: f(s.hip[0] - torsoFront[0] * 3), cy: f(s.hip[1] - torsoFront[1] * 3), r: 7, fill: H, opacity: op('glutes') },
+    ]
+  }
+  const armOverlays = (k: 'N' | 'F', visible: boolean): Shape[] => {
+    const sh = k === 'N' ? s.shoulderN : s.shoulderF
+    const el = k === 'N' ? s.elbowN : s.elbowF
+    const wr = k === 'N' ? s.wristN : s.wristF
+    return [
+      line(`hl-sh${k}`, sh, lerpV(sh, el, 0.35), H, 9, op('shoulders', visible)),
+      line(`hl-ua${k}`, lerpV(sh, el, 0.25), el, H, 6, op('upperArms', visible)),
+      line(`hl-fa${k}`, el, wr, H, 5, op('forearms', visible)),
+    ]
+  }
+  const legOverlays = (k: 'N' | 'F', visible: boolean): Shape[] => {
+    const hp = k === 'N' ? s.hipN : s.hipF
+    const kn = k === 'N' ? s.kneeN : s.kneeF
+    const an = k === 'N' ? s.ankleN : s.ankleF
+    return [
+      line(`hl-th${k}`, lerpV(hp, kn, 0.15), lerpV(hp, kn, 0.9), H, 8, op('thighs', visible)),
+      line(`hl-ca${k}`, lerpV(kn, an, 0.15), lerpV(kn, an, 0.75), H, 7, op('calves', visible)),
+    ]
+  }
+
+  // Back layer.
   if (side) {
-    out.push(...legShapes('F', far, 'legF'))
-    out.push(...limbShapes('F', far, 'armF'))
-    out.push(...dumbbell('dbF', s.handF ? lerpV(s.wristF, s.handF, 0.45) : null, pose.dbF, pal, true))
+    out.push(...legShapes('F', far, 'legF'), ...legOverlays('F', false))
+    out.push(...limbShapes('F', far, 'armF'), ...armOverlays('F', false))
+    out.push(...dumbbell('dbF', lerpV(s.wristF, s.handF, 0.45), pose.dbF, pal, true))
   } else {
-    out.push(...legShapes('F', near, 'legF'))
-    out.push(...legShapes('N', near, 'legN'))
+    out.push(...legShapes('F', near, 'legF'), ...legOverlays('F', true))
+    out.push(...legShapes('N', near, 'legN'), ...legOverlays('N', true))
   }
 
   // Torso.
@@ -316,6 +365,7 @@ export function buildShapes(s: Skeleton, pose: Pose, opts: DrawOptions = {}): Sh
     out.push({ id: 'pelvis', kind: 'circle', cx: f(s.hip[0]), cy: f(s.hip[1]), r: 0.01, fill: torsoC, opacity: 0 })
     out.push({ id: 'shcap', kind: 'circle', cx: f(s.shoulder[0]), cy: f(s.shoulder[1]), r: 0.01, fill: torsoC, opacity: 0 })
   }
+  out.push(...torsoOverlays())
   out.push(line('neck', s.neck, polar(s.neck, s.headAngle, L.neck + 2), torsoC, STROKE.neck))
   out.push({ id: 'head', kind: 'circle', cx: f(s.head[0]), cy: f(s.head[1]), r: L.headR, fill: tint ?? pal.head })
   // Face cue: one eye toward the facing direction (side), two eyes (front), none from the top.
@@ -328,52 +378,24 @@ export function buildShapes(s: Skeleton, pose: Pose, opts: DrawOptions = {}): Sh
     const up = scale(dir(s.headAngle), 1.2)
     const e1 = add(add(s.head, scale(across, 3.4)), up)
     const e2 = add(add(s.head, scale(across, -3.4)), up)
-    const op = s.view === 'top' ? 0 : 1
-    out.push({ id: 'eye1', kind: 'circle', cx: f(e1[0]), cy: f(e1[1]), r: 1.25, fill: pal.face, opacity: op })
-    out.push({ id: 'eye2', kind: 'circle', cx: f(e2[0]), cy: f(e2[1]), r: 1.25, fill: pal.face, opacity: op })
+    const eo = s.view === 'top' ? 0 : 1
+    out.push({ id: 'eye1', kind: 'circle', cx: f(e1[0]), cy: f(e1[1]), r: 1.25, fill: pal.face, opacity: eo })
+    out.push({ id: 'eye2', kind: 'circle', cx: f(e2[0]), cy: f(e2[1]), r: 1.25, fill: pal.face, opacity: eo })
   }
 
   // Front layer.
   if (side) {
-    out.push(...legShapes('N', near, 'legN'))
-    out.push(...limbShapes('N', near, 'armN'))
+    out.push(...legShapes('N', near, 'legN'), ...legOverlays('N', true))
+    out.push(...limbShapes('N', near, 'armN'), ...armOverlays('N', true))
     out.push(...dumbbell('dbN', lerpV(s.wristN, s.handN, 0.45), pose.dbN, pal, false))
   } else {
-    out.push(...limbShapes('F', near, 'armF'))
-    out.push(...limbShapes('N', near, 'armN'))
+    out.push(...limbShapes('F', near, 'armF'), ...armOverlays('F', true))
+    out.push(...limbShapes('N', near, 'armN'), ...armOverlays('N', true))
     out.push(...dumbbell('dbF', lerpV(s.wristF, s.handF, 0.45), pose.dbF, pal, false))
     out.push(...dumbbell('dbN', lerpV(s.wristN, s.handN, 0.45), pose.dbN, pal, false))
   }
   const both = pose.dbBoth ? lerpV(lerpV(s.wristN, s.handN, 0.5), lerpV(s.wristF, s.handF, 0.5), 0.5) : null
   out.push(...dumbbell('dbB', both, pose.dbBoth, pal, false))
-
-  // Muscle highlight overlays (always present; opacity carries the intensity).
-  const H = pal.highlight
-  const torsoFront = dir(s.torsoAngle + 90)
-  const offsetPath = (offset: number, from = 0, to = 1) => {
-    const a = add(lerpV(s.hip, s.shoulder, from), scale(torsoFront, offset))
-    const b = add(lerpV(s.hip, s.shoulder, to), scale(torsoFront, offset))
-    const c = add(lerpV(s.spineCtrl, lerpV(s.hip, s.shoulder, (from + to) / 2), 0.15), scale(torsoFront, offset))
-    return `M${f(a[0])},${f(a[1])} Q${f(c[0])},${f(c[1])} ${f(b[0])},${f(b[1])}`
-  }
-  const op = (g: SegmentGroup) => Math.max(0, Math.min(1, hl[g] ?? 0)) * 0.9
-  const torsoOverlay = (id: string, g: SegmentGroup, offset: number, from: number, to: number, width: number) =>
-    out.push({ id, kind: 'path', d: offsetPath(side ? offset : 0, from, to), stroke: H, width, cap: 'round', fill: 'none', opacity: op(g) })
-  torsoOverlay('hl-chest', 'chest', 4.5, 0.55, 0.95, 9)
-  torsoOverlay('hl-back', 'back', -4.5, 0.35, 0.95, 9)
-  torsoOverlay('hl-core', 'core', 4, 0.12, 0.55, 9)
-  out.push({ id: 'hl-glutes', kind: 'circle', cx: f(s.hip[0] - torsoFront[0] * 3), cy: f(s.hip[1] - torsoFront[1] * 3), r: 7, fill: H, opacity: op('glutes') })
-  const limbOverlay = (id: string, g: SegmentGroup, a: Vec, b: Vec, w: number) => out.push(line(id, a, b, H, w, op(g)))
-  limbOverlay('hl-shN', 'shoulders', s.shoulderN, lerpV(s.shoulderN, s.elbowN, 0.35), 9)
-  limbOverlay('hl-shF', 'shoulders', s.shoulderF, lerpV(s.shoulderF, s.elbowF, 0.35), side ? 0.01 : 9)
-  limbOverlay('hl-uaN', 'upperArms', lerpV(s.shoulderN, s.elbowN, 0.25), s.elbowN, 6)
-  limbOverlay('hl-uaF', 'upperArms', lerpV(s.shoulderF, s.elbowF, 0.25), s.elbowF, side ? 0.01 : 6)
-  limbOverlay('hl-faN', 'forearms', s.elbowN, s.wristN, 5)
-  limbOverlay('hl-faF', 'forearms', s.elbowF, s.wristF, side ? 0.01 : 5)
-  limbOverlay('hl-thN', 'thighs', lerpV(s.hipN, s.kneeN, 0.15), lerpV(s.hipN, s.kneeN, 0.9), 8)
-  limbOverlay('hl-thF', 'thighs', lerpV(s.hipF, s.kneeF, 0.15), lerpV(s.hipF, s.kneeF, 0.9), side ? 0.01 : 8)
-  limbOverlay('hl-caN', 'calves', lerpV(s.kneeN, s.ankleN, 0.15), lerpV(s.kneeN, s.ankleN, 0.75), 7)
-  limbOverlay('hl-caF', 'calves', lerpV(s.kneeF, s.ankleF, 0.15), lerpV(s.kneeF, s.ankleF, 0.75), side ? 0.01 : 7)
 
   return out
 }

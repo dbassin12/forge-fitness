@@ -450,3 +450,32 @@ export function proneRaise(kind: 'ytw' | 'snowAngel' | 'wPull'): Motion {
   )
 }
 
+
+// ---- Side plank (front view: we look at the chest while the body lies on its side) ----
+
+export function sidePlank(o: { knees?: boolean; hipDips?: boolean } = {}): Motion {
+  const H: Vec = [X + 56, HY]
+  return motion(
+    'front',
+    (u) => {
+      const dip = o.hipDips ? smooth(u) * 14 : u * 0.8
+      const torso = -22 + (o.hipDips ? 10 * smooth(u) : 0)
+      const S: Vec = [H[0] - 4, H[1] - (L.upperArm + L.forearm - 1) - 15]
+      const root = polar(S, torso + 180, L.torso)
+      const R: Vec = [root[0], root[1] + dip]
+      const feet: Vec = o.knees ? [R[0] - 36, GROUND - 6] : [R[0] - 64, GROUND - 3]
+      return {
+        root: R,
+        torso: angleOf(R, S),
+        head: angleOf(R, S),
+        armN: ik(H[0], H[1], -1),
+        armF: fk(-86, -88),
+        legN: ik(feet[0], feet[1], o.knees ? -1 : 1),
+        legF: ik(feet[0] - 2, feet[1] - 6, o.knees ? -1 : 1),
+        footN: 160,
+        footF: 160,
+      }
+    },
+    o.hipDips ? repPhases(1.2, 0.2, 1.0, 0.3) : holdPhases(),
+  )
+}

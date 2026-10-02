@@ -3,7 +3,7 @@ import { squat, squatFront } from './families/squat'
 import { forearmPlank, pikePushUp, pushUp, wallHandstand } from './families/pushup'
 import { hinge, swing } from './families/hinge'
 import { bulgarian, jumpLunge, lateralLunge, lunge, stepUp } from './families/lunge'
-import { bearPlank, birdDog, bridge, catCow, childsPose, cobra, crunch, deadBug, hollowHold, proneRaise, russianTwist, superman, supineDb } from './families/floor'
+import { bearPlank, birdDog, bridge, catCow, childsPose, cobra, crunch, deadBug, hollowHold, proneRaise, russianTwist, sidePlank, superman, supineDb } from './families/floor'
 import { bentRow, chairDip, invertedRow, lateralRaise, standingDb } from './families/upper'
 import { burpee, jumpingJack, runInPlace, shadowBox, skaters } from './families/cardio'
 import { armCircles, calfStretch, chestOpener, dogToCobra, figureFour, hamstringStretch, hipCircles, hipFlexorStretch, inchworm, legSwings, worldsGreatest } from './families/stretch'
@@ -70,6 +70,8 @@ export const DEMO_MOTIONS: DemoMotion[] = [
   { id: 'child', name: "Child's pose", motion: childsPose() },
   { id: 'bear', name: 'Bear plank', motion: bearPlank() },
   { id: 'twist', name: 'Russian twist', motion: russianTwist({ db: true }) },
+  { id: 'side-plank', name: 'Side plank', motion: sidePlank() },
+  { id: 'side-plank-knee', name: 'Side plank (knees)', motion: sidePlank({ knees: true }) },
   { id: 'ytw', name: 'Prone Y-T-W', motion: proneRaise('ytw') },
   { id: 'snow-angel', name: 'Reverse snow angel', motion: proneRaise('snowAngel') },
   { id: 'w-pull', name: 'Prone W pull', motion: proneRaise('wPull') },

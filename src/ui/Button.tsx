@@ -37,7 +37,7 @@ export function Button({ variant = 'primary', size = 'md', block, icon, classNam
       )}
       {...rest}
     >
-      {icon}
+      {icon ? <span className="inline-flex shrink-0">{icon}</span> : null}
       {children}
     </button>
   )

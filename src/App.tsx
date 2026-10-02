@@ -8,6 +8,8 @@ const EatPage = lazy(() => import('@/features/eat/EatPage'))
 const ProgressPage = lazy(() => import('@/features/progress/ProgressPage'))
 const MorePage = lazy(() => import('@/features/more/MorePage'))
 const AnimationLab = lazy(() => import('@/lab/AnimationLab'))
+const LibraryPage = lazy(() => import('@/features/train/LibraryPage'))
+const ExerciseDetailPage = lazy(() => import('@/features/train/ExerciseDetailPage'))
 
 function Page({ children }: { children: ReactNode }) {
   return (
@@ -26,6 +28,8 @@ const router = createHashRouter([
       { index: true, element: <Navigate to="/today" replace /> },
       { path: 'today', element: <Page><TodayPage /></Page> },
       { path: 'train', element: <Page><TrainPage /></Page> },
+      { path: 'train/library', element: <Page><LibraryPage /></Page> },
+      { path: 'exercise/:id', element: <Page><ExerciseDetailPage /></Page> },
       { path: 'eat', element: <Page><EatPage /></Page> },
       { path: 'progress', element: <Page><ProgressPage /></Page> },
       { path: 'more', element: <Page><MorePage /></Page> },
