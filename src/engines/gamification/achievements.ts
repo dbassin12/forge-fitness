@@ -1,0 +1,106 @@
+/** Lifetime numbers the achievements look at (anything unknown is 0). */
+export interface Stats {
+  workouts: number
+  snacks: number
+  minutes: number
+  pushupReps: number
+  squatReps: number
+  bestPlankSec: number
+  prs: number
+  levelUps: number
+  reachedPushup: boolean
+  weeklyStreak: number
+  dailyStreak: number
+  earlyBird: boolean
+  nightOwl: boolean
+  tests: number
+  foodLogs: number
+  proteinDays: number
+  waterDays: number
+  weighIns: number
+  photos: number
+}
+
+export const EMPTY_STATS: Stats = {
+  workouts: 0,
+  snacks: 0,
+  minutes: 0,
+  pushupReps: 0,
+  squatReps: 0,
+  bestPlankSec: 0,
+  prs: 0,
+  levelUps: 0,
+  reachedPushup: false,
+  weeklyStreak: 0,
+  dailyStreak: 0,
+  earlyBird: false,
+  nightOwl: false,
+  tests: 0,
+  foodLogs: 0,
+  proteinDays: 0,
+  waterDays: 0,
+  weighIns: 0,
+  photos: 0,
+}
+
+export type AchievementTier = 'bronze' | 'silver' | 'gold'
+
+export interface Achievement {
+  id: string
+  title: string
+  description: string
+  /** Emoji badge (rendered large on the trophy shelf). */
+  badge: string
+  tier: AchievementTier
+  check: (s: Stats) => boolean
+}
+
+const a = (id: string, title: string, description: string, badge: string, tier: AchievementTier, check: (s: Stats) => boolean): Achievement => ({
+  id,
+  title,
+  description,
+  badge,
+  tier,
+  check,
+})
+
+export const ACHIEVEMENTS: Achievement[] = [
+  a('first-rep', 'First Rep', 'Finish your first workout', '🔥', 'bronze', (s) => s.workouts >= 1),
+  a('three-done', 'Getting Going', 'Finish 3 workouts', '👟', 'bronze', (s) => s.workouts >= 3),
+  a('ten-done', 'Habit Forming', 'Finish 10 workouts', '🧱', 'bronze', (s) => s.workouts >= 10),
+  a('twentyfive-done', 'Committed', 'Finish 25 workouts', '⚙️', 'silver', (s) => s.workouts >= 25),
+  a('fifty-done', 'Forged', 'Finish 50 workouts', '🛡️', 'silver', (s) => s.workouts >= 50),
+  a('hundred-done', 'Centurion', 'Finish 100 workouts', '🏛️', 'gold', (s) => s.workouts >= 100),
+  a('snack-1', 'Snack Attack', 'Do your first movement snack', '🍿', 'bronze', (s) => s.snacks >= 1),
+  a('snack-10', 'Desk Escape Artist', 'Do 10 movement snacks', '🪑', 'silver', (s) => s.snacks >= 10),
+  a('pushups-100', '100 Push-ups', 'Do 100 push-ups in total (any variation)', '💪', 'bronze', (s) => s.pushupReps >= 100),
+  a('pushups-1000', '1,000 Push-ups', 'Do 1,000 push-ups in total', '🦾', 'gold', (s) => s.pushupReps >= 1000),
+  a('squats-500', '500 Squats', 'Do 500 squats and lunges in total', '🦵', 'silver', (s) => s.squatReps >= 500),
+  a('plank-60', 'Iron Core', 'Hold a plank for 60 seconds', '🧲', 'silver', (s) => s.bestPlankSec >= 60),
+  a('plank-120', 'Plank Pro', 'Hold a plank for 2 minutes', '🗿', 'gold', (s) => s.bestPlankSec >= 120),
+  a('minutes-60', 'First Hour', 'Train for 60 minutes in total', '⏱️', 'bronze', (s) => s.minutes >= 60),
+  a('minutes-600', 'Ten Hours Strong', 'Train for 10 hours in total', '⌛', 'gold', (s) => s.minutes >= 600),
+  a('pr-1', 'Personal Best', 'Set your first personal record', '⭐', 'bronze', (s) => s.prs >= 1),
+  a('pr-10', 'Record Breaker', 'Set 10 personal records', '🌟', 'silver', (s) => s.prs >= 10),
+  a('level-up', 'Level Up', 'Move up to a harder exercise', '📈', 'bronze', (s) => s.levelUps >= 1),
+  a('level-up-10', 'Climber', 'Level up 10 times', '🧗', 'gold', (s) => s.levelUps >= 10),
+  a('real-pushup', 'The Real Deal', 'Graduate to full push-ups', '🏅', 'silver', (s) => s.reachedPushup),
+  a('streak-2', 'Two in a Row', 'Hit your weekly goal 2 weeks running', '📅', 'bronze', (s) => s.weeklyStreak >= 2),
+  a('streak-4', 'Month Strong', 'Hit your weekly goal 4 weeks running', '🗓️', 'silver', (s) => s.weeklyStreak >= 4),
+  a('streak-12', 'Quarter Beast', 'Hit your weekly goal 12 weeks running', '🏆', 'gold', (s) => s.weeklyStreak >= 12),
+  a('daily-7', 'Seven Days', 'Be active 7 days in a row', '✨', 'silver', (s) => s.dailyStreak >= 7),
+  a('early-bird', 'Early Bird', 'Finish a workout before 7 am', '🌅', 'bronze', (s) => s.earlyBird),
+  a('night-owl', 'Night Owl', 'Finish a workout after 9 pm', '🦉', 'bronze', (s) => s.nightOwl),
+  a('retest', 'Progress Check', 'Retake the fitness test', '📊', 'silver', (s) => s.tests >= 2),
+  a('food-1', 'First Bite', 'Log your first food', '🥑', 'bronze', (s) => s.foodLogs >= 1),
+  a('food-100', 'Food Detective', 'Log 100 foods', '🔍', 'silver', (s) => s.foodLogs >= 100),
+  a('protein-7', 'Protein Pro', 'Hit your protein target on 7 days', '🥚', 'silver', (s) => s.proteinDays >= 7),
+  a('water-7', 'Well Watered', 'Hit your water goal on 7 days', '💧', 'bronze', (s) => s.waterDays >= 7),
+  a('weigh-4', 'Scale Regular', 'Log your weight 4 times', '⚖️', 'bronze', (s) => s.weighIns >= 4),
+  a('photo-1', 'Day One Photo', 'Take your first progress photo', '📸', 'bronze', (s) => s.photos >= 1),
+]
+
+/** Achievements earned by these stats that aren't in `unlocked` yet. */
+export function newlyUnlocked(stats: Stats, unlocked: ReadonlySet<string>): Achievement[] {
+  return ACHIEVEMENTS.filter((x) => !unlocked.has(x.id) && x.check(stats))
+}

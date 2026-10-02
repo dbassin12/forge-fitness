@@ -1,25 +1,50 @@
 import { registerSW } from 'virtual:pwa-register'
 import { create } from 'zustand'
 
+/** Chrome/Android's install prompt (not in the TS DOM lib). */
+export interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+
 interface PwaState {
   needRefresh: boolean
   offlineReady: boolean
+  /** Captured `beforeinstallprompt` (Android/desktop Chrome) — null when unavailable. */
+  installPrompt: BeforeInstallPromptEvent | null
+  installed: boolean
   update: () => void
   dismiss: () => void
+  promptInstall: () => Promise<boolean>
 }
 
 let updateSW: ((reload?: boolean) => Promise<void>) | undefined
 
-export const usePwa = create<PwaState>((set) => ({
+export const usePwa = create<PwaState>((set, get) => ({
   needRefresh: false,
   offlineReady: false,
+  installPrompt: null,
+  installed: false,
   update: () => {
     void updateSW?.(true)
   },
   dismiss: () => set({ needRefresh: false, offlineReady: false }),
+  promptInstall: async () => {
+    const e = get().installPrompt
+    if (!e) return false
+    await e.prompt()
+    const { outcome } = await e.userChoice
+    set({ installPrompt: null, installed: outcome === 'accepted' })
+    return outcome === 'accepted'
+  },
 }))
 
 export function initPwa() {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault()
+    usePwa.setState({ installPrompt: e as BeforeInstallPromptEvent })
+  })
+  window.addEventListener('appinstalled', () => usePwa.setState({ installPrompt: null, installed: true }))
   if (!('serviceWorker' in navigator)) return
   updateSW = registerSW({
     immediate: true,

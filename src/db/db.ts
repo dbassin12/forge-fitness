@@ -20,6 +20,9 @@ export interface SetLog {
 export interface ExerciseLog {
   exerciseId: string
   slot?: string
+  /** Progression ladder the exercise was planned for. */
+  ladder?: string
+  block?: 'warmup' | 'main' | 'finisher' | 'cooldown'
   sets: SetLog[]
   /** Per-exercise difficulty the user reported (optional). */
   rating?: 'easy' | 'right' | 'hard'

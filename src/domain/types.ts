@@ -52,6 +52,8 @@ export interface Profile {
   /** 24h local time, e.g. "07:00". */
   preferredTime: string
   equipment: Equipment
+  /** No jumping: apartment-friendly, joint-friendly. */
+  quietMode?: boolean
   trackingMode: TrackingMode
   reminderStyle: ReminderStyle
   createdAt: string

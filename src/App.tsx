@@ -1,33 +1,56 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { createHashRouter, Navigate, RouterProvider } from 'react-router'
 import { FullScreenLayout, TabLayout } from '@/app/Layout'
+import { useProfile } from '@/state/store'
 
 const TodayPage = lazy(() => import('@/features/today/TodayPage'))
 const TrainPage = lazy(() => import('@/features/train/TrainPage'))
+const SessionPage = lazy(() => import('@/features/train/SessionPage'))
 const EatPage = lazy(() => import('@/features/eat/EatPage'))
 const ProgressPage = lazy(() => import('@/features/progress/ProgressPage'))
 const MorePage = lazy(() => import('@/features/more/MorePage'))
 const AnimationLab = lazy(() => import('@/lab/AnimationLab'))
 const LibraryPage = lazy(() => import('@/features/train/LibraryPage'))
 const ExerciseDetailPage = lazy(() => import('@/features/train/ExerciseDetailPage'))
+const OnboardingPage = lazy(() => import('@/features/onboarding/OnboardingPage'))
+const WorkoutPlayer = lazy(() => import('@/features/player/WorkoutPlayer'))
+
+function Splash() {
+  return <div className="grid h-[60vh] place-items-center text-muted animate-pulse-soft">Loading…</div>
+}
 
 function Page({ children }: { children: ReactNode }) {
-  return (
-    <Suspense
-      fallback={<div className="grid h-[60vh] place-items-center text-muted animate-pulse-soft">Loading…</div>}
-    >
-      {children}
-    </Suspense>
-  )
+  return <Suspense fallback={<Splash />}>{children}</Suspense>
+}
+
+/** Everything except onboarding needs a profile; send newcomers to the welcome flow. */
+function RequireProfile({ children }: { children: ReactNode }) {
+  const profile = useProfile()
+  if (profile === undefined) return <Splash />
+  if (profile === null) return <Navigate to="/welcome" replace />
+  return children
+}
+
+/** Already set up? Skip onboarding. */
+function OnlyNewUsers({ children }: { children: ReactNode }) {
+  const profile = useProfile()
+  if (profile === undefined) return <Splash />
+  if (profile) return <Navigate to="/today" replace />
+  return children
 }
 
 const router = createHashRouter([
   {
-    element: <TabLayout />,
+    element: (
+      <RequireProfile>
+        <TabLayout />
+      </RequireProfile>
+    ),
     children: [
       { index: true, element: <Navigate to="/today" replace /> },
       { path: 'today', element: <Page><TodayPage /></Page> },
       { path: 'train', element: <Page><TrainPage /></Page> },
+      { path: 'train/session', element: <Page><SessionPage /></Page> },
       { path: 'train/library', element: <Page><LibraryPage /></Page> },
       { path: 'exercise/:id', element: <Page><ExerciseDetailPage /></Page> },
       { path: 'eat', element: <Page><EatPage /></Page> },
@@ -37,7 +60,29 @@ const router = createHashRouter([
   },
   {
     element: <FullScreenLayout />,
-    children: [{ path: 'lab', element: <Page><AnimationLab /></Page> }],
+    children: [
+      { path: 'lab', element: <Page><AnimationLab /></Page> },
+      {
+        path: 'welcome',
+        element: (
+          <OnlyNewUsers>
+            <Page>
+              <OnboardingPage />
+            </Page>
+          </OnlyNewUsers>
+        ),
+      },
+      {
+        path: 'workout',
+        element: (
+          <RequireProfile>
+            <Page>
+              <WorkoutPlayer />
+            </Page>
+          </RequireProfile>
+        ),
+      },
+    ],
   },
   { path: '*', element: <Navigate to="/today" replace /> },
 ])

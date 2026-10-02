@@ -58,3 +58,10 @@ export function clockToMinutes(clock: string): number {
   const [h, m] = clock.split(':').map(Number)
   return h * 60 + (m || 0)
 }
+
+/** 1-based day of the year (handy as a daily rotation seed). */
+export function dayOfYear(iso: ISODate = todayISO()): number {
+  const d = parseISODate(iso)
+  const start = new Date(d.getFullYear(), 0, 1, 12)
+  return Math.round((d.getTime() - start.getTime()) / 86_400_000) + 1
+}
