@@ -11,7 +11,7 @@ export type AuthResult = { ok: true } | { ok: false; status: number; error: stri
 
 const failures = new Map<string, { n: number; until: number }>()
 
-function clientIp(req: Request): string {
+export function clientIp(req: Request): string {
   return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown'
 }
 

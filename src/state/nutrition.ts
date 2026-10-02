@@ -25,8 +25,12 @@ export interface NutritionSettings {
 
 const DEFAULT_SETTINGS: NutritionSettings = { eatBack: false, glassOz: 8 }
 
+export async function loadNutritionSettings(): Promise<NutritionSettings> {
+  return { ...DEFAULT_SETTINGS, ...((await kvGet<Partial<NutritionSettings>>('nutrition.settings')) ?? {}) }
+}
+
 export function useNutritionSettings(): NutritionSettings {
-  return useLiveQuery(async () => ({ ...DEFAULT_SETTINGS, ...((await kvGet<Partial<NutritionSettings>>('nutrition.settings')) ?? {}) }), []) ?? DEFAULT_SETTINGS
+  return useLiveQuery(loadNutritionSettings, []) ?? DEFAULT_SETTINGS
 }
 
 export async function saveNutritionSettings(patch: Partial<NutritionSettings>): Promise<void> {
@@ -41,20 +45,22 @@ export interface DayData {
   workoutMinutes: number
 }
 
+export async function loadDay(date: ISODate): Promise<DayData> {
+  const [logs, water, workouts] = await Promise.all([
+    db.foodLogs.where('date').equals(date).sortBy('createdAt'),
+    db.water.where('date').equals(date).toArray(),
+    db.workouts.where('date').equals(date).toArray(),
+  ])
+  return {
+    logs,
+    waterMl: Math.round(water.reduce((s, w) => s + w.oz, 0) * OZ_ML),
+    burnedKcal: workouts.reduce((s, w) => s + (w.calories ?? 0), 0),
+    workoutMinutes: Math.round(workouts.reduce((s, w) => s + (w.finishedAt - w.startedAt), 0) / 60000),
+  }
+}
+
 export function useDay(date: ISODate): DayData | undefined {
-  return useLiveQuery(async () => {
-    const [logs, water, workouts] = await Promise.all([
-      db.foodLogs.where('date').equals(date).sortBy('createdAt'),
-      db.water.where('date').equals(date).toArray(),
-      db.workouts.where('date').equals(date).toArray(),
-    ])
-    return {
-      logs,
-      waterMl: Math.round(water.reduce((s, w) => s + w.oz, 0) * OZ_ML),
-      burnedKcal: workouts.reduce((s, w) => s + (w.calories ?? 0), 0),
-      workoutMinutes: Math.round(workouts.reduce((s, w) => s + (w.finishedAt - w.startedAt), 0) / 60000),
-    }
-  }, [date])
+  return useLiveQuery(() => loadDay(date), [date])
 }
 
 export function totalsOf(logs: FoodLogEntry[]): Macros {

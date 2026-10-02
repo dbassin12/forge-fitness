@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Bell, Check, ChevronRight, Coffee, Droplet, Flame, Lightbulb, Play, Plus, Scale, Utensils, Zap } from 'lucide-react'
+import { Bell, Bot, Check, ChevronRight, Coffee, Droplet, Flame, Lightbulb, Play, Plus, Scale, Utensils, Zap } from 'lucide-react'
 import { db, kvGet, kvSet } from '@/db/db'
 import { getExercise } from '@/data/exercises'
 import { levelTitle, weeklyStreak } from '@/engines/gamification'
@@ -10,6 +10,7 @@ import { waterPace } from '@/engines/nutrition/day'
 import { weekReview } from '@/engines/review'
 import { tipOfTheDay } from '@/engines/tips'
 import { addDays, daysBetween, formatShortDate, isoWeekday, parseISODate, startOfWeek, todayISO, WEEKDAY_SHORT } from '@/lib/dates'
+import { useAiAvailability } from '@/state/ai'
 import { planDates, useLevel } from '@/state/gamification'
 import { addWater, OZ_ML, targetsFor, totalsOf, useDay, useNutritionSettings } from '@/state/nutrition'
 import { swapsFor, usePlan } from '@/state/plan'
@@ -33,6 +34,7 @@ export default function TodayPage() {
   const workouts = useLiveQuery(() => db.workouts.orderBy('date').toArray(), [])
   const reviewDismissed = useLiveQuery(async () => (await kvGet<string>('review.dismissed')) ?? '', [])
   const remindersOn = useLiveQuery(async () => !!(await kvGet<{ enabled?: boolean }>('reminders'))?.enabled, [])
+  const ai = useAiAvailability()
   const lastWeek = addDays(startOfWeek(today), -7)
   const reviewFood = useLiveQuery(() => db.foodLogs.where('date').between(lastWeek, addDays(lastWeek, 6), true, true).toArray(), [lastWeek])
   const reviewWeights = useLiveQuery(() => db.weights.where('date').between(lastWeek, addDays(lastWeek, 6), true, true).toArray(), [lastWeek])
@@ -302,6 +304,19 @@ export default function TodayPage() {
           <p className="mt-0.5 text-sm text-muted">{tip.text}</p>
         </div>
       </Card>
+
+      {ai.status === 'ready' || ai.status === 'needs-code' ? (
+        <Link to="/coach">
+          <Card className="mt-3 flex items-center gap-3">
+            <Bot size={20} className="shrink-0 text-ember" />
+            <div className="flex-1">
+              <div className="font-semibold">Ask your coach</div>
+              <div className="text-sm text-muted">“What should I eat tonight?” · “Swap for sore knees?”</div>
+            </div>
+            <ChevronRight className="text-faint" />
+          </Card>
+        </Link>
+      ) : null}
 
       {remindersOn === false && p.reminderStyle !== 'off' ? (
         <Link to="/more/reminders">

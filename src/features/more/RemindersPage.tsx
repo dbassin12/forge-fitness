@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, BellRing, CalendarPlus, CheckCircle2, KeyRound, Loader2, Send } from 'lucide-react'
+import { AlertTriangle, BellRing, CalendarPlus, CheckCircle2, Loader2, Send } from 'lucide-react'
 import { REMINDER_LABEL, nextOccurrence, presetRules, ruleTimes, type ReminderRule } from '@shared/reminders'
 import { buildIcs } from '@/engines/ics'
 import { upcomingDays } from '@/engines/plan'
@@ -27,6 +27,7 @@ import { PageHeader } from '@/ui/PageHeader'
 import { Segmented } from '@/ui/Segmented'
 import { Toggle } from '@/ui/Toggle'
 import { InstallGuide } from '../onboarding/InstallGuide'
+import { PasscodeForm } from '../settings/PasscodeForm'
 
 function ago(ms: number): string {
   const m = Math.round((Date.now() - ms) / 60000)
@@ -49,7 +50,6 @@ export default function RemindersPage() {
   const [cfg, setCfg] = useState<PushConfig | null>(null)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const [code, setCode] = useState('')
 
   useEffect(() => {
     void fetchPushConfig().then(setCfg)
@@ -113,30 +113,7 @@ export default function RemindersPage() {
           </div>
 
           {passcode === null ? (
-            <form
-              className="mt-4"
-              onSubmit={(e) => {
-                e.preventDefault()
-                if (code.trim()) void setPasscode(code.trim())
-              }}
-            >
-              <label className="block text-sm text-muted" htmlFor="passcode">
-                Access code <span className="text-faint">(the APP_PASSCODE you set in Vercel)</span>
-              </label>
-              <div className="mt-1.5 flex gap-2">
-                <input
-                  id="passcode"
-                  type="password"
-                  autoComplete="current-password"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  className="h-11 flex-1 rounded-2xl border border-line bg-surface px-3 outline-none focus:border-ember"
-                />
-                <Button type="submit" icon={<KeyRound size={16} />} disabled={!code.trim()}>
-                  Save
-                </Button>
-              </div>
-            </form>
+            <PasscodeForm className="mt-4" />
           ) : (
             <div className="mt-3 grid grid-cols-2 gap-2">
               <Button disabled={busy || !support.ok} variant={settings.enabled ? 'secondary' : 'primary'} onClick={() => void toggle(!settings.enabled)}>

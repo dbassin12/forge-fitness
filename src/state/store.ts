@@ -57,6 +57,10 @@ export function useSessionSwaps(): SessionSwaps | null | undefined {
   return useLiveQuery(() => read<SessionSwaps>(KEYS.swaps), [])
 }
 
+export async function loadSessionSwaps(): Promise<SessionSwaps | null> {
+  return (await read<SessionSwaps>(KEYS.swaps)) ?? null
+}
+
 export async function setSessionSwap(index: number, slotIndex: number, exerciseId: string | null): Promise<void> {
   const cur = await read<SessionSwaps>(KEYS.swaps)
   const swaps = cur && cur.index === index ? { ...cur.swaps } : {}

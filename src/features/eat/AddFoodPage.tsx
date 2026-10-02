@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Barcode, ChefHat, Clock, Globe, Loader2, PenLine, Plus, Search, Star, Zap } from 'lucide-react'
+import { Barcode, Camera, ChefHat, Clock, Globe, Loader2, PenLine, Plus, Search, Sparkles, Star, Zap } from 'lucide-react'
 import { db, type CustomFood, type MealSlot } from '@/db/db'
 import { FOOD_BY_ID } from '@/data/foods'
 import { RECIPES } from '@/data/recipes'
 import { defaultServing, foodMacros, recipeFits, recipeMacros, searchFoods } from '@/engines/nutrition/foods'
 import { todayISO } from '@/lib/dates'
 import { uid } from '@/lib/id'
+import { useAiAvailability } from '@/state/ai'
 import { useProfile } from '@/state/store'
 import { addEntry, toggleFavorite, useFavorites, useRecents, type NewEntry } from '@/state/nutrition'
 import { Button } from '@/ui/Button'
@@ -16,6 +17,7 @@ import { Chip } from '@/ui/Chip'
 import { PageHeader } from '@/ui/PageHeader'
 import { Sheet } from '@/ui/Sheet'
 import { cx } from '@/ui/cx'
+import { AiFoodSheet, type AiRequest } from './AiFoodSheet'
 import { BarcodeScanner } from './BarcodeScanner'
 import { FoodSheet, pickableKey, type Pickable } from './FoodSheet'
 import { MEAL_LABEL, mealForHour } from './labels'
@@ -60,6 +62,9 @@ export default function AddFoodPage() {
   const favorites = useFavorites()
   const customFoods = useLiveQuery(() => db.customFoods.orderBy('name').toArray(), [])
   const abort = useRef<AbortController | null>(null)
+  const ai = useAiAvailability()
+  const [aiReq, setAiReq] = useState<{ id: number; req: AiRequest } | null>(null)
+  const photoInput = useRef<HTMLInputElement>(null)
 
   // Deep link from a nudge: open that food straight away.
   useEffect(() => {
@@ -88,6 +93,12 @@ export default function AddFoodPage() {
   const log = async (e: NewEntry) => {
     await addEntry({ ...e, meal, date }, profile)
     setToast(`Added ${e.name.split(',')[0]} to ${MEAL_LABEL[meal].toLowerCase()}`)
+    window.setTimeout(() => setToast(null), 2200)
+  }
+
+  const logMany = async (entries: Omit<NewEntry, 'date' | 'meal'>[]) => {
+    for (const e of entries) await addEntry({ ...e, meal, date }, profile)
+    setToast(`Added ${entries.length === 1 ? entries[0]!.name : `${entries.length} items`} to ${MEAL_LABEL[meal].toLowerCase()}`)
     window.setTimeout(() => setToast(null), 2200)
   }
 
@@ -153,7 +164,28 @@ export default function AddFoodPage() {
           <Search size={18} />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search foods, e.g. eggs, banana" className="h-full flex-1 bg-transparent text-ink outline-none placeholder:text-faint" />
         </label>
-        <div className="mt-3 grid grid-cols-3 gap-2">
+        {ai.status === 'ready' || ai.status === 'needs-code' ? (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Button variant="secondary" size="sm" icon={<Camera size={16} />} onClick={() => photoInput.current?.click()}>
+              Snap a photo
+            </Button>
+            <Button variant="secondary" size="sm" icon={<Sparkles size={16} />} onClick={() => setAiReq({ id: Date.now(), req: { mode: 'text' } })}>
+              Describe it
+            </Button>
+            <input
+              ref={photoInput}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                e.target.value = ''
+                if (f) setAiReq({ id: Date.now(), req: { mode: 'photo', photo: f } })
+              }}
+            />
+          </div>
+        ) : null}
+        <div className="mt-2 grid grid-cols-3 gap-2">
           <Button variant="secondary" size="sm" icon={<Barcode size={16} />} onClick={() => setScan(true)}>
             Scan
           </Button>
@@ -302,6 +334,7 @@ export default function AddFoodPage() {
         }}
       />
       {scan ? <BarcodeScanner onCode={(c) => void onBarcode(c)} onClose={() => setScan(false)} /> : null}
+      <AiFoodSheet key={aiReq?.id ?? 0} request={aiReq?.req ?? null} meal={meal} needsCode={ai.status === 'needs-code'} onClose={() => setAiReq(null)} onLog={(e) => void logMany(e)} />
       <QuickAddSheet open={quick} onClose={() => setQuick(false)} onAdd={(e) => void log({ ...e, date, meal })} />
       <CustomFoodSheet
         open={!!custom}
