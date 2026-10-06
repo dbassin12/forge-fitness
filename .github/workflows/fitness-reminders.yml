@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Send due reminders
         env:
-          TICK_URL: ${{ vars.FORGE_TICK_URL || 'https://forge-fitness.vercel.app/api/tick' }}
+          TICK_URL: ${{ vars.FORGE_TICK_URL || 'https://forge-fitness-liard.vercel.app/api/tick' }}
         run: |
           set -euo pipefail
           TOKEN=$(curl -sS --fail -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
