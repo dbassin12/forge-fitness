@@ -12,6 +12,7 @@ import { targetsFor, totalsOf, useDay } from '@/state/nutrition'
 import { swapsFor, usePlan } from '@/state/plan'
 import { saveReminderSettings, syncPush, useReminderSettings } from '@/state/reminders'
 import { bridgeSet, type SwContext } from '@/sw-bridge'
+import { useCalendarExport } from '@/state/calendar'
 import { usePrefs } from './prefs'
 
 /** In-app reminder toasts (used when push notifications are off). */
@@ -34,6 +35,7 @@ export function useBackgroundSync() {
   const workouts = useLiveQuery(() => db.workouts.where('date').aboveOrEqual(`${today.slice(0, 4)}-01-01`).toArray(), [today])
   const settings = useReminderSettings(plan?.profile)
   const coach = usePrefs((s) => s.coach)
+  const calendar = useCalendarExport()
   const synced = useRef('')
   /** Local "done for today" keys, mirroring the server-side acks for in-app reminders. */
   const localAcks = useRef<string[]>([])
@@ -91,9 +93,10 @@ export function useBackgroundSync() {
     void syncPush(settings, p).catch(() => undefined)
   }, [plan, settings])
 
-  // 3. In-app reminders while the app is open and push is off.
+  // 3. In-app reminders while the app is open and push is off (the phone's calendar covers them
+  //    once calendar reminders are added, so don't double up).
   useEffect(() => {
-    if (!settings || settings.enabled) return
+    if (!settings || settings.enabled || calendar === undefined || calendar) return
     let live = true
     const tick = async () => {
       // The scheduler (and its date library) loads only when in-app reminders are in use.
@@ -130,5 +133,5 @@ export function useBackgroundSync() {
       live = false
       window.clearInterval(id)
     }
-  }, [settings])
+  }, [settings, calendar])
 }

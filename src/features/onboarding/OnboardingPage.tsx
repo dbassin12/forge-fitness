@@ -465,7 +465,7 @@ export default function OnboardingPage() {
               </select>
             </Field>
           </div>
-          <p className="mt-2 text-xs text-faint">You'll switch notifications on after setup. Fine-tune every reminder in Settings (the gear on Today) → Reminders.</p>
+          <p className="mt-2 text-xs text-faint">After setup, one tap puts them in your phone's calendar, no account needed. Fine-tune them anytime in Settings (the gear on Today) → Reminders.</p>
         </>
       )
       break

@@ -21,7 +21,7 @@ const DEFS: Omit<StarterItem, 'done'>[] = [
   { id: 'workout', emoji: '🏋️', title: 'Do your first workout', text: 'Or a 3-minute snack to start small', to: '/workout' },
   { id: 'food', emoji: '🍳', title: 'Log something you ate', text: 'Search, scan a barcode, or ask Claude', to: '/eat/add' },
   { id: 'play', emoji: '🎮', title: 'Play a game', text: 'Spin the wheel for a random move', to: '/play/wheel' },
-  { id: 'reminders', emoji: '🔔', title: 'Turn on reminders', text: 'Nudges at the times you choose', to: '/more/reminders' },
+  { id: 'reminders', emoji: '🔔', title: 'Get phone reminders', text: 'No setup: they go in your calendar', to: '/more/reminders' },
   { id: 'install', emoji: '📲', title: 'Add Forge to your Home Screen', text: 'Full screen, offline, notifications', to: '/guide#install' },
 ]
 
@@ -35,11 +35,12 @@ export interface Starter {
 /** The "Get started" checklist for new users. */
 export function useStarter(): Starter | undefined {
   return useLiveQuery(async () => {
-    const [acts, workouts, foods, reminders, dismissed, rewarded] = await Promise.all([
+    const [acts, workouts, foods, reminders, calendar, dismissed, rewarded] = await Promise.all([
       db.kv.where('key').startsWith('act:').toArray(),
       db.workouts.toArray(),
       db.foodLogs.count(),
       kvGet<{ enabled?: boolean }>('reminders'),
+      kvGet<unknown>('reminders.calendar'),
       kvGet<boolean>('starter.dismissed'),
       kvGet<boolean>('starter.rewarded'),
     ])
@@ -48,7 +49,7 @@ export function useStarter(): Starter | undefined {
       workout: workouts.some((w) => w.kind !== 'test' && !w.sessionKey.startsWith('play:')),
       food: foods > 0,
       play: workouts.some((w) => w.sessionKey.startsWith('play:')),
-      reminders: !!reminders?.enabled,
+      reminders: !!reminders?.enabled || !!calendar,
       install: typeof window !== 'undefined' && isStandalone(),
     }
     const items = DEFS.map((d) => ({ ...d, done: flags[d.id] }))

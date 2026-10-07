@@ -109,8 +109,8 @@ const SECTIONS: Section[] = [
     emoji: '🔔',
     title: 'Reminders',
     points: [
-      'Workout, meal, water and streak nudges reach your phone even when Forge is closed.',
-      'Turn them on once in Settings → Reminders. You’ll need your access code the first time.',
+      'Phone reminders (easiest): Settings → Reminders → “Add to my calendar”. Your phone’s calendar alerts you at your workout, meal and water times, even when Forge is closed. No setup at all.',
+      'Smart notifications (optional): personalized and they skip themselves once you’ve trained, but they need the Forge server set up with an access code.',
     ],
     cta: { label: 'Reminders', to: '/more/reminders' },
   },

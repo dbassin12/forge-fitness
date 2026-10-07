@@ -70,7 +70,7 @@ export default function TodayPage() {
   }, [params, plan, settings.glassOz, setParams, today])
   const workouts = useLiveQuery(() => db.workouts.orderBy('date').toArray(), [])
   const reviewDismissed = useLiveQuery(async () => (await kvGet<string>('review.dismissed')) ?? '', [])
-  const remindersOn = useLiveQuery(async () => !!(await kvGet<{ enabled?: boolean }>('reminders'))?.enabled, [])
+  const remindersOn = useLiveQuery(async () => !!(await kvGet<{ enabled?: boolean }>('reminders'))?.enabled || !!(await kvGet('reminders.calendar')), [])
   const lastWeek = addDays(startOfWeek(today), -7)
   const reviewFood = useLiveQuery(() => db.foodLogs.where('date').between(lastWeek, addDays(lastWeek, 6), true, true).toArray(), [lastWeek])
   const reviewWeights = useLiveQuery(() => db.weights.where('date').between(lastWeek, addDays(lastWeek, 6), true, true).toArray(), [lastWeek])
@@ -342,8 +342,8 @@ export default function TodayPage() {
           <Card className="mt-3 flex items-center gap-3">
             <Bell size={20} className="shrink-0 text-sky" />
             <div className="flex-1">
-              <div className="font-semibold">Turn on reminders</div>
-              <div className="text-sm text-muted">Workout, meal and water nudges at the times you choose.</div>
+              <div className="font-semibold">Get reminders on your phone</div>
+              <div className="text-sm text-muted">Workout, meal and water nudges. No setup: they go in your calendar.</div>
             </div>
             <ChevronRight className="text-faint" />
           </Card>

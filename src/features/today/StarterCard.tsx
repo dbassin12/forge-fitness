@@ -36,7 +36,7 @@ export function StarterCard({ starter }: { starter: Starter }) {
       <ul>
         {starter.items.map((it) => (
           <li key={it.id}>
-            <Link to={it.to} viewTransition className={cx('pressable flex items-center gap-3 px-4 py-2', !it.done && 'hover:bg-surface-2')}>
+            <Link to={it.to} viewTransition aria-label={`${it.title}${it.done ? ', done' : ''}`} className={cx('pressable flex items-center gap-3 px-4 py-2', !it.done && 'hover:bg-surface-2')}>
               <span className={cx('grid h-9 w-9 shrink-0 place-items-center rounded-xl text-lg', it.done ? 'bg-good/15' : 'bg-surface-2')}>
                 {it.done ? <Check size={18} strokeWidth={3} className="text-good" /> : it.emoji}
               </span>
