@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { haptic } from '@/device/haptics'
 import { cx } from './cx'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
@@ -14,8 +15,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const variants: Record<Variant, string> = {
   primary: 'bg-ember text-on-accent hover:bg-ember-2 active:scale-[0.98] shadow-[0_8px_24px_-12px_var(--color-ember)]',
   secondary: 'bg-surface-2 text-ink hover:bg-surface-3 active:scale-[0.98] border border-line',
-  ghost: 'bg-transparent text-muted hover:text-ink hover:bg-surface-2',
-  danger: 'bg-bad/15 text-bad hover:bg-bad/25 border border-bad/30',
+  ghost: 'bg-transparent text-muted hover:text-ink hover:bg-surface-2 active:scale-[0.98]',
+  danger: 'bg-bad/15 text-bad hover:bg-bad/25 border border-bad/30 active:scale-[0.98]',
 }
 
 const sizes: Record<Size, string> = {
@@ -24,12 +25,16 @@ const sizes: Record<Size, string> = {
   lg: 'h-14 px-6 text-base rounded-2xl gap-2.5 font-semibold',
 }
 
-export function Button({ variant = 'primary', size = 'md', block, icon, className, children, ...rest }: ButtonProps) {
+export function Button({ variant = 'primary', size = 'md', block, icon, className, children, onClick, ...rest }: ButtonProps) {
   return (
     <button
       type="button"
+      onClick={(e) => {
+        if (variant === 'primary') haptic('light')
+        onClick?.(e)
+      }}
       className={cx(
-        'inline-flex items-center justify-center font-medium transition duration-150 disabled:opacity-40 disabled:pointer-events-none',
+        'inline-flex items-center justify-center whitespace-nowrap font-medium transition duration-150 disabled:opacity-40 disabled:pointer-events-none',
         variants[variant],
         sizes[size],
         block && 'w-full',

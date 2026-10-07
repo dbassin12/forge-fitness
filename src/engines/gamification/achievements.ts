@@ -19,6 +19,14 @@ export interface Stats {
   waterDays: number
   weighIns: number
   photos: number
+  /** Daily quests completed (all time). */
+  quests: number
+  /** Days with all three quests done. */
+  perfectDays: number
+  /** Play-tab games finished. */
+  plays: number
+  /** Full 52-card decks finished. */
+  fullDecks: number
 }
 
 export const EMPTY_STATS: Stats = {
@@ -41,6 +49,10 @@ export const EMPTY_STATS: Stats = {
   waterDays: 0,
   weighIns: 0,
   photos: 0,
+  quests: 0,
+  perfectDays: 0,
+  plays: 0,
+  fullDecks: 0,
 }
 
 export type AchievementTier = 'bronze' | 'silver' | 'gold'
@@ -98,6 +110,13 @@ export const ACHIEVEMENTS: Achievement[] = [
   a('water-7', 'Well Watered', 'Hit your water goal on 7 days', '💧', 'bronze', (s) => s.waterDays >= 7),
   a('weigh-4', 'Scale Regular', 'Log your weight 4 times', '⚖️', 'bronze', (s) => s.weighIns >= 4),
   a('photo-1', 'Day One Photo', 'Take your first progress photo', '📸', 'bronze', (s) => s.photos >= 1),
+  a('quest-1', 'Quest Starter', 'Complete your first daily quest', '🗺️', 'bronze', (s) => s.quests >= 1),
+  a('quest-50', 'Quest Master', 'Complete 50 daily quests', '🧭', 'gold', (s) => s.quests >= 50),
+  a('perfect-1', 'Perfect Day', 'Finish all three daily quests in one day', '💎', 'bronze', (s) => s.perfectDays >= 1),
+  a('perfect-7', 'Perfect Seven', 'Have 7 perfect days', '👑', 'gold', (s) => s.perfectDays >= 7),
+  a('play-1', 'Game On', 'Finish a game in the Play tab', '🎮', 'bronze', (s) => s.plays >= 1),
+  a('play-20', 'Player One', 'Finish 20 games in the Play tab', '🕹️', 'silver', (s) => s.plays >= 20),
+  a('deck-52', 'Full Deck', 'Work through a full 52-card deck', '🃏', 'gold', (s) => s.fullDecks >= 1),
 ]
 
 /** Achievements earned by these stats that aren't in `unlocked` yet. */

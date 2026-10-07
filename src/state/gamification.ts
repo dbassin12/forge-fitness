@@ -15,6 +15,7 @@ import {
 } from '@/engines/gamification'
 import { LADDERS, type ProgressState } from '@/engines/plan'
 import { todayISO } from '@/lib/dates'
+import { loadProgress } from './store'
 import { uid } from '@/lib/id'
 
 const PUSHUP_FAMILY = new Set([...LADDERS.h_push.exercises, 'db-floor-press'].filter((id) => !id.startsWith('db-')))
@@ -50,6 +51,8 @@ export async function computeStats(profile: Profile, progress: ProgressState, to
   for (const w of workouts) {
     if (w.kind === 'plan') s.workouts++
     if (w.kind === 'snack') s.snacks++
+    if (w.sessionKey.startsWith('play:')) s.plays++
+    if (w.sessionKey === 'play:deck:52') s.fullDecks++
     s.minutes += Math.max(0, (w.finishedAt - w.startedAt) / 60000)
     const hour = new Date(w.finishedAt).getHours()
     if (hour < 7) s.earlyBird = true
@@ -84,7 +87,18 @@ export async function computeStats(profile: Profile, progress: ProgressState, to
   const h = (hits?.value ?? {}) as { protein?: ISODate[]; water?: ISODate[] }
   s.proteinDays = h.protein?.length ?? 0
   s.waterDays = h.water?.length ?? 0
+  const q = (await db.kv.get('quests.stats'))?.value as { done?: number; perfect?: number } | undefined
+  s.quests = q?.done ?? 0
+  s.perfectDays = q?.perfect ?? 0
   return s
+}
+
+/** Re-check every achievement against the current data (cheap; call after anything notable). */
+export async function checkAchievements(): Promise<Achievement[]> {
+  const profile = (await db.kv.get('profile'))?.value as Profile | undefined
+  if (!profile) return []
+  const progress = await loadProgress(profile)
+  return unlockAchievements(await computeStats(profile, progress))
 }
 
 /** Persist any newly earned achievements (with their XP) and return them for celebration. */

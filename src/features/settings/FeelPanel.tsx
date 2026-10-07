@@ -1,0 +1,142 @@
+import { Check, Lock, Monitor, Moon, Sun } from 'lucide-react'
+import { COACH_STYLES, usePrefs, type CoachStyle, type MotionPref } from '@/app/prefs'
+import { ACCENTS, useTheme, type ThemeMode } from '@/app/theme'
+import { haptic } from '@/device/haptics'
+import { sfx } from '@/device/sfx'
+import { useLevel } from '@/state/gamification'
+import { cx } from '@/ui/cx'
+import { Segmented } from '@/ui/Segmented'
+import { Toggle } from '@/ui/Toggle'
+import { unlockAudio } from '@/voice/beeps'
+import { speech } from '@/voice/speech'
+
+const MODES: { value: ThemeMode; label: string; Icon: typeof Sun }[] = [
+  { value: 'auto', label: 'Auto', Icon: Monitor },
+  { value: 'dark', label: 'Dark', Icon: Moon },
+  { value: 'light', label: 'Light', Icon: Sun },
+]
+
+/** Theme, accent color, coach personality and the little extras (sounds, vibration, confetti). */
+export function FeelPanel() {
+  const { mode, setMode, accent, setAccent, theme } = useTheme()
+  const prefs = usePrefs()
+  const level = useLevel()?.level ?? 1
+  return (
+    <div>
+      <div className="text-sm font-medium text-muted">Theme</div>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        {MODES.map(({ value, label, Icon }) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={mode === value}
+            onClick={() => {
+              setMode(value)
+              haptic('light')
+            }}
+            className={cx('pressable flex h-16 flex-col items-center justify-center gap-1 rounded-2xl border text-sm font-medium', mode === value ? 'border-ember bg-ember/10 text-ember' : 'border-line bg-surface-2 text-muted')}
+          >
+            <Icon size={18} />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-5 flex items-baseline justify-between">
+        <span className="text-sm font-medium text-muted">Accent color</span>
+        <span className="text-xs text-faint">Level up to unlock more</span>
+      </div>
+      <div className="mt-2 grid grid-cols-6 gap-2">
+        {ACCENTS.map((a) => {
+          const locked = level < a.unlockLevel
+          const on = accent === a.id
+          const color = theme === 'light' ? a.light : a.dark
+          return (
+            <button
+              key={a.id}
+              type="button"
+              disabled={locked}
+              aria-pressed={on}
+              aria-label={locked ? `${a.name}, unlocks at level ${a.unlockLevel}` : a.name}
+              onClick={() => {
+                setAccent(a.id)
+                haptic('medium')
+                sfx.pop()
+              }}
+              className="pressable flex flex-col items-center gap-1 disabled:opacity-100"
+            >
+              <span
+                className={cx('grid h-11 w-11 place-items-center rounded-full transition', on ? 'ring-2 ring-offset-2 ring-offset-surface' : '', locked && 'opacity-35 grayscale')}
+                style={{ background: color, ['--tw-ring-color' as string]: color }}
+              >
+                {on ? <Check size={20} strokeWidth={3} className="text-black/70" /> : locked ? <Lock size={15} className="text-black/60" /> : null}
+              </span>
+              <span className={cx('text-[11px]', on ? 'font-semibold text-ink' : 'text-muted')}>{locked ? `Lv ${a.unlockLevel}` : a.name}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="mt-5 text-sm font-medium text-muted">Coach personality</div>
+      <p className="text-xs text-faint">How the voice coach talks to you during workouts.</p>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        {COACH_STYLES.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            aria-pressed={prefs.coach === c.id}
+            onClick={() => {
+              prefs.update({ coach: c.id as CoachStyle })
+              haptic('light')
+              unlockAudio()
+              speech.unlock()
+              void speech.speak(c.sample, { interrupt: true })
+            }}
+            className={cx('pressable rounded-2xl border p-3 text-left', prefs.coach === c.id ? 'border-ember bg-ember/10' : 'border-line bg-surface-2')}
+          >
+            <div className="text-2xl">{c.emoji}</div>
+            <div className={cx('mt-1 font-semibold', prefs.coach === c.id && 'text-ember')}>{c.name}</div>
+            <div className="text-xs text-muted">{c.blurb}</div>
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 divide-y divide-line/60">
+        <Toggle
+          checked={prefs.sounds}
+          onChange={(x) => {
+            prefs.update({ sounds: x })
+            if (x) {
+              unlockAudio()
+              sfx.success()
+            }
+          }}
+          label="Sound effects"
+          description="Little sounds for sets, quests and level-ups"
+        />
+        <Toggle
+          checked={prefs.haptics}
+          onChange={(x) => {
+            prefs.update({ haptics: x })
+            if (x) haptic('success')
+          }}
+          label="Vibration"
+          description="Buzz on taps and wins (Android phones)"
+        />
+        <Toggle checked={prefs.celebrations} onChange={(x) => prefs.update({ celebrations: x })} label="Confetti & celebrations" description="Party when you level up or hit a goal" />
+      </div>
+      <div className="mt-3 text-sm font-medium text-muted">Animations</div>
+      <Segmented<MotionPref>
+        label="Animations"
+        className="mt-2"
+        value={prefs.motion}
+        onChange={(m) => prefs.update({ motion: m })}
+        options={[
+          { value: 'system', label: 'Phone setting' },
+          { value: 'full', label: 'Full' },
+          { value: 'reduced', label: 'Reduced' },
+        ]}
+      />
+    </div>
+  )
+}

@@ -42,3 +42,13 @@ export async function recordOpens(page: Page): Promise<() => Promise<string[]>> 
   })
   return () => page.evaluate(() => (window as unknown as { __opened: string[] }).__opened)
 }
+
+/** Close any celebration screens (level up, badges, personal bests) that are showing. */
+export async function dismissCelebrations(page: Page): Promise<void> {
+  const dialog = page.getByRole('dialog', { name: 'Celebration' })
+  for (let i = 0; i < 6; i++) {
+    await page.waitForTimeout(700)
+    if (!(await dialog.isVisible())) return
+    await dialog.getByRole('button').last().click()
+  }
+}

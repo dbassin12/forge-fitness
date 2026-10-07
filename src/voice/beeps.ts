@@ -4,7 +4,8 @@ let ctx: AudioContext | null = null
 
 type AudioSessionNavigator = Navigator & { audioSession?: { type: string } }
 
-function context(): AudioContext | null {
+/** The shared Web Audio context (one per page; iOS allows only a few). */
+export function context(): AudioContext | null {
   if (typeof window === 'undefined') return null
   if (!ctx) {
     const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext

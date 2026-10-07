@@ -6,7 +6,7 @@ export function Chip({ active, className, ...rest }: ButtonHTMLAttributes<HTMLBu
     <button
       type="button"
       className={cx(
-        'h-9 shrink-0 rounded-full border px-3.5 text-sm font-medium transition',
+        'h-9 shrink-0 whitespace-nowrap rounded-full border px-3.5 text-sm font-medium transition active:scale-95',
         active ? 'border-ember bg-ember/15 text-ember' : 'border-line bg-surface text-muted hover:text-ink',
         className,
       )}

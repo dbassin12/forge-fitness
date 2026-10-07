@@ -44,10 +44,10 @@ app, works offline, and keeps your data on your phone.
 3. **Android:** in **Chrome**, tap **Install app** when it's offered, or **⋮** →
    **Add to Home screen** / **Install app**.
 4. Open Forge, finish the short setup, and you're on today's plan.
-5. Turn on reminders: **More → Reminders**, enter your access code (the `APP_PASSCODE` below),
+5. Turn on reminders: **Settings (gear on Today) → Reminders**, enter your access code (the `APP_PASSCODE` below),
    tap **Turn on**, allow notifications, then **Send test**.
 
-Your data lives on the phone. Use **More → Backup & data → Export backup** now and then
+Your data lives on the phone. Use **Settings → Backup & data → Export backup** now and then
 (especially before switching phones), and **Protect** storage so the browser won't clear it.
 
 ## Put it online (Vercel, about 10 minutes)
@@ -75,7 +75,7 @@ You need a free [Vercel](https://vercel.com) account connected to GitHub.
    If your app isn't at `https://forge-fitness.vercel.app`, add a repository **variable**
    `FORGE_TICK_URL` (GitHub → Settings → Secrets and variables → Actions → Variables) set to
    `https://<your-domain>/api/tick`.
-5. **Check it.** On the phone: **More → Reminders** shows when the scheduler last ran and warns
+5. **Check it.** On the phone: **Settings (gear on Today) → Reminders** shows when the scheduler last ran and warns
    if it's stale.
 
 With `CRON_SECRET` set, a daily Vercel cron also calls the tick as a safety net: if the GitHub
@@ -91,7 +91,7 @@ clock stops, you'll get a notification saying so.
 - **Minute-exact option:** create a free job at [cron-job.org](https://cron-job.org) that sends
   `POST https://<your-domain>/api/tick` every 5–10 minutes with the header
   `Authorization: Bearer <CRON_SECRET>`.
-- **Zero-setup backup:** **More → Reminders → Add workouts to my calendar** downloads an
+- **Zero-setup backup:** **Settings → Reminders → Add workouts to my calendar** downloads an
   `.ics` file with alarms that your phone's calendar will always deliver.
 
 ### Ask Claude: how it works

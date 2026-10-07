@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { expectNoErrors, onboard, recordOpens, trackErrors } from './helpers'
+import { dismissCelebrations, expectNoErrors, onboard, recordOpens, trackErrors } from './helpers'
 
 test('is an installable app with a manifest and service worker', async ({ page, request }) => {
   const manifest = (await (await request.get('/manifest.webmanifest')).json()) as { name: string; display: string; start_url: string; icons: { sizes: string; purpose?: string }[] }
@@ -136,4 +136,64 @@ test('opens offline once installed', async ({ page, context }) => {
   await page.goto('/#/train/library')
   await expect(page.getByPlaceholder(/Search/)).toBeVisible()
   await context.setOffline(false)
+})
+
+test('Today shows daily quests and the streak week', async ({ page }) => {
+  const errors = trackErrors(page)
+  await onboard(page)
+  await page.goto('/#/today')
+  await expect(page.getByText('Daily quests')).toBeVisible()
+  await expect(page.getByRole('img', { name: /of 3 quests done/ })).toBeVisible()
+  await expect(page.getByText(/Light your streak|week streak/)).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible()
+  await expectNoErrors(errors)
+})
+
+test('Play: spin the wheel, do the move and save the session', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await onboard(page)
+  await page.getByRole('link', { name: 'Play' }).click()
+  await expect(page.getByRole('heading', { name: 'Play' })).toBeVisible()
+  await page.getByRole('link', { name: /Spin the wheel/ }).click()
+  await page.getByRole('button', { name: 'Spin', exact: true }).first().click()
+  await page.getByRole('button', { name: /Let’s do it/ }).click()
+  await expect(page.getByRole('button', { name: 'Done' })).toBeEnabled({ timeout: 6000 })
+  await page.getByRole('button', { name: 'Done' }).click()
+  await page.getByRole('button', { name: /Finish & save/ }).click()
+  await expect(page.getByRole('heading', { name: 'Play' })).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Wheel session saved' })).toBeVisible()
+  await expectNoErrors(errors)
+})
+
+test('Play: a quick deck of cards runs to the end', async ({ page }) => {
+  const errors = trackErrors(page)
+  await onboard(page)
+  await page.goto('/#/play/deck')
+  await page.getByRole('button', { name: /Quick · 13/ }).click()
+  await page.getByRole('button', { name: 'Shuffle & start' }).click()
+  for (let i = 0; i < 13; i++) {
+    const done = page.getByRole('button', { name: /Done · next card/ })
+    await expect(done).toBeEnabled()
+    await done.click()
+  }
+  await expect(page.getByRole('heading', { name: /Deck done!|New best time!/ })).toBeVisible()
+  await expectNoErrors(errors)
+})
+
+test('Play: a plank challenge sets a first record', async ({ page }) => {
+  const errors = trackErrors(page)
+  await onboard(page)
+  await page.goto('/#/play/challenge/plank')
+  await page.getByRole('button', { name: 'Start' }).click()
+  await expect(page.getByText('Hold it!')).toBeVisible({ timeout: 8000 })
+  await page.waitForTimeout(2200)
+  await page.getByRole('button', { name: 'Stop' }).click()
+  await expect(page.getByRole('heading', { name: 'First record set!' })).toBeVisible()
+  await page.getByRole('button', { name: 'Save result' }).click()
+  await expect(page.getByRole('dialog', { name: 'Celebration' }).getByText('New personal best')).toBeVisible()
+  await dismissCelebrations(page)
+  await page.getByRole('button', { name: 'Done' }).click()
+  await expect(page.getByRole('heading', { name: 'Play' })).toBeVisible()
+  await expectNoErrors(errors)
 })

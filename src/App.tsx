@@ -21,6 +21,10 @@ const OnboardingPage = lazy(() => import('@/features/onboarding/OnboardingPage')
 const WorkoutPlayer = lazy(() => import('@/features/player/WorkoutPlayer'))
 const RetestPage = lazy(() => import('@/features/progress/RetestPage'))
 const CoachPage = lazy(() => import('@/features/coach/CoachPage'))
+const PlayPage = lazy(() => import('@/features/play/PlayPage'))
+const WheelPage = lazy(() => import('@/features/play/WheelPage'))
+const DeckPage = lazy(() => import('@/features/play/DeckPage'))
+const ChallengePage = lazy(() => import('@/features/play/ChallengePage'))
 
 function Splash() {
   return <div className="grid h-[60vh] place-items-center text-muted animate-pulse-soft">Loading…</div>
@@ -68,6 +72,7 @@ const router = createHashRouter([
       { path: 'progress', element: <Page><ProgressPage /></Page> },
       { path: 'more', element: <Page><MorePage /></Page> },
       { path: 'more/reminders', element: <Page><RemindersPage /></Page> },
+      { path: 'play', element: <Page><PlayPage /></Page> },
     ],
   },
   {
@@ -104,6 +109,9 @@ const router = createHashRouter([
           </RequireProfile>
         ),
       },
+      { path: 'play/wheel', element: <RequireProfile><Page><WheelPage /></Page></RequireProfile> },
+      { path: 'play/deck', element: <RequireProfile><Page><DeckPage /></Page></RequireProfile> },
+      { path: 'play/challenge/:id', element: <RequireProfile><Page><ChallengePage /></Page></RequireProfile> },
       {
         path: 'workout',
         element: (

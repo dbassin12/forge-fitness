@@ -1,8 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import confetti from 'canvas-confetti'
-import { ArrowDown, ArrowUp, Award, Clock, Flame, Frown, Meh, Play, RotateCcw, Smile, Sparkles, Star, Zap } from 'lucide-react'
+import { ArrowDown, ArrowUp, Clock, Flame, Play, RotateCcw, Share2, Sparkles, Star, Zap } from 'lucide-react'
+import { burst } from '@/app/confetti'
+import { COACH_STYLES, usePrefs } from '@/app/prefs'
+import { accentInfo, usePalette, useTheme } from '@/app/theme'
+import { getExercise as exById, motionFor } from '@/data/exercises'
+import { levelForXp } from '@/engines/gamification'
+import { haptic } from '@/device/haptics'
+import { sfx } from '@/device/sfx'
+import { useTotalXp } from '@/state/gamification'
+import { CountUp } from '@/ui/CountUp'
+import { coachLine } from '@/voice/coachLines'
+import { makeShareCard, shareImage } from './shareCard'
 import { db, kvSet } from '@/db/db'
 import { getExercise } from '@/data/exercises'
 import { weeklyStreak } from '@/engines/gamification'
@@ -119,7 +129,9 @@ export default function WorkoutPlayer() {
     const r = persist({ ...run, values })
     activeSince.current = null
     speech.cancel()
-    void speech.speak('Workout complete. Amazing job!', { priority: 'cue', interrupt: true })
+    sfx.levelUp()
+    haptic('celebrate')
+    void speech.speak(coachLine('workoutDone'), { priority: 'cue', interrupt: true })
     setRun(r)
     setPhase('feedback')
   }
@@ -142,9 +154,7 @@ export default function WorkoutPlayer() {
     void releaseAwake()
     setResult(res)
     setPhase('summary')
-    if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      void confetti({ particleCount: 140, spread: 75, origin: { y: 0.35 }, colors: ['#ff6a3d', '#ffb547', '#2dd4bf', '#a78bfa'] })
-    }
+    burst('big')
   }
 
   if (!plan || !fresh || saved === undefined) {
@@ -196,30 +206,35 @@ export default function WorkoutPlayer() {
   }
 
   if ((phase === 'feedback' || phase === 'saving') && run) {
-    const opts: { r: Rating; label: string; text: string; Icon: typeof Smile; tone: string }[] = [
-      { r: 'easy', label: 'Too easy', text: 'I had plenty left', Icon: Smile, tone: 'text-good' },
-      { r: 'right', label: 'Just right', text: 'Challenging but doable', Icon: Meh, tone: 'text-amber' },
-      { r: 'hard', label: 'Too hard', text: 'I struggled to finish', Icon: Frown, tone: 'text-bad' },
+    const opts: { r: Rating; label: string; text: string; emoji: string; tone: string }[] = [
+      { r: 'easy', label: 'Too easy', text: 'I had plenty left — level me up', emoji: '😎', tone: 'border-good/40 hover:bg-good/10' },
+      { r: 'right', label: 'Just right', text: 'Challenging but doable', emoji: '💪', tone: 'border-amber/40 hover:bg-amber/10' },
+      { r: 'hard', label: 'Too hard', text: 'I struggled to finish', emoji: '🥵', tone: 'border-bad/40 hover:bg-bad/10' },
     ]
     return (
       <div className="flex min-h-dvh flex-col px-4 safe-top">
         <div className="mt-10 text-center">
-          <div className="text-5xl">🎉</div>
-          <h1 className="mt-3 font-display text-3xl font-bold">Workout done!</h1>
-          <p className="mt-1 text-muted">How did that feel? Your next workout adapts to your answer.</p>
+          <div className="text-6xl animate-bounce-in">🎉</div>
+          <h1 className="mt-3 font-display text-3xl font-bold animate-fade-up">Workout done!</h1>
+          <p className="mt-1 text-muted animate-fade-up [animation-delay:120ms]">How did that feel? Your next workout adapts to your answer.</p>
         </div>
         <div className="mt-8 space-y-3">
-          {opts.map(({ r, label, text, Icon, tone }) => (
+          {opts.map(({ r, label, text, emoji, tone }, i) => (
             <button
               key={r}
               type="button"
               disabled={phase === 'saving'}
-              onClick={() => void save(r)}
-              className="flex w-full items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-left active:scale-[0.99] disabled:opacity-50"
+              onClick={() => {
+                sfx.pop()
+                haptic('medium')
+                void save(r)
+              }}
+              className={cx('pressable flex w-full animate-rise items-center gap-4 rounded-2xl border bg-surface p-4 text-left disabled:opacity-50', tone)}
+              style={{ animationDelay: `${200 + i * 90}ms` }}
             >
-              <Icon size={28} className={tone} />
+              <span className="text-4xl">{emoji}</span>
               <span>
-                <span className="block font-semibold">{label}</span>
+                <span className="block text-lg font-semibold">{label}</span>
                 <span className="block text-sm text-muted">{text}</span>
               </span>
             </button>
@@ -292,7 +307,8 @@ export default function WorkoutPlayer() {
         ))}
       </Card>
       {gear.length ? <p className="mt-3 text-sm text-muted">Have ready: {gear.join(', ')}.</p> : null}
-      <div className="mt-4 space-y-1 rounded-2xl bg-surface-2 p-3 text-sm">
+      <CoachPicker />
+      <div className="mt-3 space-y-1 rounded-2xl bg-surface-2 p-3 text-sm">
         <label className="flex items-center justify-between gap-3">
           <span>Voice coach</span>
           <input type="checkbox" className="h-5 w-5 accent-[var(--color-ember)]" checked={voice.enabled} onChange={(e) => voice.update({ enabled: e.target.checked })} />
@@ -303,7 +319,7 @@ export default function WorkoutPlayer() {
         </label>
       </div>
       <div className="mt-auto pt-6" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
-        <Button block size="lg" icon={<Play size={22} />} onClick={() => start(null)} className={cx(resumable && 'opacity-90')}>
+        <Button block size="lg" icon={<Play size={22} fill="currentColor" />} onClick={() => start(null)} className={cx('h-16 text-lg', resumable ? 'opacity-90' : 'animate-glow')}>
           {resumable ? 'Start fresh' : "Let's go"}
         </Button>
       </div>
@@ -311,8 +327,79 @@ export default function WorkoutPlayer() {
   )
 }
 
+function CoachPicker() {
+  const coach = usePrefs((s) => s.coach)
+  const update = usePrefs((s) => s.update)
+  return (
+    <div className="mt-4">
+      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted">Your coach today</div>
+      <div className="grid grid-cols-4 gap-1.5">
+        {COACH_STYLES.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            aria-pressed={coach === c.id}
+            onClick={() => {
+              update({ coach: c.id })
+              haptic('light')
+              unlockAudio()
+              speech.unlock()
+              void speech.speak(c.sample, { priority: 'cue', interrupt: true })
+            }}
+            className={cx('pressable flex flex-col items-center rounded-2xl border px-1 py-2 text-xs font-medium', coach === c.id ? 'border-ember bg-ember/10 text-ember' : 'border-line bg-surface text-muted')}
+          >
+            <span className="text-2xl">{c.emoji}</span>
+            <span className="mt-0.5 truncate">{c.id === 'drill' ? 'Drill' : c.name}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function XpBar({ gained }: { gained: number }) {
+  const total = useTotalXp()
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    const id = window.setTimeout(() => setShown(true), 650)
+    return () => window.clearTimeout(id)
+  }, [])
+  if (total === undefined) return null
+  const before = levelForXp(Math.max(0, total - gained))
+  const after = levelForXp(total)
+  const leveled = after.level > before.level
+  const from = leveled ? 0 : before.progress
+  const to = after.progress
+  return (
+    <Card className="mt-3 animate-fade-up [animation-delay:500ms]">
+      <div className="flex items-baseline justify-between">
+        <span className="font-semibold">
+          Level {after.level}
+          {leveled ? <span className="ml-2 rounded-full bg-violet/20 px-2 py-0.5 text-xs font-bold text-violet animate-pop">LEVEL UP!</span> : null}
+        </span>
+        <span className="text-sm font-bold text-violet">
+          +<CountUp value={gained} duration={1200} /> XP
+        </span>
+      </div>
+      <div className="mt-2 h-3 overflow-hidden rounded-full bg-surface-3">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-violet to-ember"
+          style={{ width: `${(shown ? to : from) * 100}%`, transition: 'width 1300ms cubic-bezier(0.2, 0.8, 0.2, 1)' }}
+        />
+      </div>
+      <div className="mt-1 text-xs text-muted tabular">
+        {after.into}/{after.span} XP to level {after.level + 1}
+      </div>
+    </Card>
+  )
+}
+
 function Summary({ result, onDone }: { result: FinishResult; onDone: () => void }) {
   const plan = usePlan()
+  const palette = usePalette()
+  const accent = useTheme((s) => s.accent)
+  const theme = useTheme((s) => s.theme)
+  const [sharing, setSharing] = useState<string | null>(null)
   const streak = useLiveQuery(async () => {
     if (!plan) return null
     const ws = await db.workouts.toArray()
@@ -320,29 +407,63 @@ function Summary({ result, onDone }: { result: FinishResult; onDone: () => void 
   }, [plan])
   const sets = result.log.exercises.filter((e) => e.block === 'main' || e.block === 'finisher').reduce((n, e) => n + e.sets.length, 0)
   const changes = result.changes.filter((c) => c.kind !== 'goal_down' || result.changes.length < 6)
+  const firstMain = result.log.exercises.find((e) => e.block === 'main')
+  const stats = [
+    { k: 'Minutes', v: result.minutes, prefix: '' },
+    { k: 'Calories', v: result.log.calories, prefix: '~' },
+    { k: 'Sets', v: sets, prefix: '' },
+    { k: 'XP earned', v: result.xp, prefix: '+' },
+  ]
+
+  const share = async () => {
+    setSharing('Making your card…')
+    const ex = firstMain ? exById(firstMain.exerciseId) : undefined
+    const a = accentInfo(accent)
+    const blob = await makeShareCard({
+      title: result.log.title,
+      dateLabel: new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }),
+      minutes: result.minutes,
+      kcal: result.log.calories,
+      sets,
+      xp: result.xp,
+      streakWeeks: streak?.weeks ?? 0,
+      motion: ex ? motionFor(ex) : undefined,
+      palette,
+      accent: theme === 'light' ? a.light : a.dark,
+    })
+    if (!blob) {
+      setSharing('Couldn’t make the image on this phone.')
+      return
+    }
+    const how = await shareImage(blob, 'forge-workout.png', `Just finished ${result.log.title} with Forge 💪`)
+    setSharing(how === 'downloaded' ? 'Saved the image.' : null)
+  }
+
   return (
     <div className="flex min-h-dvh flex-col px-4 safe-top">
       <div className="mt-8 text-center">
-        <Award size={48} className="mx-auto text-ember" />
-        <h1 className="mt-2 font-display text-3xl font-bold">Nice work!</h1>
-        <p className="text-muted">{result.log.title}</p>
+        <div className="relative mx-auto grid h-24 w-24 place-items-center">
+          <span aria-hidden className="absolute inset-0 rounded-full bg-amber/25 animate-ping [animation-duration:2.2s] [animation-iteration-count:2]" />
+          <span className="relative text-6xl animate-bounce-in">🏆</span>
+        </div>
+        <h1 className="mt-2 font-display text-3xl font-bold animate-fade-up">Nice work!</h1>
+        <p className="text-muted animate-fade-up [animation-delay:100ms]">{result.log.title}</p>
       </div>
       <div className="mt-6 grid grid-cols-2 gap-2">
-        {[
-          { k: 'Time', v: `${result.minutes} min` },
-          { k: 'Calories', v: `~${result.log.calories}` },
-          { k: 'Sets', v: String(sets) },
-          { k: 'XP earned', v: `+${result.xp}` },
-        ].map((x) => (
-          <Card key={x.k} className="py-3 text-center">
-            <div className="font-display text-2xl font-bold tabular">{x.v}</div>
+        {stats.map((x, i) => (
+          <Card key={x.k} className="animate-rise py-3 text-center" style={{ animationDelay: `${150 + i * 90}ms` }}>
+            <div className={cx('font-display text-3xl font-bold tabular', x.k === 'XP earned' && 'text-violet')}>
+              {x.prefix}
+              <CountUp value={x.v} duration={900 + i * 150} />
+            </div>
             <div className="text-xs uppercase tracking-wider text-muted">{x.k}</div>
           </Card>
         ))}
       </div>
+      <XpBar gained={result.xp} />
       {streak ? (
-        <Card className="mt-3 flex items-center gap-3">
-          <Flame className="text-ember" size={26} />
+        <Card className="mt-3 flex items-center gap-3 animate-fade-up [animation-delay:650ms]">
+          <Flame className="animate-flame text-ember" size={28} />
           <div>
             <div className="font-semibold">
               {streak.weeks > 0 ? `${streak.weeks}-week streak` : 'Streak building'} · {Math.min(streak.thisWeek, streak.target)}/{streak.target} this week
@@ -382,7 +503,11 @@ function Summary({ result, onDone }: { result: FinishResult; onDone: () => void 
           </Card>
         </>
       ) : null}
-      <div className="mt-auto pt-6" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+      {sharing ? <p className="mt-3 text-center text-sm text-muted">{sharing}</p> : null}
+      <div className="mt-auto grid grid-cols-[auto_1fr] gap-2 pt-6" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+        <Button size="lg" variant="secondary" icon={<Share2 size={20} />} onClick={() => void share()}>
+          Share
+        </Button>
         <Button block size="lg" onClick={onDone}>
           Done
         </Button>

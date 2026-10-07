@@ -1,10 +1,14 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Bell, Bot, Check, ChevronRight, Coffee, Droplet, Flame, Lightbulb, Play, Plus, Scale, Utensils, Zap } from 'lucide-react'
+import { Bell, Bot, Check, ChevronRight, Coffee, Droplet, Eye, Lightbulb, Play, Plus, Scale, Settings, Utensils, Zap } from 'lucide-react'
+import { Mannequin } from '@/anim/Mannequin'
+import { usePalette } from '@/app/theme'
 import { db, kvGet, kvSet } from '@/db/db'
-import { getExercise } from '@/data/exercises'
-import { levelTitle, weeklyStreak } from '@/engines/gamification'
+import { getExercise, highlightFor, motionFor } from '@/data/exercises'
+import { weeklyStreak } from '@/engines/gamification'
+import { haptic } from '@/device/haptics'
+import { sfx } from '@/device/sfx'
 import { generateSession, mainExercises, upcomingDays } from '@/engines/plan'
 import { waterPace } from '@/engines/nutrition/day'
 import { weekReview } from '@/engines/review'
@@ -13,11 +17,16 @@ import { addDays, daysBetween, formatShortDate, isoWeekday, parseISODate, startO
 import { planDates, useLevel } from '@/state/gamification'
 import { addWater, OZ_ML, targetsFor, totalsOf, useDay, useNutritionSettings } from '@/state/nutrition'
 import { swapsFor, usePlan } from '@/state/plan'
+import { useQuests } from '@/state/quests'
 import { updateProfile } from '@/state/store'
 import { Button } from '@/ui/Button'
 import { Card } from '@/ui/Card'
 import { Chip } from '@/ui/Chip'
+import { ProgressRing } from '@/ui/ProgressRing'
+import { unlockAudio } from '@/voice/beeps'
 import { CalorieRing, MacroBar } from '../eat/Rings'
+import { QuestCard } from './QuestCard'
+import { StreakCard } from './StreakCard'
 
 function greeting(h: number) {
   return h < 5 ? 'Up early' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
@@ -30,6 +39,8 @@ export default function TodayPage() {
   const day = useDay(today)
   const settings = useNutritionSettings()
   const level = useLevel()
+  const palette = usePalette()
+  const quests = useQuests(plan?.profile)
   const workouts = useLiveQuery(() => db.workouts.orderBy('date').toArray(), [])
   const reviewDismissed = useLiveQuery(async () => (await kvGet<string>('review.dismissed')) ?? '', [])
   const remindersOn = useLiveQuery(async () => !!(await kvGet<{ enabled?: boolean }>('reminders'))?.enabled, [])
@@ -106,18 +117,30 @@ export default function TodayPage() {
   if (!plan || !derived || !day) return <div className="grid h-[60vh] place-items-center text-muted animate-pulse-soft">Loading…</div>
   const { p, planDoneToday, trainingDay, next, upcoming, streak, targets, eaten, tip } = derived
   const items = mainExercises(next)
+  const firstEx = items[0] ? getExercise(items[0].exerciseId) : undefined
   const showReview = review && plan.progress.sessionsCompleted > 0 && isoWeekday(today) <= 2 && reviewDismissed !== lastWeek && parseISODate(p.createdAt.slice(0, 10)) < parseISODate(lastWeek)
   const imperial = p.units === 'imperial'
   const lite = p.trackingMode === 'lite'
 
   return (
     <div className="px-4 safe-top">
-      <header className="pt-5 pb-3">
-        <div className="text-sm text-muted">{parseISODate(today).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</div>
-        <h1 className="font-display text-[28px] font-bold leading-tight">
-          {greeting(new Date().getHours())}
-          {p.name ? `, ${p.name}` : ''}
-        </h1>
+      <header className="flex items-center gap-3 pt-5 pb-3">
+        <div className="min-w-0 flex-1">
+          <div className="text-sm text-muted">{parseISODate(today).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</div>
+          <h1 className="truncate font-display text-[28px] font-bold leading-tight">
+            {greeting(new Date().getHours())}
+            {p.name ? `, ${p.name}` : ''}
+          </h1>
+        </div>
+        <Link to="/progress" viewTransition aria-label={`Level ${level?.level ?? 1}, ${level ? `${level.into} of ${level.span} XP` : ''}`} className="pressable">
+          <ProgressRing progress={level?.progress ?? 0} size={46} stroke={4} color="var(--color-violet)">
+            <span className="block text-[9px] font-semibold uppercase leading-none text-muted">Lv</span>
+            <span className="block font-display text-base font-black leading-none tabular">{level?.level ?? 1}</span>
+          </ProgressRing>
+        </Link>
+        <Link to="/more" viewTransition aria-label="Settings" className="pressable grid h-11 w-11 place-items-center rounded-full border border-line bg-surface text-muted">
+          <Settings size={20} />
+        </Link>
       </header>
 
       {showReview && review ? (
@@ -176,10 +199,10 @@ export default function TodayPage() {
       ) : null}
 
       {planDoneToday ? (
-        <Card className="border-good/40 bg-good/5">
+        <Card className="border-good/40 bg-gradient-to-br from-good/15 via-surface to-surface">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-good text-on-accent">
-              <Check size={24} strokeWidth={3} />
+            <span className="grid h-12 w-12 animate-bounce-in place-items-center rounded-2xl bg-good text-on-accent shadow-[0_8px_24px_-10px_var(--color-good)]">
+              <Check size={26} strokeWidth={3} />
             </span>
             <div className="flex-1">
               <div className="font-semibold">Workout done — nice!</div>
@@ -195,28 +218,45 @@ export default function TodayPage() {
           ) : null}
         </Card>
       ) : (
-        <Card className="border-ember/40 bg-gradient-to-br from-ember/15 via-surface to-surface">
-          <div className="text-xs font-semibold uppercase tracking-wider text-ember">{trainingDay ? "Today's workout" : 'Rest day — or get ahead'}</div>
-          <div className="mt-1 font-display text-2xl font-bold">{next.title}</div>
-          <div className="mt-0.5 text-sm text-muted">
-            {next.minutes} min · ~{next.estKcal} kcal · {items.length} exercises
+        <Card className="relative overflow-hidden border-ember/40 bg-gradient-to-br from-ember/20 via-surface to-surface">
+          <div aria-hidden className="pointer-events-none absolute -top-16 -right-10 h-48 w-48 rounded-full bg-ember/20 blur-3xl" />
+          <div className="relative flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-semibold uppercase tracking-wider text-ember">{trainingDay ? "Today's workout" : 'Rest day — or get ahead'}</div>
+              <div className="mt-1 font-display text-2xl font-bold leading-tight">{next.title}</div>
+              <div className="mt-1 text-sm text-muted">
+                {next.minutes} min · ~{next.estKcal} kcal · {items.length} moves
+              </div>
+            </div>
+            {firstEx ? (
+              <Link to="/train/session" viewTransition aria-label="Preview the workout" className="pressable -mr-1 w-28 shrink-0 overflow-hidden rounded-2xl border border-line/70 bg-bg/50">
+                <Mannequin motion={motionFor(firstEx)} palette={palette} pulse={highlightFor(firstEx).primary} speed={0.85} className="aspect-[4/3] w-full" title={`${firstEx.name} preview`} />
+              </Link>
+            ) : null}
           </div>
-          <div className="no-scrollbar -mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4">
+          <div className="no-scrollbar relative -mx-4 mt-3 flex gap-1.5 overflow-x-auto px-4">
             {items.map((it) => (
               <span key={it.exerciseId} className="shrink-0 rounded-full bg-bg/60 px-2.5 py-1 text-xs">
                 {getExercise(it.exerciseId)?.name}
               </span>
             ))}
           </div>
-          <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-            <Button size="lg" icon={<Play size={20} />} onClick={() => navigate('/workout')}>
+          <div className="relative mt-4 flex gap-2">
+            <Button
+              size="lg"
+              className="flex-1 animate-glow"
+              icon={<Play size={20} fill="currentColor" />}
+              onClick={() => {
+                unlockAudio()
+                sfx.whoosh()
+                navigate('/workout', { viewTransition: true })
+              }}
+            >
               {trainingDay ? 'Start workout' : 'Do it anyway'}
             </Button>
-            <Button size="lg" variant="secondary" onClick={() => navigate('/train/session')}>
-              Preview
-            </Button>
+            <Button size="lg" variant="secondary" aria-label="Preview workout" className="w-14 px-0" icon={<Eye size={20} />} onClick={() => navigate('/train/session', { viewTransition: true })} />
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <div className="relative mt-3 flex flex-wrap items-center gap-2 text-sm">
             <Zap size={15} className="text-amber" />
             <span className="text-muted">Short on time?</span>
             {[5, 10]
@@ -234,6 +274,8 @@ export default function TodayPage() {
           </div>
         </Card>
       )}
+
+      {quests ? <QuestCard board={quests} /> : null}
 
       <Card className="mt-3">
         <Link to="/eat" className="flex items-center gap-4">
@@ -256,43 +298,25 @@ export default function TodayPage() {
           <Button size="sm" variant="secondary" icon={<Utensils size={15} />} onClick={() => navigate('/eat/add')}>
             Food
           </Button>
-          <Button size="sm" variant="secondary" icon={<Droplet size={15} />} onClick={() => void addWater(today, settings.glassOz, p)}>
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={<Droplet size={15} className="text-sky" />}
+            onClick={() => {
+              sfx.bloop()
+              haptic('medium')
+              void addWater(today, settings.glassOz, p)
+            }}
+          >
             +{settings.glassOz} oz
           </Button>
           <Button size="sm" variant="secondary" icon={<Scale size={15} />} onClick={() => navigate('/progress')}>
-            Weigh-in
+            Weight
           </Button>
         </div>
       </Card>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Card className="p-3">
-          <div className="flex items-center gap-1.5 text-xs text-muted">
-            <Flame size={14} className="text-ember" /> Weekly streak
-          </div>
-          <div className="mt-1 font-display text-2xl font-bold">{streak.weeks} {streak.weeks === 1 ? 'week' : 'weeks'}</div>
-          <div className="mt-1.5 flex gap-1">
-            {Array.from({ length: streak.target }, (_, i) => (
-              <span key={i} className={i < streak.thisWeek ? 'h-1.5 flex-1 rounded-full bg-ember' : 'h-1.5 flex-1 rounded-full bg-surface-3'} />
-            ))}
-          </div>
-          <div className="mt-1 text-xs text-muted">
-            {Math.min(streak.thisWeek, streak.target)}/{streak.target} this week
-          </div>
-        </Card>
-        <Link to="/progress">
-          <Card className="h-full p-3">
-            <div className="text-xs text-muted">Level</div>
-            <div className="mt-1 font-display text-2xl font-bold">
-              {level?.level ?? 1} <span className="text-base font-semibold text-muted">{levelTitle(level?.level ?? 1)}</span>
-            </div>
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-3">
-              <div className="h-full rounded-full bg-violet" style={{ width: `${(level?.progress ?? 0) * 100}%` }} />
-            </div>
-            <div className="mt-1 text-xs text-muted">{level ? `${level.into}/${level.span} XP` : ''}</div>
-          </Card>
-        </Link>
-      </div>
+      <StreakCard streak={streak} workouts={workouts ?? []} trainingDays={p.trainingDays} today={today} />
 
       <Card className="mt-3 flex gap-3">
         <Lightbulb size={20} className="mt-0.5 shrink-0 text-amber" />
