@@ -45,6 +45,10 @@ app, works offline, and keeps your data on your phone.
   your phone's calendar, which alerts you even when Forge is closed. **Smart notifications**
   are optional: personalized push notifications that skip themselves once you've trained, for
   when the server below is set up.
+- **Feels like a phone app.** Bottom sheets you drag down to close, swipe from the left edge
+  to go back (iPhone Home Screen apps don't have that gesture on their own), light haptic taps
+  on iPhone (iOS 18 and later) as well as Android, and a Search key on the keyboard when you
+  search.
 - **Instructions built in.** A "Get started" checklist for your first days, a **How Forge
   works** guide with an FAQ, voiced tutorials and a "Try a set" button on every exercise.
 - **Ask Claude, on your Claude subscription.** Coach questions open the Claude app with a

@@ -154,7 +154,7 @@ export function FeelPanel() {
             if (x) haptic('success')
           }}
           label="Vibration"
-          description="Buzz on taps and wins (Android phones)"
+          description="Buzz on taps and wins (on iPhone: iOS 18 or later)"
         />
         <Toggle checked={prefs.celebrations} onChange={(x) => prefs.update({ celebrations: x })} label="Confetti & celebrations" description="Full-screen parties for level-ups and records. Off: small notes instead" />
       </div>

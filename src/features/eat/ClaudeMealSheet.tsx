@@ -146,7 +146,7 @@ export function ClaudeMealSheet({
           >
             Open Claude
           </Button>
-          <button type="button" className="mt-3 w-full text-center text-sm text-muted underline" onClick={() => setStage({ kind: 'paste' })}>
+          <button type="button" className="mt-1 w-full py-2.5 text-center text-sm text-muted underline" onClick={() => setStage({ kind: 'paste' })}>
             I already have Claude’s answer
           </button>
         </div>

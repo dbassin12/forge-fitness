@@ -189,7 +189,7 @@ export default function GuidePage() {
                 </div>
               ) : null}
               {s.cta ? (
-                <Link to={s.cta.to} viewTransition className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-ember">
+                <Link to={s.cta.to} viewTransition className="mt-1 -mb-2 inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-ember">
                   {s.cta.label} <ChevronRight size={16} />
                 </Link>
               ) : null}

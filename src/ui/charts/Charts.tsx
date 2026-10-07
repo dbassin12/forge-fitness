@@ -47,7 +47,7 @@ export function ChartFrame({
           type="button"
           onClick={() => setShowTable((x) => !x)}
           aria-pressed={showTable}
-          className="flex items-center gap-1 rounded-full px-2 py-1 text-xs text-muted hover:bg-surface-2"
+          className="-my-1.5 flex min-h-9 items-center gap-1 rounded-full px-2.5 text-xs text-muted hover:bg-surface-2"
         >
           <Table2 size={14} /> {showTable ? 'Chart' : 'Table'}
         </button>

@@ -287,6 +287,14 @@ textarea {
   from { opacity: 0; transform: translateY(10px); }
 }
 
+/* Bottom sheets slide up from the edge like native ones. */
+@keyframes sheet-in {
+  from { transform: translateY(100%); }
+}
+@keyframes sheet-fade {
+  from { opacity: 0; }
+}
+
 /* Tap feedback for anything clickable that isn't a Button. */
 .pressable {
   transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;

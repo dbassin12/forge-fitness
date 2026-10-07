@@ -7,7 +7,7 @@ export type MotionPref = 'system' | 'full' | 'reduced'
 export interface Prefs {
   /** Little sounds for wins: sets done, quests, level-ups. */
   sounds: boolean
-  /** Vibration on taps and wins (Android; iPhone web apps can't vibrate). */
+  /** Vibration on taps and wins (Android; switch ticks on iPhone with iOS 18+). */
   haptics: boolean
   /** Confetti and celebration screens. */
   celebrations: boolean

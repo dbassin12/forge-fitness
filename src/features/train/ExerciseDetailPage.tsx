@@ -151,7 +151,7 @@ export default function ExerciseDetailPage() {
             <div className="text-sm">
               <div className="text-muted">{c.easier}</div>
               {neighbors.easier ? (
-                <Link to={`/exercise/${neighbors.easier.id}`} className="mt-1 inline-block font-medium text-teal">
+                <Link to={`/exercise/${neighbors.easier.id}`} className="-mt-1 -mb-2 inline-block py-2 font-medium text-teal">
                   {neighbors.easier.name} →
                 </Link>
               ) : null}
@@ -162,7 +162,7 @@ export default function ExerciseDetailPage() {
             <div className="text-sm">
               <div className="text-muted">{c.harder}</div>
               {neighbors.harder ? (
-                <Link to={`/exercise/${neighbors.harder.id}`} className="mt-1 inline-block font-medium text-ember">
+                <Link to={`/exercise/${neighbors.harder.id}`} className="-mt-1 -mb-2 inline-block py-2 font-medium text-ember">
                   {neighbors.harder.name} →
                 </Link>
               ) : null}
@@ -177,7 +177,7 @@ export default function ExerciseDetailPage() {
           </Card>
         ) : null}
 
-        <a href={youtubeUrl(ex)} target="_blank" rel="noreferrer" className="mt-4 mb-6 flex items-center justify-center gap-2 text-sm text-muted hover:text-ink">
+        <a href={youtubeUrl(ex)} target="_blank" rel="noreferrer" className="mt-1 mb-3 flex items-center justify-center gap-2 py-3 text-sm text-muted hover:text-ink">
           <ExternalLink size={16} /> See real-person videos on YouTube
         </a>
       </div>
