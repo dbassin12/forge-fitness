@@ -80,7 +80,7 @@ export function useBackgroundSync() {
     if (!plan || !settings) return
     const p = plan.profile
     if (settings.style !== 'custom') {
-      const fresh = presetRules(settings.style, { trainingDays: p.trainingDays, workoutTime: p.preferredTime })
+      const fresh = presetRules(settings.style, { trainingDays: p.trainingDays, workoutTime: p.preferredTime, app: APP.id })
       // Keep the user's on/off choices for rules that exist in both.
       const merged = fresh.map((r) => ({ ...r, enabled: settings.rules.find((x) => x.id === r.id)?.enabled ?? r.enabled }))
       if (JSON.stringify(merged) !== JSON.stringify(settings.rules)) {

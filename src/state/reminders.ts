@@ -22,7 +22,7 @@ const KEY = 'reminders'
 
 export function defaultReminderSettings(profile: Profile): ReminderSettings {
   const style = profile.reminderStyle === 'coach' ? 'coach' : 'gentle'
-  return { enabled: false, style, rules: presetRules(style, { trainingDays: profile.trainingDays, workoutTime: profile.preferredTime }), deviceId: uid('dev').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) }
+  return { enabled: false, style, rules: presetRules(style, { trainingDays: profile.trainingDays, workoutTime: profile.preferredTime, app: APP.id }), deviceId: uid('dev').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) }
 }
 
 export function useReminderSettings(profile: Profile | null | undefined): ReminderSettings | undefined {

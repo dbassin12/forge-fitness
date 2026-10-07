@@ -1,3 +1,4 @@
+import { isBloom } from '@/app/brand'
 import { getExercise, motionFor } from '@/data/exercises'
 import { BLOCK_GAP_SEC, BOTH_SIDES_PER_CYCLE, repWord, SWITCH_SEC, type BlockKind, type PlannedItem, type PlannedSession } from '@/engines/plan'
 
@@ -103,7 +104,7 @@ export function buildSteps(s: PlannedSession): Step[] {
           if (!lastItem) pushRest(b.itemRestSec ?? 0, 'switch', 'Breathe')
           else if (!lastRound) pushRest(b.restSec, 'round', 'Rest')
         } else if (b.format === 'flow') {
-          if (!lastItem) pushRest(Math.min(SWITCH_SEC, 8), 'switch', 'Next move')
+          if (!lastItem) pushRest(Math.min(SWITCH_SEC, 8), 'switch', isBloom ? 'Next pose' : 'Next move')
           else if (!lastRound) pushRest(b.restSec, 'round', 'Again')
         } else {
           if (!lastItem) pushRest(SWITCH_SEC, 'switch', 'Switch')

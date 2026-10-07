@@ -31,3 +31,6 @@ export const BLOOM_ACHES: { id: Ache; label: string }[] = [
 
 export const PREGNANCY_NOTE =
   'Please check with your doctor or midwife before you start, and tell them what you’ll be doing. Rest on your side instead of flat on your back, keep a wall near you for balance, and stop anything that doesn’t feel right.'
+
+/** Where a soft-kneed forward fold reaches (Bloom's check-in stores the index). */
+export const FOLD_REACH = ['Thighs', 'Knees', 'Shins', 'Ankles', 'Floor']

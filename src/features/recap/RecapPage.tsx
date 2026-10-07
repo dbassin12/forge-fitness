@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { X } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
+import { APP, isBloom } from '@/app/brand'
 import { BadgeMedal } from '@/app/CelebrationHost'
 import { burst } from '@/app/confetti'
 import { reducedMotion } from '@/app/prefs'
@@ -43,11 +44,12 @@ function Rise({ children, delay = 0, className }: { children: ReactNode; delay?:
 
 function TopMove({ d }: { d: RecapData }) {
   const palette = usePalette()
-  const ex = d.topExercise ? getExercise(d.topExercise.id) : undefined
-  if (!ex || !d.topExercise) return null
+  const top = isBloom ? (d.favPose ? { id: d.favPose.id, count: d.favPose.times, unit: d.favPose.times === 1 ? 'time' : 'times' } : undefined) : d.topExercise ? { id: d.topExercise.id, count: d.topExercise.reps, unit: 'reps' } : undefined
+  const ex = top ? getExercise(top.id) : undefined
+  if (!ex || !top) return null
   return (
     <Rise delay={500} className="mt-8 w-full rounded-3xl bg-white/10 p-3">
-      <div className="text-xs font-semibold uppercase tracking-wider text-white/70">Your top move</div>
+      <div className="text-xs font-semibold uppercase tracking-wider text-white/70">{isBloom ? 'Your most-practiced pose' : 'Your top move'}</div>
       <div className="mt-1 flex items-center gap-3">
         <div className="w-28 shrink-0 overflow-hidden rounded-2xl bg-black/30">
           <Mannequin motion={motionFor(ex)} palette={palette} className="aspect-[4/3] w-full" title={ex.name} />
@@ -55,7 +57,7 @@ function TopMove({ d }: { d: RecapData }) {
         <div>
           <div className="text-lg font-bold leading-tight">{ex.name}</div>
           <div className="text-white/75">
-            <CountUp value={d.topExercise.reps} /> reps
+            <CountUp value={top.count} /> {top.unit}
           </div>
         </div>
       </div>
@@ -70,14 +72,19 @@ function extrasText(snacks: number, games: number): string {
   return [snacks > 0 ? plural(snacks, 'snack') : '', games > 0 ? plural(games, 'game') : ''].filter(Boolean).join(' and ')
 }
 
+/** Bloom: "2 mini flows and 3 breathing sessions". */
+function bloomExtras(d: RecapData): string {
+  return [d.snacks > 0 ? plural(d.snacks, 'mini flow') : '', d.breaths > 0 ? plural(d.breaths, 'breathing session') : ''].filter(Boolean).join(' and ')
+}
+
 function slides(d: RecapData): Slide[] {
   const out: Slide[] = [
     {
       id: 'intro',
-      bg: 'from-[#ff6a3d] via-[#d9480f] to-[#7c2d12]',
+      bg: isBloom ? 'from-[#e98bb1] via-[#9d4b73] to-[#3b1830]' : 'from-[#ff6a3d] via-[#d9480f] to-[#7c2d12]',
       render: () => (
         <>
-          <Rise className="text-7xl">🎬</Rise>
+          <Rise className="text-7xl">{isBloom ? '🌸' : '🎬'}</Rise>
           <Rise delay={150} className="mt-6 text-sm font-bold uppercase tracking-[0.3em] text-white/80">
             Your week in review
           </Rise>
@@ -95,7 +102,7 @@ function slides(d: RecapData): Slide[] {
       bg: 'from-[#0f766e] via-[#115e59] to-[#042f2e]',
       render: (_, active) => (
         <>
-          <Rise className="text-sm font-bold uppercase tracking-[0.3em] text-white/80">Workouts</Rise>
+          <Rise className="text-sm font-bold uppercase tracking-[0.3em] text-white/80">{isBloom ? 'Practices' : 'Workouts'}</Rise>
           <Rise delay={150} className="mt-6">
             <ProgressRing progress={active ? Math.min(1, d.review.workouts / Math.max(1, d.review.target)) : 0} size={200} stroke={16} color="#5eead4" track="rgba(255,255,255,0.15)">
               <Big>
@@ -105,9 +112,21 @@ function slides(d: RecapData): Slide[] {
             </ProgressRing>
           </Rise>
           <Rise delay={350} className="mt-6 text-xl font-semibold">
-            {d.review.workouts >= d.review.target ? 'Weekly goal smashed! 🎯' : d.review.workouts > 0 ? `${d.review.target - d.review.workouts} short of your goal. So close.` : 'Next week is a fresh start.'}
+            {d.review.workouts >= d.review.target
+              ? isBloom
+                ? 'Weekly goal reached 🌸'
+                : 'Weekly goal smashed! 🎯'
+              : d.review.workouts > 0
+                ? `${d.review.target - d.review.workouts} short of your goal. ${isBloom ? 'That’s okay.' : 'So close.'}`
+                : 'Next week is a fresh start.'}
           </Rise>
-          {d.workoutsAll > d.review.workouts ? (
+          {isBloom ? (
+            bloomExtras(d) ? (
+              <Rise delay={450} className="mt-2 text-white/75">
+                Plus {bloomExtras(d)}.
+              </Rise>
+            ) : null
+          ) : d.workoutsAll > d.review.workouts ? (
             <Rise delay={450} className="mt-2 text-white/75">
               Plus {extrasText(d.workoutsAll - d.review.workouts - d.plays, d.plays)} on top.
             </Rise>
@@ -120,7 +139,7 @@ function slides(d: RecapData): Slide[] {
       bg: 'from-[#7c3aed] via-[#5b21b6] to-[#2e1065]',
       render: () => (
         <>
-          <Rise className="text-sm font-bold uppercase tracking-[0.3em] text-white/80">You moved</Rise>
+          <Rise className="text-sm font-bold uppercase tracking-[0.3em] text-white/80">{isBloom ? 'You practiced' : 'You moved'}</Rise>
           <Rise delay={150} className="mt-6">
             <Big>
               <CountUp value={d.review.minutes} duration={1200} />
@@ -129,14 +148,39 @@ function slides(d: RecapData): Slide[] {
           </Rise>
           <Rise delay={300} className="mt-6">
             <Big className="text-6xl">
-              <CountUp value={d.reps} duration={1400} />
+              <CountUp value={isBloom ? d.poses : d.reps} duration={1400} />
             </Big>
-            <div className="mt-1 text-xl text-white/80">reps</div>
+            <div className="mt-1 text-xl text-white/80">{isBloom ? (d.poses === 1 ? 'pose' : 'different poses') : 'reps'}</div>
           </Rise>
           <TopMove d={d} />
         </>
       ),
     },
+    ...(isBloom && d.breaths > 0
+      ? [
+          {
+            id: 'breathe',
+            bg: 'from-[#2a9d8f] via-[#1d6f68] to-[#0b2e2b]',
+            render: () => (
+              <>
+                <Rise className="text-sm font-bold uppercase tracking-[0.3em] text-white/80">You breathed</Rise>
+                <Rise delay={150} className="mt-6 grid place-items-center">
+                  <span className="relative grid h-40 w-40 place-items-center">
+                    <span aria-hidden className="absolute inset-0 rounded-full bg-white/15 animate-breath" />
+                    <Big>
+                      <CountUp value={d.mindfulMinutes} duration={1200} />
+                    </Big>
+                  </span>
+                  <div className="mt-2 text-xl text-white/80">mindful minutes</div>
+                </Rise>
+                <Rise delay={350} className="mt-6 text-white/85">
+                  {plural(d.breaths, 'breathing session')}. Calm is a skill, and you’re practicing it.
+                </Rise>
+              </>
+            ),
+          } satisfies Slide,
+        ]
+      : []),
     {
       id: 'streak',
       bg: 'from-[#b45309] via-[#92400e] to-[#451a03]',
@@ -171,7 +215,7 @@ function slides(d: RecapData): Slide[] {
       bg: 'from-[#15803d] via-[#166534] to-[#052e16]',
       render: (_, active) => (
         <>
-          <Rise className="text-sm font-bold uppercase tracking-[0.3em] text-white/80">Fuel</Rise>
+          <Rise className="text-sm font-bold uppercase tracking-[0.3em] text-white/80">{isBloom ? 'Nourish' : 'Fuel'}</Rise>
           <Rise delay={150} className="mt-6 font-display text-4xl font-black">
             Protein goal on {d.review.proteinDays} day{d.review.proteinDays === 1 ? '' : 's'}
           </Rise>
@@ -226,15 +270,15 @@ function NextWeek({ d, onDone }: { d: RecapData; onDone: () => void }) {
   const [picked, setPicked] = useState<string | null>(null)
   return (
     <>
-      <Rise className="text-7xl">🚀</Rise>
+      <Rise className="text-7xl">{isBloom ? '🌱' : '🚀'}</Rise>
       <Rise delay={150} className="mt-6 text-sm font-bold uppercase tracking-[0.3em] text-white/80">
         Next week
       </Rise>
       <Rise delay={250} className="mt-2 font-display text-3xl font-black leading-tight">
-        {d.review.suggestion ? 'A tweak to consider' : 'Same plan, a little stronger'}
+        {d.review.suggestion ? 'A tweak to consider' : isBloom ? 'Same rhythm, a little deeper' : 'Same plan, a little stronger'}
       </Rise>
       <Rise delay={350} className="mt-4 text-white/85">
-        {d.review.suggestion?.text ?? 'Your reps and levels already adjusted from last week. Show up, and Forge does the rest.'}
+        {d.review.suggestion?.text ?? (isBloom ? 'Your poses already adjusted from last week. Show up, and Bloom does the rest.' : 'Your reps and levels already adjusted from last week. Show up, and Forge does the rest.')}
       </Rise>
       {d.review.suggestion && plan ? (
         <Rise delay={450} className="mt-5 flex flex-wrap justify-center gap-2">
@@ -268,7 +312,7 @@ function NextWeek({ d, onDone }: { d: RecapData; onDone: () => void }) {
             onDone()
           }}
         >
-          Let’s go
+          {isBloom ? 'Let’s begin' : 'Let’s go'}
         </Button>
       </Rise>
     </>
@@ -367,7 +411,9 @@ export default function RecapPage() {
           ))}
         </div>
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-sm font-semibold text-white/90">🔥 Forge recap</span>
+          <span className="text-sm font-semibold text-white/90">
+            {isBloom ? '🪷' : '🔥'} {APP.name} recap
+          </span>
           <button
             type="button"
             aria-label="Close recap"

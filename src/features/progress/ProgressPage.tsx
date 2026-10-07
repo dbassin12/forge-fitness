@@ -2,14 +2,17 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronRight, Plus, Scale, Settings, Trophy } from 'lucide-react'
+import { isBloom, W } from '@/app/brand'
 import { db } from '@/db/db'
 import { getExercise } from '@/data/exercises'
 import { levelTitle, weeklyStreak } from '@/engines/gamification'
 import { dailyTargets } from '@/engines/nutrition/targets'
+import { repWord } from '@/engines/plan'
 import { retestDue } from '@/engines/progression/progress'
 import { addDays, formatShortDate, parseISODate, startOfWeek, todayISO } from '@/lib/dates'
 import { kgToLb, lbToKg } from '@/lib/units'
 import { logWeight, useWeights } from '@/state/body'
+import { BREATHE_PREFIX, useMindfulMinutesThisWeek } from '@/state/breathe'
 import { planDates, useLevel, useUnlocked } from '@/state/gamification'
 import { usePlan } from '@/state/plan'
 import { Button } from '@/ui/Button'
@@ -22,6 +25,8 @@ import { BodySection } from './BodySection'
 import { TrophyShelf } from './TrophyShelf'
 
 const DAY = 86_400_000
+/** Sessions for the charts and totals: not movement snacks or mini flows, not breathing sessions. */
+const countsAsSession = (w: { kind: string; sessionKey: string }) => w.kind !== 'snack' && !w.sessionKey.startsWith(BREATHE_PREFIX)
 const toX = (d: string) => parseISODate(d).getTime()
 
 export default function ProgressPage() {
@@ -33,6 +38,7 @@ export default function ProgressPage() {
   const level = useLevel()
   const unlocked = useUnlocked()
   const [weighOpen, setWeighOpen] = useState(false)
+  const mindful = useMindfulMinutesThisWeek()
 
   const data = useMemo(() => {
     if (!plan || !weights || !workouts || !foodRows) return null
@@ -53,7 +59,7 @@ export default function ProgressPage() {
     const perWeek = weeks.map((w) => ({
       key: w,
       label: formatShortDate(w),
-      value: workouts.filter((x) => x.kind !== 'snack' && x.date >= w && x.date <= addDays(w, 6)).length,
+      value: workouts.filter((x) => countsAsSession(x) && x.date >= w && x.date <= addDays(w, 6)).length,
     }))
     // Calories, last 14 days.
     const t = dailyTargets(p)
@@ -65,7 +71,8 @@ export default function ProgressPage() {
     const logged = byDay.filter((d) => d.logged)
     const streak = weeklyStreak(planDates(workouts), p.daysPerWeek, todayISO())
     const prs = Object.entries(plan.progress.exercises)
-      .filter(([, e]) => e.best > 0)
+      // Bloom lists holds only ("Your best holds").
+      .filter(([id, e]) => e.best > 0 && (!isBloom || getExercise(id)?.measure === 'time'))
       .sort((a, b) => (b[1].lastDate ?? '').localeCompare(a[1].lastDate ?? ''))
       .slice(0, 10)
     return { p, imperial, raw, avg, latestAvg, monthAgo, perWeek, t, byDay, logged, streak, prs, toUnit }
@@ -80,12 +87,63 @@ export default function ProgressPage() {
   const avgProtein = logged.length ? Math.round(logged.reduce((s, d) => s + d.protein, 0) / logged.length) : undefined
   const proteinHits = logged.filter((d) => d.protein >= t.protein * 0.95).length
   const due = retestDue(plan.progress, todayISO()) || plan.progress.tests.length === 0
+  // Bloom with light-touch tracking never talks calories.
+  const calm = isBloom && p.trackingMode === 'lite'
+  const weightSection = (
+    <>
+      <SectionTitle
+        action={
+          <Button size="sm" variant="ghost" icon={<Scale size={15} />} onClick={() => setWeighOpen(true)}>
+            Log weight
+          </Button>
+        }
+      >
+        Body weight
+      </SectionTitle>
+      <Card>
+        {raw.length ? (
+          <ChartFrame
+            title={`Weight trend (${unit})`}
+            subtitle="Daily weigh-ins bounce around; the 7-day average shows the real trend."
+            legend={
+              <>
+                <LegendLine label="7-day average" tone="accent" />
+                <LegendDot label="Weigh-ins" tone="deemph" />
+              </>
+            }
+            table={{ head: ['Date', `Weigh-in (${unit})`, `7-day avg (${unit})`], rows: raw.map((r, i) => [formatShortDate(new Date(r.x).toISOString().slice(0, 10)), fmtW(r.y), fmtW(avg[i].y)]).reverse() }}
+          >
+            <TimeChart
+              ariaLabel={`Weight trend: latest 7-day average ${latestAvg?.toFixed(1)} ${unit}`}
+              series={[
+                { id: 'raw', label: 'weigh-in', kind: 'dots', tone: 'deemph', points: raw },
+                { id: 'avg', label: '7-day avg', kind: 'line', tone: 'accent', points: avg },
+              ]}
+              xLabel={(x) => formatShortDate(new Date(x).toISOString().slice(0, 10))}
+              yFormat={fmtW}
+              tickFormat={(v) => String(Math.round(v))}
+              reference={goalW ? { y: goalW, label: `Goal ${fmtW(goalW)}` } : undefined}
+            />
+          </ChartFrame>
+        ) : (
+          <div className="py-6 text-center text-sm text-muted">
+            Weigh in a few mornings a week (same time, after the bathroom) to see your trend.
+            <div className="mt-3">
+              <Button size="sm" icon={<Plus size={15} />} onClick={() => setWeighOpen(true)}>
+                Add first weigh-in
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
+    </>
+  )
 
   return (
     <>
       <PageHeader
         title="Progress"
-        subtitle="Every rep and every meal adds up"
+        subtitle={isBloom ? 'Every practice and every breath adds up' : 'Every rep and every meal adds up'}
         right={
           <Link to="/more" viewTransition aria-label="Settings" className="pressable grid h-10 w-10 place-items-center rounded-full border border-line bg-surface text-muted">
             <Settings size={18} />
@@ -106,18 +164,30 @@ export default function ProgressPage() {
           </Link>
         ) : null}
         <div className="grid grid-cols-2 gap-2">
+          {isBloom ? (
+            <StatTile label="Mindful minutes" value={String(mindful ?? 0)} footnote="Breathing and relaxing this week" />
+          ) : (
+            <StatTile
+              label="Weight (7-day avg)"
+              value={latestAvg !== undefined ? fmtW(latestAvg) : '—'}
+              unit={latestAvg !== undefined ? unit : undefined}
+              delta={latestAvg !== undefined && monthAgo !== undefined ? { value: latestAvg - monthAgo, text: `${latestAvg - monthAgo >= 0 ? '+' : ''}${(latestAvg - monthAgo).toFixed(1)} ${unit} vs 4 weeks ago` } : undefined}
+              upIsGood={p.goal === 'build_muscle' ? true : p.goal === 'lose_fat' ? false : undefined}
+              trend={avg.map((a) => a.y)}
+              footnote={raw.length ? undefined : 'Log a weigh-in to start'}
+            />
+          )}
           <StatTile
-            label="Weight (7-day avg)"
-            value={latestAvg !== undefined ? fmtW(latestAvg) : '—'}
-            unit={latestAvg !== undefined ? unit : undefined}
-            delta={latestAvg !== undefined && monthAgo !== undefined ? { value: latestAvg - monthAgo, text: `${latestAvg - monthAgo >= 0 ? '+' : ''}${(latestAvg - monthAgo).toFixed(1)} ${unit} vs 4 weeks ago` } : undefined}
-            upIsGood={p.goal === 'build_muscle' ? true : p.goal === 'lose_fat' ? false : undefined}
-            trend={avg.map((a) => a.y)}
-            footnote={raw.length ? undefined : 'Log a weigh-in to start'}
+            label={`${W.Workout}s this week`}
+            value={`${streak.thisWeek}/${streak.target}`}
+            footnote={streak.weeks ? `${streak.weeks}-week streak${streak.freezes ? ` · ${streak.freezes} freeze${streak.freezes > 1 ? 's' : ''}` : ''}` : `${isBloom ? 'Reach' : 'Hit'} your weekly goal to start a streak`}
           />
-          <StatTile label="Workouts this week" value={`${streak.thisWeek}/${streak.target}`} footnote={streak.weeks ? `${streak.weeks}-week streak${streak.freezes ? ` · ${streak.freezes} freeze${streak.freezes > 1 ? 's' : ''}` : ''}` : 'Hit your weekly goal to start a streak'} />
           <StatTile label="Level" value={level ? `${level.level} · ${levelTitle(level.level)}` : '—'} footnote={level ? `${level.into}/${level.span} XP to level ${level.level + 1}` : undefined} />
-          <StatTile label="Workouts done" value={String((workouts ?? []).filter((w) => w.kind !== 'snack').length)} footnote={`${Math.round((workouts ?? []).reduce((s, w) => s + (w.finishedAt - w.startedAt) / 60000, 0))} minutes in total`} />
+          <StatTile
+            label={`${W.Workout}s done`}
+            value={String((workouts ?? []).filter(countsAsSession).length)}
+            footnote={`${Math.round((workouts ?? []).reduce((s, w) => s + (w.finishedAt - w.startedAt) / 60000, 0))} minutes in total`}
+          />
         </div>
 
         {due ? (
@@ -125,71 +195,27 @@ export default function ProgressPage() {
             <Card className="mt-3 flex items-center gap-3 border-ember/40">
               <Trophy className="shrink-0 text-ember" size={22} />
               <div className="flex-1">
-                <div className="font-semibold">{plan.progress.tests.length ? 'Time for your 4-week check-in' : 'Take the 3-minute fitness test'}</div>
-                <div className="text-sm text-muted">Push-ups, squats and a plank — see how far you've come.</div>
+                <div className="font-semibold">{plan.progress.tests.length ? 'Time for your 4-week check-in' : isBloom ? 'Take the 2-minute check-in' : 'Take the 3-minute fitness test'}</div>
+                <div className="text-sm text-muted">{isBloom ? 'A forward fold and a balance. See how you’ve grown.' : "Push-ups, squats and a plank — see how far you've come."}</div>
               </div>
               <ChevronRight className="text-faint" />
             </Card>
           </Link>
         ) : null}
 
-        <SectionTitle
-          action={
-            <Button size="sm" variant="ghost" icon={<Scale size={15} />} onClick={() => setWeighOpen(true)}>
-              Log weight
-            </Button>
-          }
-        >
-          Body weight
-        </SectionTitle>
-        <Card>
-          {raw.length ? (
-            <ChartFrame
-              title={`Weight trend (${unit})`}
-              subtitle="Daily weigh-ins bounce around; the 7-day average shows the real trend."
-              legend={
-                <>
-                  <LegendLine label="7-day average" tone="accent" />
-                  <LegendDot label="Weigh-ins" tone="deemph" />
-                </>
-              }
-              table={{ head: ['Date', `Weigh-in (${unit})`, `7-day avg (${unit})`], rows: raw.map((r, i) => [formatShortDate(new Date(r.x).toISOString().slice(0, 10)), fmtW(r.y), fmtW(avg[i].y)]).reverse() }}
-            >
-              <TimeChart
-                ariaLabel={`Weight trend: latest 7-day average ${latestAvg?.toFixed(1)} ${unit}`}
-                series={[
-                  { id: 'raw', label: 'weigh-in', kind: 'dots', tone: 'deemph', points: raw },
-                  { id: 'avg', label: '7-day avg', kind: 'line', tone: 'accent', points: avg },
-                ]}
-                xLabel={(x) => formatShortDate(new Date(x).toISOString().slice(0, 10))}
-                yFormat={fmtW}
-                tickFormat={(v) => String(Math.round(v))}
-                reference={goalW ? { y: goalW, label: `Goal ${fmtW(goalW)}` } : undefined}
-              />
-            </ChartFrame>
-          ) : (
-            <div className="py-6 text-center text-sm text-muted">
-              Weigh in a few mornings a week (same time, after the bathroom) to see your trend.
-              <div className="mt-3">
-                <Button size="sm" icon={<Plus size={15} />} onClick={() => setWeighOpen(true)}>
-                  Add first weigh-in
-                </Button>
-              </div>
-            </div>
-          )}
-        </Card>
+        {isBloom ? null : weightSection}
 
-        <SectionTitle>Training</SectionTitle>
+        <SectionTitle>{isBloom ? 'Practice' : 'Training'}</SectionTitle>
         <Card>
-          <ChartFrame title="Workouts per week" subtitle="Last 12 weeks · line shows your weekly goal" table={{ head: ['Week of', 'Workouts'], rows: perWeek.map((w) => [w.label, w.value]).reverse() }}>
-            <ColumnChart ariaLabel="Workouts per week" data={perWeek} reference={{ y: p.daysPerWeek, label: `Goal ${p.daysPerWeek}` }} />
+          <ChartFrame title={`${W.Workout}s per week`} subtitle="Last 12 weeks · line shows your weekly goal" table={{ head: ['Week of', `${W.Workout}s`], rows: perWeek.map((w) => [w.label, w.value]).reverse() }}>
+            <ColumnChart ariaLabel={`${W.Workout}s per week`} data={perWeek} reference={{ y: p.daysPerWeek, label: `Goal ${p.daysPerWeek}` }} />
           </ChartFrame>
         </Card>
         {prs.length ? (
           <Card className="mt-3 py-1">
             <div className="flex items-center justify-between py-2.5">
-              <span className="font-semibold">Personal bests</span>
-              <span className="text-xs text-muted">best single set</span>
+              <span className="font-semibold">{isBloom ? 'Your best holds' : 'Personal bests'}</span>
+              <span className="text-xs text-muted">{isBloom ? 'longest single hold' : 'best single set'}</span>
             </div>
             <ul className="divide-y divide-line/60">
               {prs.map(([id, e]) => {
@@ -201,7 +227,7 @@ export default function ProgressPage() {
                       <span className="flex-1 truncate text-sm">{ex.name}</span>
                       <span className="text-sm font-semibold tabular">
                         {e.best}
-                        {ex.measure === 'time' ? ' s' : ' reps'}
+                        {ex.measure === 'time' ? ' s' : ` ${isBloom ? repWord(id, e.best) : 'reps'}`}
                         {ex.perSide ? ' / side' : ''}
                       </span>
                     </Link>
@@ -214,10 +240,14 @@ export default function ProgressPage() {
 
         <SectionTitle>Nutrition</SectionTitle>
         <div className="grid grid-cols-2 gap-2">
-          <StatTile label="Avg calories (logged days)" value={avgKcal ? avgKcal.toLocaleString() : '—'} footnote={`Target ${t.kcal.toLocaleString()}`} />
+          {calm ? (
+            <StatTile label="Days with food logged" value={`${logged.length}/14`} footnote="Last two weeks" />
+          ) : (
+            <StatTile label="Avg calories (logged days)" value={avgKcal ? avgKcal.toLocaleString() : '—'} footnote={`Target ${t.kcal.toLocaleString()}`} />
+          )}
           <StatTile label="Protein target hit" value={logged.length ? `${proteinHits}/${logged.length} days` : '—'} footnote={avgProtein ? `Avg ${avgProtein} g of ${t.protein} g` : 'Log food to see this'} />
         </div>
-        {logged.length ? (
+        {logged.length && !calm ? (
           <Card className="mt-3">
             <ChartFrame
               title="Calories, last 14 days"
@@ -232,6 +262,8 @@ export default function ProgressPage() {
             </ChartFrame>
           </Card>
         ) : null}
+
+        {isBloom ? weightSection : null}
 
         <BodySection imperial={imperial} />
 

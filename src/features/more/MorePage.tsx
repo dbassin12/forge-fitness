@@ -142,7 +142,7 @@ export default function MorePage() {
               sub={p.aches.length ? p.aches.map((a) => (a === 'pregnancy' ? 'pregnancy' : a.replace('_', ' '))).join(', ') : 'None'}
               onClick={() => setPanel('health')}
             />
-            <Row icon={<Apple size={18} />} title="Food & nutrition" sub={`${DIET_LABEL[p.diet]} · ${p.trackingMode === 'lite' ? 'Lite' : 'Full'} tracking`} onClick={() => setPanel('food')} />
+            <Row icon={<Apple size={18} />} title="Food & nutrition" sub={`${DIET_LABEL[p.diet]} · ${p.trackingMode === 'lite' ? (isBloom ? 'Light touch' : 'Lite') : 'Full'} tracking`} onClick={() => setPanel('food')} />
           </ul>
         </Card>
 
@@ -151,7 +151,7 @@ export default function MorePage() {
           <ul className="divide-y divide-line/60">
             <Row icon={<Bell size={18} />} title="Reminders" sub={`${W.Workout}s, meals, water, streaks`} to="/more/reminders" />
             <Row icon={<Volume2 size={18} />} title="Voice & sounds" sub={isBloom ? 'Voice, speed, chimes, counting' : 'Voice, speed, beeps, rep counting'} onClick={() => setPanel('voice')} />
-            <Row icon={<Bot size={18} />} title="Ask Claude" sub="Coach answers and meal estimates in your Claude app" to="/coach" />
+            <Row icon={<Bot size={18} />} title="Ask Claude" sub={isBloom ? 'Gentle answers and meal estimates in Claude' : 'Coach answers and meal estimates in your Claude app'} to="/coach" />
             <Row
               icon={<BookOpen size={18} />}
               title={`How ${APP.name} works`}

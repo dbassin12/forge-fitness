@@ -50,7 +50,7 @@ import { burst } from '@/app/confetti'
 import { sfx } from '@/device/sfx'
 import { FitnessTest } from './FitnessTest'
 import { Hero } from './Hero'
-import { ACHES, BLOOM_ACHES, INTENTIONS, PREGNANCY_NOTE } from './choices'
+import { ACHES, BLOOM_ACHES, FOLD_REACH, INTENTIONS, PREGNANCY_NOTE } from './choices'
 import { InstallGuide } from './InstallGuide'
 import { EquipmentEditor } from '../settings/EquipmentEditor'
 
@@ -126,7 +126,6 @@ const YOGA_XP: { id: Experience; title: string; text: string }[] = [
   { id: 'advanced', title: 'Regular practice', text: 'Sun salutations feel familiar' },
 ]
 
-const FOLD_REACH = ['Thighs', 'Knees', 'Shins', 'Ankles', 'Floor']
 const BALANCE: { sec: number; label: string }[] = [
   { sec: 5, label: 'A few seconds' },
   { sec: 15, label: 'About 15 s' },

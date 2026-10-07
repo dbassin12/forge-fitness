@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { CalendarRange, ChevronLeft, ChevronRight, Copy, Droplet, Flame, Minus, Plus, ShoppingCart, Sparkles } from 'lucide-react'
+import { isBloom } from '@/app/brand'
 import type { FoodLogEntry, MealSlot } from '@/db/db'
 import { recipeById } from '@/engines/meals/planner'
 import { dayScore, nudges } from '@/engines/nutrition/day'
@@ -71,7 +72,7 @@ export default function EatPage() {
     }
   }, [profile, day, settings, date])
 
-  if (!profile || !day || !derived) return <PageHeader title="Eat" />
+  if (!profile || !day || !derived) return <PageHeader title={isBloom ? 'Nourish' : 'Eat'} />
   const { targets, eaten, produce, score } = derived
   const lite = profile.trackingMode === 'lite'
   const imperial = profile.units === 'imperial'
@@ -84,8 +85,8 @@ export default function EatPage() {
   return (
     <>
       <PageHeader
-        title="Eat"
-        subtitle={lite ? 'Lite: protein, produce, water' : `${targets.kcal.toLocaleString()} kcal · ${targets.protein} g protein`}
+        title={isBloom ? 'Nourish' : 'Eat'}
+        subtitle={lite ? (isBloom ? 'Protein, fruit & veg, water' : 'Lite: protein, produce, water') : `${targets.kcal.toLocaleString()} kcal · ${targets.protein} g protein`}
         right={
           <div className="flex items-center rounded-full border border-line bg-surface">
             <button aria-label="Previous day" className="grid h-9 w-9 place-items-center text-muted" onClick={() => go(addDays(date, -1))}>
@@ -129,7 +130,7 @@ export default function EatPage() {
             {!lite ? (
               <span>
                 {Math.round(eaten.kcal).toLocaleString()} eaten
-                {day.burnedKcal ? (
+                {day.burnedKcal && !isBloom ? (
                   <>
                     {' '}
                     · <Flame size={13} className="inline text-ember" /> {day.burnedKcal} burned

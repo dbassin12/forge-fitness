@@ -154,6 +154,7 @@ export default function TodayPage() {
       proteinTarget: t.protein,
       weights: reviewWeights,
       lastWeekCompletion: prevDone / Math.max(1, plan.profile.daysPerWeek),
+      yoga: plan.inputs.program === 'yoga',
     })
   }, [plan, workouts, reviewFood, reviewWeights, lastWeek])
 
@@ -176,7 +177,7 @@ export default function TodayPage() {
       <header className="flex items-center gap-3 pt-5 pb-3">
         <div className="min-w-0 flex-1">
           <div className="text-sm text-muted">{parseISODate(today).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</div>
-          <h1 className="truncate font-display text-[28px] font-bold leading-tight">
+          <h1 className="font-display text-[28px] font-bold leading-tight [overflow-wrap:anywhere]">
             {greeting(new Date().getHours())}
             {p.name ? `, ${p.name}` : ''}
           </h1>

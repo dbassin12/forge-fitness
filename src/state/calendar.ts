@@ -83,7 +83,7 @@ export function googleCalendarLink(settings: ReminderSettings, profile: Profile)
   const q = new URLSearchParams({
     action: 'TEMPLATE',
     text: text.title,
-    details: `${text.body}\n\nOpen Forge: ${location.origin}/${text.url.replace(/^\//, '')}`,
+    details: `${text.body}\n\nOpen ${APP.name}: ${location.origin}/${text.url.replace(/^\//, '')}`,
     dates: `${start}/${end}`,
     recur: `RRULE:FREQ=WEEKLY;BYDAY=${rule.days.map((d) => codes[d - 1]).join(',')}`,
   })

@@ -79,14 +79,15 @@ function minus(time: string, minutes: number): string {
   return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`
 }
 
-/** Starting rule sets. Everything stays editable in the app. */
-export function presetRules(style: ReminderStyleName, o: { trainingDays: number[]; workoutTime: string }): ReminderRule[] {
+/** Starting rule sets. Everything stays editable in the app. Bloom starts without weigh-in nudges. */
+export function presetRules(style: ReminderStyleName, o: { trainingDays: number[]; workoutTime: string; app?: ReminderApp }): ReminderRule[] {
+  const scale = o.app !== 'bloom'
   const training = o.trainingDays.length ? o.trainingDays : [1, 3, 5]
   const streakTime = parseTime(o.workoutTime) && parseTime(o.workoutTime)!.hour >= 18 ? '21:00' : '19:30'
   const base: ReminderRule[] = [
     { id: 'workout', type: 'workout', days: training, times: [minus(o.workoutTime, 10)], enabled: true, ack: 'workout' },
     { id: 'streak', type: 'streak', days: training, times: [streakTime], enabled: true, ack: 'workout' },
-    { id: 'weighin', type: 'weighin', days: [6], times: ['08:30'], enabled: true, ack: 'weighin' },
+    { id: 'weighin', type: 'weighin', days: [6], times: ['08:30'], enabled: scale, ack: 'weighin' },
     { id: 'review', type: 'review', days: [7], times: ['18:00'], enabled: true },
     { id: 'water', type: 'water', days: ALL, every: { start: '10:00', end: '20:00', minutes: 120 }, enabled: false, ack: 'water' },
     { id: 'lunch', type: 'meal', meal: 'lunch', days: ALL, times: ['13:30'], enabled: false, ack: 'meal-lunch' },
@@ -94,7 +95,7 @@ export function presetRules(style: ReminderStyleName, o: { trainingDays: number[
     { id: 'snack', type: 'snack', days: WEEKDAYS, times: ['11:00', '15:30'], enabled: false },
     { id: 'checkin', type: 'checkin', days: ALL, times: ['21:00'], enabled: false },
   ]
-  if (style === 'coach') return base.map((r) => ({ ...r, enabled: true }))
+  if (style === 'coach') return base.map((r) => ({ ...r, enabled: r.type !== 'weighin' || scale }))
   return base
 }
 
@@ -158,4 +159,17 @@ export const REMINDER_LABEL: Record<ReminderType, string> = {
   weighin: 'Weekly weigh-in',
   review: 'Weekly review',
   custom: 'Custom',
+}
+
+const BLOOM_REMINDER_LABEL: Record<ReminderType, string> = {
+  ...REMINDER_LABEL,
+  workout: 'Practice time',
+  streak: 'Gentle nudge',
+  snack: 'Stretch breaks',
+  checkin: 'Wind down',
+}
+
+/** A reminder's name as each app says it. */
+export function reminderLabel(type: ReminderType, app: ReminderApp = 'forge'): string {
+  return (app === 'bloom' ? BLOOM_REMINDER_LABEL : REMINDER_LABEL)[type]
 }

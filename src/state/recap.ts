@@ -16,6 +16,14 @@ export interface RecapData {
   /** Reps across every logged set (one-sided moves count both sides). */
   reps: number
   topExercise?: { id: string; name: string; reps: number }
+  /** Bloom: different poses practiced, and the one practiced most (times = holds or rounds). */
+  poses: number
+  favPose?: { id: string; name: string; times: number }
+  /** Bloom: breathing and relaxation sessions, and their minutes. */
+  breaths: number
+  mindfulMinutes: number
+  /** Movement snacks (Forge) or mini flows (Bloom). */
+  snacks: number
   workoutsAll: number
   plays: number
   xp: number
@@ -61,16 +69,22 @@ export async function loadRecap(plan: PlanState, weekOf: ISODate): Promise<Recap
     proteinTarget: t.protein,
     weights,
     lastWeekCompletion: prevDone / Math.max(1, p.daysPerWeek),
+    yoga: plan.inputs.program === 'yoga',
   })
   const inWeek = workouts.filter((w) => w.date >= weekOf && w.date <= end && w.kind !== 'test')
   const repsBy = new Map<string, number>()
+  const timesBy = new Map<string, number>()
   for (const w of inWeek)
     for (const e of w.exercises) {
       const ex = getExercise(e.exerciseId)
       const sides = ex?.perSide ? 2 : 1
       for (const s of e.sets) if (s.reps) repsBy.set(e.exerciseId, (repsBy.get(e.exerciseId) ?? 0) + s.reps * sides)
+      if (e.sets.length) timesBy.set(e.exerciseId, (timesBy.get(e.exerciseId) ?? 0) + e.sets.length)
     }
   const top = [...repsBy.entries()].sort((a, b) => b[1] - a[1])[0]
+  // Favourite pose: the most practiced one, leaving out the resting and arriving poses.
+  const fav = [...timesBy.entries()].filter(([id]) => !['savasana', 'easy-seat-breath'].includes(id)).sort((a, b) => b[1] - a[1])[0]
+  const breathing = inWeek.filter((w) => w.sessionKey.startsWith('breathe:'))
   // Local midnight to midnight (parseISODate gives noon, which would split Mondays).
   const midnight = (iso: ISODate) => {
     const d = parseISODate(iso)
@@ -85,6 +99,11 @@ export async function loadRecap(plan: PlanState, weekOf: ISODate): Promise<Recap
     review,
     reps: [...repsBy.values()].reduce((a, b) => a + b, 0),
     topExercise: top ? { id: top[0], name: getExercise(top[0])?.name ?? top[0], reps: top[1] } : undefined,
+    poses: timesBy.size,
+    favPose: fav ? { id: fav[0], name: getExercise(fav[0])?.name ?? fav[0], times: fav[1] } : undefined,
+    breaths: breathing.length,
+    mindfulMinutes: Math.round(breathing.reduce((s, w) => s + (w.finishedAt - w.startedAt) / 60000, 0)),
+    snacks: inWeek.filter((w) => w.kind === 'snack').length,
     workoutsAll: inWeek.length,
     plays: inWeek.filter((w) => w.sessionKey.startsWith('play:')).length,
     xp: xpRows.reduce((s, e) => s + e.xp, 0),
