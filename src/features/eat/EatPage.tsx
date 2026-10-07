@@ -28,7 +28,10 @@ import { cx } from '@/ui/cx'
 import { PageHeader } from '@/ui/PageHeader'
 import { Sheet } from '@/ui/Sheet'
 import { Stepper } from '@/ui/Stepper'
+import { haptic } from '@/device/haptics'
+import { sfx } from '@/device/sfx'
 import { CalorieRing, MacroBar } from './Rings'
+import { WaterGlass } from './WaterGlass'
 import { MEAL_LABEL } from './labels'
 
 const SLOTS: MealSlot[] = ['breakfast', 'lunch', 'dinner', 'snack']
@@ -178,29 +181,39 @@ export default function EatPage() {
               {imperial ? `${Math.round(day.waterMl / OZ_ML)} / ${Math.round(targets.waterMl / OZ_ML)} oz` : `${(day.waterMl / 1000).toFixed(1)} / ${(targets.waterMl / 1000).toFixed(1)} L`}
             </div>
           </div>
-          <div className="mt-3 flex items-center gap-3">
-            <button
-              type="button"
-              aria-label="Remove a glass"
-              onClick={() => void undoWater(date)}
-              disabled={glasses === 0}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line bg-surface-2 disabled:opacity-30"
-            >
-              <Minus size={18} />
-            </button>
-            <div className="flex flex-1 flex-wrap justify-center gap-0.5">
-              {Array.from({ length: Math.min(16, Math.max(glassTarget, glasses)) }, (_, i) => (
-                <Droplet key={i} size={glassTarget > 10 ? 16 : 20} className={i < glasses ? 'fill-sky text-sky' : 'text-surface-3'} />
-              ))}
+          <div className="mt-2 flex items-center gap-4">
+            <WaterGlass level={targets.waterMl ? day.waterMl / targets.waterMl : 0} className="h-24 w-20 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="font-display text-2xl font-bold tabular">
+                {glasses} <span className="text-base font-semibold text-muted">of {glassTarget} glasses</span>
+              </div>
+              <div className="text-sm text-muted">
+                {glasses >= glassTarget ? 'Goal reached. Nicely hydrated! 💧' : `${glassTarget - glasses} more to go`}
+              </div>
+              <div className="mt-2.5 flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="Remove a glass"
+                  onClick={() => void undoWater(date)}
+                  disabled={glasses === 0}
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-line bg-surface-2 active:scale-90 disabled:opacity-30"
+                >
+                  <Minus size={18} />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Add a ${settings.glassOz} oz glass`}
+                  onClick={() => {
+                    sfx.bloop()
+                    haptic('medium')
+                    void addWater(date, settings.glassOz, profile)
+                  }}
+                  className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-sky px-4 font-semibold text-on-accent shadow-[0_8px_20px_-10px_var(--color-sky)] active:scale-95"
+                >
+                  <Plus size={18} strokeWidth={3} /> {settings.glassOz} oz
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              aria-label={`Add a ${settings.glassOz} oz glass`}
-              onClick={() => void addWater(date, settings.glassOz, profile)}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-sky text-on-accent active:scale-95"
-            >
-              <Plus size={20} />
-            </button>
           </div>
         </Card>
 

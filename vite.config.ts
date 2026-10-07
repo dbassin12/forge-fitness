@@ -44,6 +44,8 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2,wasm,json}'],
+        // iOS fetches launch screens itself when the app is installed; no need to precache them.
+        globIgnores: ['splash/**'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
       },
       devOptions: { enabled: false, type: 'module' },

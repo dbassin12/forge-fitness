@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, kvGet, kvSet } from '@/db/db'
 import { ACHIEVEMENTS, levelForXp, levelTitle } from '@/engines/gamification'
 import { QUESTS } from '@/engines/quests'
-import { todayISO } from '@/lib/dates'
+import { addDays, startOfWeek, todayISO } from '@/lib/dates'
 import { checkAchievements, useTotalXp } from '@/state/gamification'
 import { evaluateQuests, useQuestSignal } from '@/state/quests'
 import { useProfile } from '@/state/store'
@@ -27,6 +27,8 @@ export function useRewardWatch({ floaters, badgeScreen }: { floaters: boolean; b
   const xp = useTotalXp()
   const unlocked = useLiveQuery(() => db.achievements.toArray(), [])
   const recentXp = useLiveQuery(() => db.xpEvents.where('date').equals(today).toArray(), [today])
+  const monday = startOfWeek(today)
+  const weekDone = useLiveQuery(() => db.workouts.where('date').between(monday, addDays(monday, 6), true, true).filter((w) => w.kind === 'plan').count(), [monday])
   const mountedAt = useRef(Date.now())
   const floated = useRef(new Set<string>())
 
@@ -85,6 +87,17 @@ export function useRewardWatch({ floaters, badgeScreen }: { floaters: boolean; b
       useCelebrate.getState().push({ kind: 'level', level, title: levelTitle(level), unlocks })
     })
   }, [xp])
+
+  // Weekly goal: celebrate once, the moment this week's workouts reach the goal.
+  useEffect(() => {
+    if (!profile || weekDone === undefined || weekDone < profile.daysPerWeek) return
+    serial(async () => {
+      const key = `weekgoal:${monday}`
+      if (await kvGet<boolean>(key)) return
+      await kvSet(key, true)
+      useCelebrate.getState().toast({ tone: 'perfect', title: 'Weekly goal hit! 🔥', text: `${weekDone} workouts this week. Your streak grows.`, emoji: '🎯' })
+    })
+  }, [profile, weekDone, monday])
 
   // "+XP" floaters for XP earned while this screen is open.
   useEffect(() => {
