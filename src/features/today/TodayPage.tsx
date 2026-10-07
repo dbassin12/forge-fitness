@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Bell, Bot, Check, ChevronRight, Coffee, Droplet, Eye, Lightbulb, Play, Plus, Scale, Settings, Utensils, X, Zap } from 'lucide-react'
+import { Bell, Bot, Check, ChevronRight, Coffee, Droplet, Eye, Play, Plus, Scale, Settings, Utensils, X, Zap } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
 import { useCelebrate } from '@/app/celebrate'
 import { usePalette } from '@/app/theme'
@@ -23,12 +23,22 @@ import { useStarter } from '@/state/starter'
 import { Button } from '@/ui/Button'
 import { Card } from '@/ui/Card'
 import { Chip } from '@/ui/Chip'
+import { usePrefs } from '@/app/prefs'
+import { MASCOT_GEAR, Mascot, mascotMood, type MascotMood } from '@/ui/Mascot'
 import { ProgressRing } from '@/ui/ProgressRing'
 import { unlockAudio } from '@/voice/beeps'
 import { CalorieRing, MacroBar } from '../eat/Rings'
 import { QuestCard } from './QuestCard'
 import { StarterCard } from './StarterCard'
 import { StreakCard } from './StreakCard'
+
+const MOOD_LINE: Record<MascotMood, string> = {
+  cheer: 'Ember: perfect day! 💎',
+  fired: 'Ember: you trained today 🔥',
+  happy: 'Ember: nice progress',
+  calm: 'Ember’s tip of the day',
+  sleepy: 'Ember: rest well tonight',
+}
 
 function greeting(h: number) {
   return h < 5 ? 'Up early' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
@@ -44,6 +54,7 @@ export default function TodayPage() {
   const palette = usePalette()
   const quests = useQuests(plan?.profile)
   const starter = useStarter()
+  const gear = usePrefs((s) => s.gear)
   const [params, setParams] = useSearchParams()
   const waterDone = useRef(false)
 
@@ -132,6 +143,12 @@ export default function TodayPage() {
 
   if (!plan || !derived || !day) return <div className="grid h-[60vh] place-items-center text-muted animate-pulse-soft">Loading…</div>
   const { p, planDoneToday, trainingDay, next, upcoming, streak, targets, eaten, tip } = derived
+  const mood = mascotMood({
+    hour: new Date().getHours(),
+    workoutDone: !!planDoneToday,
+    perfect: !!quests?.perfect,
+    anyProgress: (quests?.doneCount ?? 0) > 0 || derived.doneToday.length > 0,
+  })
   const items = mainExercises(next)
   const firstEx = items[0] ? getExercise(items[0].exerciseId) : undefined
   const showReview = review && plan.progress.sessionsCompleted > 0 && isoWeekday(today) <= 2 && reviewDismissed !== lastWeek && parseISODate(p.createdAt.slice(0, 10)) < parseISODate(lastWeek)
@@ -299,10 +316,11 @@ export default function TodayPage() {
 
       <StreakCard streak={streak} workouts={workouts ?? []} trainingDays={p.trainingDays} today={today} />
 
-      <Card className="mt-3 flex gap-3">
-        <Lightbulb size={20} className="mt-0.5 shrink-0 text-amber" />
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted">Tip of the day</div>
+      <Card className="mt-3 flex items-start gap-3">
+        <Mascot mood={mood} size={60} className="mt-1" gear={gear && (level?.level ?? 1) >= (MASCOT_GEAR.find((g) => g.id === gear)?.level ?? 99) ? gear : null} />
+        <div className="relative min-w-0 flex-1 rounded-2xl rounded-tl-md bg-surface-2 p-3">
+          <span aria-hidden className="absolute top-3 -left-1.5 h-3 w-3 rotate-45 bg-surface-2" />
+          <div className="text-xs font-semibold uppercase tracking-wider text-ember">{MOOD_LINE[mood]}</div>
           {tip.title ? <div className="mt-0.5 font-semibold">{tip.title}</div> : null}
           <p className="mt-0.5 text-sm text-muted">{tip.text}</p>
         </div>

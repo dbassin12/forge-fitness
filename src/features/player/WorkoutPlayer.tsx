@@ -25,6 +25,7 @@ import { planDates } from '@/state/gamification'
 import { Button } from '@/ui/Button'
 import { Card } from '@/ui/Card'
 import { Sheet } from '@/ui/Sheet'
+import { Toggle } from '@/ui/Toggle'
 import { cx } from '@/ui/cx'
 import { unlockAudio } from '@/voice/beeps'
 import { useVoiceSettings } from '@/voice/settings'
@@ -308,15 +309,9 @@ export default function WorkoutPlayer() {
       </Card>
       {gear.length ? <p className="mt-3 text-sm text-muted">Have ready: {gear.join(', ')}.</p> : null}
       <CoachPicker />
-      <div className="mt-3 space-y-1 rounded-2xl bg-surface-2 p-3 text-sm">
-        <label className="flex items-center justify-between gap-3">
-          <span>Voice coach</span>
-          <input type="checkbox" className="h-5 w-5 accent-[var(--color-ember)]" checked={voice.enabled} onChange={(e) => voice.update({ enabled: e.target.checked })} />
-        </label>
-        <label className="flex items-center justify-between gap-3">
-          <span>Count my reps in tempo</span>
-          <input type="checkbox" className="h-5 w-5 accent-[var(--color-ember)]" checked={voice.countReps} onChange={(e) => voice.update({ countReps: e.target.checked })} />
-        </label>
+      <div className="mt-3 rounded-2xl bg-surface-2 px-3 py-1">
+        <Toggle checked={voice.enabled} onChange={(x) => voice.update({ enabled: x })} label="Voice coach" />
+        <Toggle checked={voice.countReps} onChange={(x) => voice.update({ countReps: x })} label="Count my reps in tempo" />
       </div>
       <div className="mt-auto pt-6" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
         <Button block size="lg" icon={<Play size={22} fill="currentColor" />} onClick={() => start(null)} className={cx('h-16 text-lg', resumable ? 'opacity-90' : 'animate-glow')}>

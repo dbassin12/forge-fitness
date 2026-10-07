@@ -11,7 +11,7 @@ export interface BadgeInfo {
 }
 
 export type Celebration =
-  | { kind: 'level'; level: number; title: string; unlocks: AccentInfo[] }
+  | { kind: 'level'; level: number; title: string; unlocks: AccentInfo[]; gear?: { id: 'headband' | 'shades' | 'cap' | 'medal' | 'crown'; name: string }[] }
   | { kind: 'badges'; badges: BadgeInfo[] }
   | { kind: 'pb'; title: string; text: string; emoji: string }
 

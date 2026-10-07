@@ -7,6 +7,8 @@ import { Button } from '@/ui/Button'
 import { cx } from '@/ui/cx'
 import { useCelebrate, type BadgeInfo, type Celebration, type Toast } from './celebrate'
 import { burst } from './confetti'
+import { Mascot } from '@/ui/Mascot'
+import { usePrefs } from './prefs'
 import { useTheme } from './theme'
 
 const TIER_RING: Record<BadgeInfo['tier'], string> = {
@@ -26,7 +28,10 @@ export function BadgeMedal({ badge, tier, size = 'lg', locked, className, style 
 
 function LevelUp({ c, onDone }: { c: Extract<Celebration, { kind: 'level' }>; onDone: () => void }) {
   const setAccent = useTheme((s) => s.setAccent)
+  const updatePrefs = usePrefs((s) => s.update)
+  const wearing = usePrefs((s) => s.gear)
   const unlock = c.unlocks[c.unlocks.length - 1]
+  const newGear = c.gear?.[c.gear.length - 1]
   return (
     <div className="relative flex flex-col items-center px-6 text-center">
       <div
@@ -65,7 +70,27 @@ function LevelUp({ c, onDone }: { c: Extract<Celebration, { kind: 'level' }>; on
           </Button>
         </div>
       ) : null}
-      <Button size="lg" block className="relative mt-6 max-w-xs" onClick={onDone}>
+      {newGear ? (
+        <div className="relative mt-3 flex w-full max-w-xs items-center gap-3 rounded-2xl border border-line bg-surface-2 p-3 text-left animate-fade-up [animation-delay:550ms]">
+          <Mascot gear={newGear.id} mood="cheer" size={44} />
+          <div className="min-w-0 flex-1">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted">New gear for Ember</div>
+            <div className="font-semibold">{newGear.name}</div>
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={wearing === newGear.id}
+            onClick={() => {
+              updatePrefs({ gear: newGear.id })
+              haptic('medium')
+            }}
+          >
+            {wearing === newGear.id ? 'Wearing' : 'Put it on'}
+          </Button>
+        </div>
+      ) : null}
+      <Button size="lg" block className="relative mt-6 max-w-xs" onClick={onDone} autoFocus>
         Keep going
       </Button>
     </div>
@@ -102,7 +127,7 @@ function Badges({ c, onDone }: { c: Extract<Celebration, { kind: 'badges' }>; on
       <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-violet/15 px-3 py-1 text-sm font-semibold text-violet">
         <Sparkles size={15} /> +{20 * c.badges.length} XP
       </div>
-      <Button size="lg" block className="mt-6 max-w-xs" onClick={onDone}>
+      <Button size="lg" block className="mt-6 max-w-xs" onClick={onDone} autoFocus>
         Awesome
       </Button>
     </div>
@@ -116,7 +141,7 @@ function PersonalBest({ c, onDone }: { c: Extract<Celebration, { kind: 'pb' }>; 
       <div className="mt-4 animate-bounce-in text-7xl">{c.emoji}</div>
       <h2 className="mt-4 font-display text-3xl font-bold">{c.title}</h2>
       <p className="mt-1 text-muted">{c.text}</p>
-      <Button size="lg" block className="mt-6 max-w-xs" onClick={onDone}>
+      <Button size="lg" block className="mt-6 max-w-xs" onClick={onDone} autoFocus>
         Let’s go
       </Button>
     </div>
@@ -125,6 +150,11 @@ function PersonalBest({ c, onDone }: { c: Extract<Celebration, { kind: 'pb' }>; 
 
 function Modal({ c }: { c: Celebration }) {
   const shift = useCelebrate((s) => s.shift)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && shift()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [shift])
   useEffect(() => {
     if (c.kind === 'level') {
       sfx.levelUp()

@@ -8,6 +8,7 @@ import { checkAchievements, useTotalXp } from '@/state/gamification'
 import { evaluateQuests, useQuestSignal } from '@/state/quests'
 import { useProfile } from '@/state/store'
 import { useCelebrate } from './celebrate'
+import { MASCOT_GEAR } from '@/ui/Mascot'
 import { ACCENTS } from './theme'
 
 // One reward check at a time (StrictMode and fast taps can fire effects back to back).
@@ -84,7 +85,8 @@ export function useRewardWatch({ floaters, badgeScreen }: { floaters: boolean; b
       if (level === seen) return
       await kvSet('level.seen', level)
       const unlocks = ACCENTS.filter((a) => a.unlockLevel > seen && a.unlockLevel <= level)
-      useCelebrate.getState().push({ kind: 'level', level, title: levelTitle(level), unlocks })
+      const gear = MASCOT_GEAR.filter((g) => g.level > seen && g.level <= level).map(({ id, name }) => ({ id, name }))
+      useCelebrate.getState().push({ kind: 'level', level, title: levelTitle(level), unlocks, gear })
     })
   }, [xp])
 

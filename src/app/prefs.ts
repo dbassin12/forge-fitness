@@ -13,6 +13,8 @@ export interface Prefs {
   celebrations: boolean
   motion: MotionPref
   coach: CoachStyle
+  /** What Ember wears (unlocked by level; null = nothing). */
+  gear: 'headband' | 'shades' | 'cap' | 'medal' | 'crown' | null
 }
 
 export const COACH_STYLES: { id: CoachStyle; name: string; emoji: string; blurb: string; sample: string }[] = [
@@ -23,7 +25,7 @@ export const COACH_STYLES: { id: CoachStyle; name: string; emoji: string; blurb:
 ]
 
 const KEY = 'forge.prefs'
-const DEFAULTS: Prefs = { sounds: true, haptics: true, celebrations: true, motion: 'system', coach: 'hype' }
+const DEFAULTS: Prefs = { sounds: true, haptics: true, celebrations: true, motion: 'system', coach: 'hype', gear: null }
 
 function load(): Prefs {
   try {

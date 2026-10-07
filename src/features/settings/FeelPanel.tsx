@@ -5,6 +5,7 @@ import { haptic } from '@/device/haptics'
 import { sfx } from '@/device/sfx'
 import { useLevel } from '@/state/gamification'
 import { cx } from '@/ui/cx'
+import { MASCOT_GEAR, Mascot } from '@/ui/Mascot'
 import { Segmented } from '@/ui/Segmented'
 import { Toggle } from '@/ui/Toggle'
 import { unlockAudio } from '@/voice/beeps'
@@ -72,6 +73,38 @@ export function FeelPanel() {
                 {on ? <Check size={20} strokeWidth={3} className="text-black/70" /> : locked ? <Lock size={15} className="text-black/60" /> : null}
               </span>
               <span className={cx('text-[11px]', on ? 'font-semibold text-ink' : 'text-muted')}>{locked ? `Lv ${a.unlockLevel}` : a.name}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="mt-5 flex items-baseline justify-between">
+        <span className="text-sm font-medium text-muted">Ember’s gear</span>
+        <span className="text-xs text-faint">Earn more by leveling up</span>
+      </div>
+      <div className="no-scrollbar -mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-1">
+        {[{ id: null, name: 'None', level: 1 } as const, ...MASCOT_GEAR].map((g) => {
+          const locked = level < g.level
+          const on = prefs.gear === g.id
+          return (
+            <button
+              key={g.name}
+              type="button"
+              disabled={locked}
+              aria-pressed={on}
+              aria-label={locked ? `${g.name}, unlocks at level ${g.level}` : g.name}
+              onClick={() => {
+                prefs.update({ gear: g.id })
+                haptic('light')
+                sfx.pop()
+              }}
+              className={cx('pressable flex w-[72px] shrink-0 flex-col items-center rounded-2xl border px-1 py-2', on ? 'border-ember bg-ember/10' : 'border-line bg-surface-2', locked && 'opacity-50')}
+            >
+              <span className="relative">
+                <Mascot gear={g.id} mood="happy" size={40} className={locked ? 'grayscale' : ''} />
+                {locked ? <Lock size={14} className="absolute -right-1 -bottom-1 text-muted" /> : null}
+              </span>
+              <span className={cx('mt-1 truncate text-[11px]', on ? 'font-semibold text-ember' : 'text-muted')}>{locked ? `Lv ${g.level}` : g.name}</span>
             </button>
           )
         })}
