@@ -25,34 +25,58 @@ app, works offline, and keeps your data on your phone.
   quick add, custom foods, a weekly meal plan from 55 quick recipes with a grocery list, and a Lite
   mode that only tracks protein, veggies and water. Kosher-style, vegetarian, vegan and
   pescatarian filters (kosher-style never mixes meat and dairy in a meal).
-- **Motivation and progress.** XP and levels, a weekly-goal streak with freezes, 33
-  achievements, ~300 tips, a skill tree, a Sunday weekly review, weight/measurement/photo
-  tracking and a fitness retest every 4 weeks.
-- **Reminders.** Real push notifications (even with the app closed) for workouts, a streak
-  saver, meals, water, movement snacks, an evening check-in, weigh-ins and the weekly review —
-  plus an "Add to calendar" backup.
+- **Play.** Games that sneak in a workout: **Spin the wheel** (a random move, with combo XP for
+  spins in a row), **Deck of cards** (the suit picks the move, the number is the reps; quick,
+  half or full deck, best times) and **record challenges** (plank, push-up blitz, squat sprint,
+  wall sit, jack attack) with tap-to-count and personal bests. Every move matches your level,
+  equipment and aches.
+- **Daily quests and rewards.** Three small goals a day (one to move, one to eat well, a bonus)
+  with XP and a perfect-day bonus. XP and levels unlock accent colors and gear for **Ember**,
+  Forge's flame mascot, who gives the daily tip and reacts to your day. 40 achievements on a
+  trophy shelf with progress bars, a weekly-goal streak with freezes, celebrations with confetti,
+  sound effects and vibration, and a weekly recap you can tap through like a story.
+- **Progress.** Weight trend, workouts per week, calories and protein charts, measurements,
+  progress photos, a skill path for every movement and a fitness retest every 4 weeks.
+- **Make it yours.** Auto, dark or light theme; six accent colors; a coach personality (Hype,
+  Calm, Drill sergeant or Zen) that changes what the voice coach and reminders say; and
+  switches for sounds, vibration, confetti and animations.
+- **Reminders, two ways.** **Phone reminders** need no setup at all: Forge puts your workout,
+  streak-saver, water, meal, movement-snack, check-in, weigh-in and weekly-review reminders in
+  your phone's calendar, which alerts you even when Forge is closed. **Smart notifications**
+  are optional: personalized push notifications that skip themselves once you've trained, for
+  when the server below is set up.
+- **Feels like a phone app.** Bottom sheets you drag down to close, swipe from the left edge
+  to go back (iPhone Home Screen apps don't have that gesture on their own), light haptic taps
+  on iPhone (iOS 18 and later) as well as Android, and a Search key on the keyboard when you
+  search.
+- **Instructions built in.** A "Get started" checklist for your first days, a **How Forge
+  works** guide with an FAQ, voiced tutorials and a "Try a set" button on every exercise.
 - **Ask Claude, on your Claude subscription.** Coach questions open the Claude app with a
   summary of your plan, food and workouts attached. Meal estimates work the same way: snap
   the photo in Claude, paste its answer back into Forge, then review and log. No API key.
 
 ## Install it on your phone
 
-1. Open the app's address (for example `https://forge-fitness.vercel.app`) on your phone.
+1. Open the app's address (`https://forge-fitness-liard.vercel.app`) on your phone.
 2. **iPhone (iOS 16.4 or newer):** in **Safari**, tap **Share** → **Add to Home Screen** →
    **Add**. Then open Forge from the new icon. (Notifications only work from the Home Screen
    icon, not from a Safari tab.)
 3. **Android:** in **Chrome**, tap **Install app** when it's offered, or **⋮** →
    **Add to Home screen** / **Install app**.
 4. Open Forge, finish the short setup, and you're on today's plan.
-5. Turn on reminders: **More → Reminders**, enter your access code (the `APP_PASSCODE` below),
-   tap **Turn on**, allow notifications, then **Send test**.
+5. Turn on reminders: **Settings (gear on Today) → Reminders → Add to my calendar**. On iPhone,
+   tap **Add All** in the Calendar screen that opens; on Android, open the downloaded file with
+   your calendar app. That's all. (Prefer smart notifications? Pick **Smart notifications** on
+   the same screen after doing the server setup below.)
 
-Your data lives on the phone. Use **More → Backup & data → Export backup** now and then
+Your data lives on the phone. Use **Settings → Backup & data → Export backup** now and then
 (especially before switching phones), and **Protect** storage so the browser won't clear it.
 
 ## Put it online (Vercel, about 10 minutes)
 
-You need a free [Vercel](https://vercel.com) account connected to GitHub.
+You need a free [Vercel](https://vercel.com) account connected to GitHub. Steps 2–5 are only
+for **smart notifications**; phone reminders, workouts, food tracking and everything else work
+without them.
 
 1. **Create the project.** Vercel → **Add New… → Project** → import `dbassin12/forge-fitness`
    and keep the project name `forge-fitness` (the Vite preset and build settings come from
@@ -72,10 +96,10 @@ You need a free [Vercel](https://vercel.com) account connected to GitHub.
 4. **Start the reminder clock.** Merge this work into `main`. The GitHub Actions workflow
    `.github/workflows/fitness-reminders.yml` then runs every 15 minutes and asks the app to send
    any due reminders. It signs in with a short-lived GitHub token, so there's no secret to copy.
-   If your app isn't at `https://forge-fitness.vercel.app`, add a repository **variable**
+   If your app isn't at `https://forge-fitness-liard.vercel.app`, add a repository **variable**
    `FORGE_TICK_URL` (GitHub → Settings → Secrets and variables → Actions → Variables) set to
    `https://<your-domain>/api/tick`.
-5. **Check it.** On the phone: **More → Reminders** shows when the scheduler last ran and warns
+5. **Check it.** On the phone: **Settings (gear on Today) → Reminders** shows when the scheduler last ran and warns
    if it's stale.
 
 With `CRON_SECRET` set, a daily Vercel cron also calls the tick as a safety net: if the GitHub
@@ -91,8 +115,9 @@ clock stops, you'll get a notification saying so.
 - **Minute-exact option:** create a free job at [cron-job.org](https://cron-job.org) that sends
   `POST https://<your-domain>/api/tick` every 5–10 minutes with the header
   `Authorization: Bearer <CRON_SECRET>`.
-- **Zero-setup backup:** **More → Reminders → Add workouts to my calendar** downloads an
-  `.ics` file with alarms that your phone's calendar will always deliver.
+- **No server at all:** phone reminders (**Settings → Reminders → Add to my calendar**) put
+  every reminder in your phone's calendar with an alert. The calendar delivers them, so they
+  work even if the server or the GitHub scheduler is down.
 
 ### Ask Claude: how it works
 

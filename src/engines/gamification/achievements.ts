@@ -19,6 +19,14 @@ export interface Stats {
   waterDays: number
   weighIns: number
   photos: number
+  /** Daily quests completed (all time). */
+  quests: number
+  /** Days with all three quests done. */
+  perfectDays: number
+  /** Play-tab games finished. */
+  plays: number
+  /** Full 52-card decks finished. */
+  fullDecks: number
 }
 
 export const EMPTY_STATS: Stats = {
@@ -41,6 +49,10 @@ export const EMPTY_STATS: Stats = {
   waterDays: 0,
   weighIns: 0,
   photos: 0,
+  quests: 0,
+  perfectDays: 0,
+  plays: 0,
+  fullDecks: 0,
 }
 
 export type AchievementTier = 'bronze' | 'silver' | 'gold'
@@ -98,9 +110,65 @@ export const ACHIEVEMENTS: Achievement[] = [
   a('water-7', 'Well Watered', 'Hit your water goal on 7 days', '💧', 'bronze', (s) => s.waterDays >= 7),
   a('weigh-4', 'Scale Regular', 'Log your weight 4 times', '⚖️', 'bronze', (s) => s.weighIns >= 4),
   a('photo-1', 'Day One Photo', 'Take your first progress photo', '📸', 'bronze', (s) => s.photos >= 1),
+  a('quest-1', 'Quest Starter', 'Complete your first daily quest', '🗺️', 'bronze', (s) => s.quests >= 1),
+  a('quest-50', 'Quest Master', 'Complete 50 daily quests', '🧭', 'gold', (s) => s.quests >= 50),
+  a('perfect-1', 'Perfect Day', 'Finish all three daily quests in one day', '💎', 'bronze', (s) => s.perfectDays >= 1),
+  a('perfect-7', 'Perfect Seven', 'Have 7 perfect days', '👑', 'gold', (s) => s.perfectDays >= 7),
+  a('play-1', 'Game On', 'Finish a game in the Play tab', '🎮', 'bronze', (s) => s.plays >= 1),
+  a('play-20', 'Player One', 'Finish 20 games in the Play tab', '🕹️', 'silver', (s) => s.plays >= 20),
+  a('deck-52', 'Full Deck', 'Work through a full 52-card deck', '🃏', 'gold', (s) => s.fullDecks >= 1),
 ]
 
 /** Achievements earned by these stats that aren't in `unlocked` yet. */
 export function newlyUnlocked(stats: Stats, unlocked: ReadonlySet<string>): Achievement[] {
   return ACHIEVEMENTS.filter((x) => !unlocked.has(x.id) && x.check(stats))
+}
+
+/** What each countable achievement measures, so the trophy shelf can show progress. */
+const NEED: Record<string, [keyof Stats, number]> = {
+  'first-rep': ['workouts', 1],
+  'three-done': ['workouts', 3],
+  'ten-done': ['workouts', 10],
+  'twentyfive-done': ['workouts', 25],
+  'fifty-done': ['workouts', 50],
+  'hundred-done': ['workouts', 100],
+  'snack-1': ['snacks', 1],
+  'snack-10': ['snacks', 10],
+  'pushups-100': ['pushupReps', 100],
+  'pushups-1000': ['pushupReps', 1000],
+  'squats-500': ['squatReps', 500],
+  'plank-60': ['bestPlankSec', 60],
+  'plank-120': ['bestPlankSec', 120],
+  'minutes-60': ['minutes', 60],
+  'minutes-600': ['minutes', 600],
+  'pr-1': ['prs', 1],
+  'pr-10': ['prs', 10],
+  'level-up': ['levelUps', 1],
+  'level-up-10': ['levelUps', 10],
+  'streak-2': ['weeklyStreak', 2],
+  'streak-4': ['weeklyStreak', 4],
+  'streak-12': ['weeklyStreak', 12],
+  'daily-7': ['dailyStreak', 7],
+  retest: ['tests', 2],
+  'food-1': ['foodLogs', 1],
+  'food-100': ['foodLogs', 100],
+  'protein-7': ['proteinDays', 7],
+  'water-7': ['waterDays', 7],
+  'weigh-4': ['weighIns', 4],
+  'photo-1': ['photos', 1],
+  'quest-1': ['quests', 1],
+  'quest-50': ['quests', 50],
+  'perfect-1': ['perfectDays', 1],
+  'perfect-7': ['perfectDays', 7],
+  'play-1': ['plays', 1],
+  'play-20': ['plays', 20],
+  'deck-52': ['fullDecks', 1],
+}
+
+/** Progress toward an achievement (null for yes/no ones like "Early Bird"). */
+export function achievementProgress(id: string, s: Stats): { value: number; target: number } | null {
+  const need = NEED[id]
+  if (!need) return null
+  const v = s[need[0]]
+  return { value: Math.min(need[1], typeof v === 'number' ? v : v ? 1 : 0), target: need[1] }
 }

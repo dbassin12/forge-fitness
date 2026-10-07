@@ -33,7 +33,7 @@ export function EquipmentEditor({
               <div className="flex items-center gap-2">
                 <Segmented
                   label="How many"
-                  className="w-28"
+                  className="w-24 shrink-0"
                   value={x.count}
                   onChange={(v) => updateDb(x.id, { count: v })}
                   options={[
@@ -42,22 +42,26 @@ export function EquipmentEditor({
                   ]}
                 />
                 <span className="text-muted">×</span>
-                <Stepper value={x.weightLb} min={2.5} max={100} step={2.5} unit="lb" label="dumbbell weight" onChange={(v) => updateDb(x.id, { weightLb: v })} />
+                <Stepper size="sm" value={x.weightLb} min={2.5} max={100} step={2.5} unit="lb" label="dumbbell weight" onChange={(v) => updateDb(x.id, { weightLb: v })} />
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="min-w-0 flex-1">
+                  <Toggle
+                    checked={x.found}
+                    onChange={(v) => updateDb(x.id, { found: v })}
+                    label={x.found ? 'Found it — use it' : "Can't find it yet"}
+                    description={x.found ? undefined : "We'll plan around it and switch it in when you find it."}
+                  />
+                </div>
                 <button
                   type="button"
                   aria-label="Remove"
-                  className="ml-auto grid h-9 w-9 place-items-center rounded-full text-faint hover:text-bad"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-faint hover:text-bad"
                   onClick={() => onChange({ ...equipment, dumbbells: equipment.dumbbells.filter((y) => y.id !== x.id) })}
                 >
                   <Trash2 size={17} />
                 </button>
               </div>
-              <Toggle
-                checked={x.found}
-                onChange={(v) => updateDb(x.id, { found: v })}
-                label={x.found ? 'Found it — use it' : "Can't find it yet"}
-                description={x.found ? undefined : "We'll plan around it and switch it in when you find it."}
-              />
             </li>
           ))}
         </ul>

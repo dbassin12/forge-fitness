@@ -8,6 +8,7 @@ import {
   Check,
   Dumbbell,
   Flame,
+  Gamepad2,
   HeartPulse,
   Sparkles,
   Timer,
@@ -41,7 +42,10 @@ import { Chip } from '@/ui/Chip'
 import { cx } from '@/ui/cx'
 import { Segmented } from '@/ui/Segmented'
 import { Stepper } from '@/ui/Stepper'
+import { burst } from '@/app/confetti'
+import { sfx } from '@/device/sfx'
 import { FitnessTest } from './FitnessTest'
+import { Hero } from './Hero'
 import { InstallGuide } from './InstallGuide'
 import { EquipmentEditor } from '../settings/EquipmentEditor'
 
@@ -220,7 +224,14 @@ export default function OnboardingPage() {
     return generateSession(planInputsFromProfile(profile), progress, { index: 0 })
   }, [step, d, test])
 
-  const next = () => setStep(STEPS[Math.min(STEPS.length - 1, i + 1)])
+  const next = () => {
+    const to = STEPS[Math.min(STEPS.length - 1, i + 1)]
+    if (to === 'summary') {
+      sfx.success()
+      window.setTimeout(() => burst('small'), 200)
+    }
+    setStep(to)
+  }
   const back = () => (testing ? setTesting(false) : setStep(STEPS[Math.max(0, i - 1)]))
 
   const canContinue = (() => {
@@ -244,7 +255,7 @@ export default function OnboardingPage() {
     await saveProfile(profile)
     await saveProgress(initialProgress(profile, test ?? undefined))
     void requestPersistence()
-    navigate('/train', { replace: true })
+    navigate('/today', { replace: true })
   }
 
   let body: ReactNode = null
@@ -253,20 +264,22 @@ export default function OnboardingPage() {
       body = (
         <>
           <div className="mt-4 flex items-center gap-3">
-            <img src="/icons/icon-192.png" alt="" className="h-16 w-16 rounded-2xl" />
+            <img src="/icons/icon-192.png" alt="" className="h-14 w-14 rounded-2xl" />
             <div>
               <div className="font-display text-3xl font-bold">Forge</div>
               <div className="text-muted">Your pocket calisthenics coach</div>
             </div>
           </div>
-          <ul className="mt-8 space-y-4">
+          <Hero />
+          <ul className="mt-6 space-y-4">
             {[
               { Icon: Timer, t: 'Workouts that fit your day', s: 'A plan built around your minutes, your dumbbells and your body.' },
               { Icon: Video, t: 'Animated, voiced coaching', s: 'Every exercise demonstrated, explained and counted out loud.' },
+              { Icon: Gamepad2, t: 'Games, quests and rewards', s: 'Spin the wheel, deck-of-cards workouts, daily quests, XP and badges.' },
               { Icon: Apple, t: 'Eat better without the grind', s: 'Calories, protein, quick meal plans and helpful nudges.' },
               { Icon: Bell, t: 'Reminders that keep you going', s: 'Gentle nudges for workouts, meals, water and streaks.' },
-            ].map(({ Icon, t, s }) => (
-              <li key={t} className="flex gap-3">
+            ].map(({ Icon, t, s }, k) => (
+              <li key={t} className="flex animate-fade-up gap-3" style={{ animationDelay: `${150 + k * 80}ms` }}>
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-ember/15 text-ember">
                   <Icon size={20} />
                 </span>
@@ -452,7 +465,7 @@ export default function OnboardingPage() {
               </select>
             </Field>
           </div>
-          <p className="mt-2 text-xs text-faint">You'll switch notifications on after setup. Fine-tune every reminder in More → Reminders.</p>
+          <p className="mt-2 text-xs text-faint">After setup, one tap puts them in your phone's calendar, no account needed. Fine-tune them anytime in Settings (the gear on Today) → Reminders.</p>
         </>
       )
       break
@@ -589,8 +602,9 @@ export default function OnboardingPage() {
       const s = preview!
       body = (
         <>
+          <div className="mb-1 text-4xl animate-bounce-in">🎉</div>
           <Title sub={`${splitName(d.daysPerWeek, d.sessionMinutes)} · ${d.daysPerWeek}× a week · ${d.sessionMinutes} min`}>
-            {d.name.trim() ? `${d.name.trim()}, here's your plan` : "Here's your plan"}
+            {d.name.trim() ? `${d.name.trim()}, your plan is ready` : 'Your plan is ready'}
           </Title>
           <Card>
             <div className="flex items-center gap-2 text-sm text-muted">
@@ -606,8 +620,8 @@ export default function OnboardingPage() {
                 .map((it) => {
                   const ex = getExercise(it.exerciseId)!
                   return (
-                    <li key={it.exerciseId} className="rounded-xl bg-bg p-1.5">
-                      <Mannequin motion={motionFor(ex)} playing={false} time={0.9} palette={palette} className="aspect-[4/3] w-full" title={ex.name} />
+                    <li key={it.exerciseId} className="animate-pop rounded-xl bg-bg p-1.5">
+                      <Mannequin motion={motionFor(ex)} palette={palette} speed={0.8} className="aspect-[4/3] w-full" title={ex.name} />
                       <div className="mt-1 line-clamp-2 text-[11px] font-semibold leading-tight">{ex.name}</div>
                       <div className="text-[11px] text-muted">{describeTarget(it)}</div>
                     </li>
@@ -640,9 +654,12 @@ export default function OnboardingPage() {
             <button type="button" aria-label="Back" onClick={back} className="-ml-2 grid h-10 w-10 place-items-center rounded-full text-muted hover:bg-surface-2">
               <ArrowLeft size={22} />
             </button>
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuemin={0} aria-valuemax={STEPS.length - 1} aria-valuenow={i}>
-              <div className="h-full rounded-full bg-ember transition-[width] duration-300" style={{ width: `${(i / (STEPS.length - 1)) * 100}%` }} />
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuemin={0} aria-valuemax={STEPS.length - 1} aria-valuenow={i} aria-label="Setup progress">
+              <div className="h-full rounded-full bg-gradient-to-r from-ember to-amber transition-[width] duration-500" style={{ width: `${(i / (STEPS.length - 1)) * 100}%` }} />
             </div>
+            <span className="w-9 text-right text-xs font-semibold text-muted tabular">
+              {i}/{STEPS.length - 1}
+            </span>
           </div>
         </div>
       ) : null}

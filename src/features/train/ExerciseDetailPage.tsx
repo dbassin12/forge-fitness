@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, ExternalLink, PlayCircle, Wind } from 'lucide-react'
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Dumbbell, ExternalLink, PlayCircle, Wind } from 'lucide-react'
+import { useCelebrate } from '@/app/celebrate'
+import { MoveRunner } from '../play/MoveRunner'
 import { EQUIP_LABEL, EXERCISES, MUSCLE_LABEL, PATTERN_LABEL, getExercise, highlightFor, motionFor, youtubeUrl } from '@/data/exercises'
 import { Mannequin } from '@/anim/Mannequin'
 import { PageHeader } from '@/ui/PageHeader'
@@ -17,6 +19,7 @@ export default function ExerciseDetailPage() {
   const { id = '' } = useParams()
   const ex = getExercise(id)
   const [tutorial, setTutorial] = useState(false)
+  const [trying, setTrying] = useState(false)
   const palette = usePalette()
   const neighbors = useMemo(() => {
     if (!ex) return { easier: undefined, harder: undefined }
@@ -62,8 +65,8 @@ export default function ExerciseDetailPage() {
         <p className="mt-3 text-[15px] text-muted">{c.summary}</p>
         <div className="mt-4 flex gap-2">
           <Button
-            block
             size="lg"
+            className="min-w-0 flex-1 px-4"
             icon={<PlayCircle size={22} />}
             onClick={() => {
               speech.unlock()
@@ -71,7 +74,20 @@ export default function ExerciseDetailPage() {
               setTutorial(true)
             }}
           >
-            Watch voiced tutorial
+            Tutorial
+          </Button>
+          <Button
+            size="lg"
+            variant="secondary"
+            className="px-4"
+            icon={<Dumbbell size={20} />}
+            onClick={() => {
+              speech.unlock()
+              unlockAudio()
+              setTrying(true)
+            }}
+          >
+            Try a set
           </Button>
         </div>
 
@@ -135,7 +151,7 @@ export default function ExerciseDetailPage() {
             <div className="text-sm">
               <div className="text-muted">{c.easier}</div>
               {neighbors.easier ? (
-                <Link to={`/exercise/${neighbors.easier.id}`} className="mt-1 inline-block font-medium text-teal">
+                <Link to={`/exercise/${neighbors.easier.id}`} className="-mt-1 -mb-2 inline-block py-2 font-medium text-teal">
                   {neighbors.easier.name} →
                 </Link>
               ) : null}
@@ -146,7 +162,7 @@ export default function ExerciseDetailPage() {
             <div className="text-sm">
               <div className="text-muted">{c.harder}</div>
               {neighbors.harder ? (
-                <Link to={`/exercise/${neighbors.harder.id}`} className="mt-1 inline-block font-medium text-ember">
+                <Link to={`/exercise/${neighbors.harder.id}`} className="-mt-1 -mb-2 inline-block py-2 font-medium text-ember">
                   {neighbors.harder.name} →
                 </Link>
               ) : null}
@@ -161,11 +177,22 @@ export default function ExerciseDetailPage() {
           </Card>
         ) : null}
 
-        <a href={youtubeUrl(ex)} target="_blank" rel="noreferrer" className="mt-4 mb-6 flex items-center justify-center gap-2 text-sm text-muted hover:text-ink">
+        <a href={youtubeUrl(ex)} target="_blank" rel="noreferrer" className="mt-1 mb-3 flex items-center justify-center gap-2 py-3 text-sm text-muted hover:text-ink">
           <ExternalLink size={16} /> See real-person videos on YouTube
         </a>
       </div>
       {tutorial ? <TutorialPlayer exercise={ex} onClose={() => setTutorial(false)} /> : null}
+      {trying ? (
+        <MoveRunner
+          move={{ exerciseId: ex.id, measure: ex.measure === 'time' ? 'time' : 'reps', amount: ex.measure === 'time' ? ex.range[0] : Math.round((ex.range[0] + ex.range[1]) / 2) }}
+          title={`Try it: ${ex.name}`}
+          onCancel={() => setTrying(false)}
+          onDone={() => {
+            setTrying(false)
+            useCelebrate.getState().toast({ tone: 'info', title: 'Nice set!', text: `You tried ${ex.name}.`, emoji: '💪' })
+          }}
+        />
+      ) : null}
     </>
   )
 }

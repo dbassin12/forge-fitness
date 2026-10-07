@@ -728,7 +728,7 @@ export function generateSnack(inputs: PlanInputs, minutes: number, variant = 0):
     key: `snack:${variant}:${minutes}`,
     index: -1,
     templateId: 'cond_core',
-    title: `${Math.round(estSec / 60) || 1}-minute movement snack`,
+    title: `${Math.round(minutes)}-minute movement snack`,
     focus: 'full',
     minutes,
     mesoWeek: 0,

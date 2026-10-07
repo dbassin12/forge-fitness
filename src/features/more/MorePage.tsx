@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import {
   Apple,
   Bell,
+  BookOpen,
   Bot,
   CalendarDays,
   ChevronRight,
@@ -20,7 +21,8 @@ import {
   User,
   Volume2,
 } from 'lucide-react'
-import { useTheme } from '@/app/theme'
+import { COACH_STYLES, usePrefs } from '@/app/prefs'
+import { accentInfo, useTheme } from '@/app/theme'
 import type { Ache, DietStyle, Equipment, Experience, Goal, Profile } from '@/domain/types'
 import { splitName } from '@/engines/plan'
 import { WEEKDAY_SHORT } from '@/lib/dates'
@@ -40,8 +42,9 @@ import { useVoiceSettings } from '@/voice/settings'
 import { speech } from '@/voice/speech'
 import { InstallGuide } from '../onboarding/InstallGuide'
 import { EquipmentEditor } from '../settings/EquipmentEditor'
+import { FeelPanel } from '../settings/FeelPanel'
 
-type Panel = 'profile' | 'schedule' | 'equipment' | 'health' | 'food' | 'voice' | 'data' | null
+type Panel = 'profile' | 'schedule' | 'equipment' | 'health' | 'food' | 'voice' | 'data' | 'feel' | null
 
 function Row({ icon, title, sub, onClick, to }: { icon: ReactNode; title: string; sub?: string; onClick?: () => void; to?: string }) {
   const inner = (
@@ -75,8 +78,9 @@ const DIET_LABEL: Record<DietStyle, string> = { none: 'No restrictions', kosher:
 export default function MorePage() {
   const profile = useProfile()
   const [panel, setPanel] = useState<Panel>(null)
-  const { theme, setTheme } = useTheme()
-  if (!profile) return <PageHeader title="More" />
+  const { theme, mode, accent } = useTheme()
+  const coach = usePrefs((s) => s.coach)
+  if (!profile) return <PageHeader title="Settings" back />
   const p = profile
   const close = () => setPanel(null)
   const dbs = p.equipment.dumbbells
@@ -84,7 +88,7 @@ export default function MorePage() {
 
   return (
     <>
-      <PageHeader title="More" subtitle="Settings, reminders and your data" />
+      <PageHeader title="Settings" subtitle="Profile, reminders, look & feel, your data" back />
       <div className="px-4">
         {missing.length ? (
           <Card className="mb-3 border-amber/40 bg-amber/5">
@@ -125,26 +129,19 @@ export default function MorePage() {
             <Row icon={<Bell size={18} />} title="Reminders" sub="Workouts, meals, water, streaks" to="/more/reminders" />
             <Row icon={<Volume2 size={18} />} title="Voice & sounds" sub="Voice, speed, beeps, rep counting" onClick={() => setPanel('voice')} />
             <Row icon={<Bot size={18} />} title="Ask Claude" sub="Coach answers and meal estimates in your Claude app" to="/coach" />
+            <Row icon={<BookOpen size={18} />} title="How Forge works" sub="Plan, player, quests, games, food, reminders" to="/guide" />
           </ul>
         </Card>
 
         <SectionTitle>App</SectionTitle>
         <Card className="py-1">
           <ul className="divide-y divide-line/60">
-            <li className="flex items-center gap-3 py-2.5">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-muted">{theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}</span>
-              <span className="flex-1 font-medium">Appearance</span>
-              <Segmented
-                label="Theme"
-                className="w-40"
-                value={theme}
-                onChange={setTheme}
-                options={[
-                  { value: 'dark', label: 'Dark' },
-                  { value: 'light', label: 'Light' },
-                ]}
-              />
-            </li>
+            <Row
+              icon={theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
+              title="Look & feel"
+              sub={`${mode === 'auto' ? 'Auto' : mode === 'dark' ? 'Dark' : 'Light'} · ${accentInfo(accent).name} · ${COACH_STYLES.find((c) => c.id === coach)?.name ?? ''} coach`}
+              onClick={() => setPanel('feel')}
+            />
             <Row icon={<HardDrive size={18} />} title="Backup & data" sub="Export, restore, storage" onClick={() => setPanel('data')} />
             <Row icon={<Sparkles size={18} />} title="Animation lab" sub="Every exercise animation, frame by frame" to="/lab" />
           </ul>
@@ -181,6 +178,9 @@ export default function MorePage() {
       </Sheet>
       <Sheet open={panel === 'voice'} onClose={close} title="Voice & sounds">
         <VoiceEditor />
+      </Sheet>
+      <Sheet open={panel === 'feel'} onClose={close} title="Look & feel">
+        <FeelPanel />
       </Sheet>
       <Sheet open={panel === 'data'} onClose={close} title="Backup & data">
         <DataPanel />

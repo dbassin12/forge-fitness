@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { Check, ChevronsRight, Lightbulb, Pause, Play, Plus, SkipBack, Volume2, VolumeX, X } from 'lucide-react'
+import { Check, ChevronsRight, Lightbulb, Pause, Play, Plus, SkipBack, Volume2, VolumeX, Wind, X } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
 import { usePalette } from '@/app/theme'
 import { getExercise, highlightFor, motionFor } from '@/data/exercises'
@@ -12,7 +12,8 @@ import { chime, go, tick } from '@/voice/beeps'
 import { useCaption } from '@/voice/captions'
 import { useVoiceSettings } from '@/voice/settings'
 import { speech } from '@/voice/speech'
-import { vibrate } from '@/device/haptics'
+import { haptic, vibrate } from '@/device/haptics'
+import { coachLine } from '@/voice/coachLines'
 import { describeWork, prevWork, type RestStep, type Step, type WorkStep } from './steps'
 import type { StepValues } from './finish'
 
@@ -75,9 +76,12 @@ function announce(st: Step, steps: Step[], i: number) {
       break
     case 'set':
       say(sameEx ? `Rest ${st.seconds} seconds. Then set ${n!.round} of ${n!.rounds}.` : `Rest ${st.seconds} seconds. Next: ${what}.`, true)
+      if (n && n.round === n.rounds && n.rounds > 1) say(coachLine('lastRound'))
+      else if (st.seconds >= 30) say(coachLine('rest'))
       break
     case 'round':
       say(`Round done. Rest ${st.seconds} seconds. Next: ${what}.`, true)
+      if (n && n.round === n.rounds && n.rounds > 1) say(coachLine('lastRound'))
       break
     case 'block': {
       const needsDb = n ? getExercise(n.item.exerciseId)?.equipment.some((e) => e.startsWith('db')) : false
@@ -92,16 +96,39 @@ function fmt(sec: number) {
   return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : String(s)
 }
 
-function Ring({ progress, children, tone = 'ember' }: { progress: number; children: React.ReactNode; tone?: 'ember' | 'teal' }) {
+function Ring({ progress, children, tone = 'ember', className, burstKey }: { progress: number; children: React.ReactNode; tone?: 'ember' | 'teal'; className?: string; burstKey?: number | string }) {
   const C = 2 * Math.PI * 46
   return (
-    <div className={cx('relative grid h-44 w-44 place-items-center', tone === 'ember' ? 'text-ember' : 'text-teal')}>
+    <div className={cx('relative grid shrink-0 place-items-center', tone === 'ember' ? 'text-ember' : 'text-teal', className ?? 'h-44 w-44')}>
+      {burstKey !== undefined ? <span key={burstKey} aria-hidden className="pointer-events-none absolute inset-2 rounded-full bg-current opacity-0 animate-burst" /> : null}
       <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100" aria-hidden>
-        <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeOpacity={0.15} strokeWidth="5" />
-        <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeDasharray={`${Math.max(0, Math.min(1, progress)) * C} ${C}`} />
+        <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeOpacity={0.15} strokeWidth="6" />
+        <circle
+          cx="50"
+          cy="50"
+          r="46"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={`${Math.max(0, Math.min(1, progress)) * C} ${C}`}
+          style={{ transition: 'stroke-dasharray 300ms ease-out', filter: 'drop-shadow(0 0 6px currentColor)' }}
+        />
       </svg>
-      <div className="text-center">{children}</div>
+      <div className="relative text-center">{children}</div>
     </div>
+  )
+}
+
+/** Round/set dots: done, current, to come. */
+function SetDots({ round, rounds }: { round: number; rounds: number }) {
+  if (rounds <= 1) return null
+  return (
+    <span className="flex items-center gap-1" aria-label={`Set ${round} of ${rounds}`}>
+      {Array.from({ length: rounds }, (_, i) => (
+        <span key={i} className={cx('h-2 rounded-full transition-all', i + 1 < round ? 'w-2 bg-ember' : i + 1 === round ? 'w-5 bg-ember' : 'w-2 bg-white/25')} />
+      ))}
+    </span>
   )
 }
 
@@ -180,8 +207,8 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
         const left = st.seconds - now
         const ex = getExercise(st.item.exerciseId)
         if (st.seconds >= 20 && now >= st.seconds / 3 && once('cue') && ex?.copy.cues.length) say(ex.copy.cues[st.setIndex % ex.copy.cues.length])
-        if (st.seconds >= 30 && left <= 10 && left > 9 && once('ten')) say('Ten seconds.')
-        else if (st.seconds >= 20 && now >= st.seconds / 2 && once('half') && !flags.current.has('ten')) say('Halfway.')
+        if (st.seconds >= 30 && left <= 10 && left > 9 && once('ten')) say(coachLine('tenLeft'))
+        else if (st.seconds >= 20 && now >= st.seconds / 2 && once('half') && !flags.current.has('ten')) say(coachLine('half'))
         for (const n of [3, 2, 1]) if (left <= n && left > n - 1 && once(`b${n}`)) tick()
         if (left <= 0) {
           chime()
@@ -197,9 +224,10 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
         if (done > lastCount.current) {
           lastCount.current = done
           const ex = getExercise(st.item.exerciseId)
+          haptic('light')
           if (done >= reps) {
             say(String(done), true)
-            say('Nice!')
+            say(coachLine('setDone'))
             chime()
             vibrate([60, 40, 60])
             if (valuesRef.current[st.id] === undefined) setValue(st.id, reps)
@@ -207,7 +235,7 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
           } else {
             say(String(done))
             if (reps >= 6 && done === Math.ceil(reps / 2) && ex?.copy.cues.length) say(ex.copy.cues[st.setIndex % ex.copy.cues.length])
-            if (reps >= 4 && done === reps - 1) say('One more!')
+            if (reps >= 4 && done === reps - 1) say(coachLine('oneMore'))
           }
         }
         if (finishingAt.current !== null && now - finishingAt.current > 1.2) {
@@ -286,14 +314,14 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
           {voiceOn ? <Volume2 size={20} /> : <VolumeX size={20} />}
         </button>
       </div>
-      <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={workIdx} aria-valuemax={workTotal}>
-        <div className="h-full bg-ember transition-[width] duration-500" style={{ width: `${(workIdx / Math.max(1, workTotal)) * 100}%` }} />
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={workIdx} aria-valuemax={workTotal} aria-label="Workout progress">
+        <div className="h-full rounded-full bg-gradient-to-r from-ember to-amber transition-[width] duration-500" style={{ width: `${(workIdx / Math.max(1, workTotal)) * 100}%` }} />
       </div>
     </div>
   )
 
   const captionBar = (
-    <div className="mt-3 min-h-[3rem] px-6 text-center text-[15px] leading-snug text-muted" aria-live="polite">
+    <div className="line-clamp-2 min-h-[2.75rem] px-6 pt-2 text-center text-[15px] leading-snug text-muted" aria-live="polite">
       {caption}
     </div>
   )
@@ -310,47 +338,59 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
   }
   const count = step.seconds === undefined ? (guided ? Math.min(step.reps ?? 0, Math.floor(t / per)) : null) : null
 
+  const target = step.seconds === undefined ? (step.reps ?? 0) : 0
+  const showCount = count !== null ? count : target
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex h-dvh flex-col overflow-y-auto overscroll-contain">
       {header}
-      <div className="mx-4 mt-3 overflow-hidden rounded-3xl border border-line bg-surface">
-        <Mannequin motion={motion} clock={motionClock} palette={palette} pulse={hl.primary} className="aspect-[4/3] w-full" title={`${ex.name} demonstration`} />
-      </div>
-      <div className="mt-4 px-4 text-center">
-        <h1 className="font-display text-[28px] font-bold leading-tight">{ex.name}</h1>
-        <div className="mt-1 text-muted">
-          {describeWork(step)}
-          {step.item.loadLb ? ` · ${step.item.loadLb} lb` : ''}
+      <div className="relative mx-4 mt-3 min-h-[150px] flex-1 overflow-hidden rounded-3xl border border-line bg-surface">
+        <Mannequin motion={motion} clock={motionClock} palette={palette} pulse={hl.primary} className="h-full w-full" title={`${ex.name} demonstration`} />
+        <div className="pointer-events-none absolute inset-x-3 top-3 flex items-center justify-between">
+          <span className="flex items-center gap-2 rounded-full bg-black/45 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
+            {step.rounds > 1 ? <SetDots round={step.round} rounds={step.rounds} /> : step.blockTitle}
+          </span>
+          {step.item.loadLb ? <span className="rounded-full bg-black/45 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">{step.item.loadLb} lb</span> : null}
         </div>
-        {step.item.notes.length ? <div className="mt-1 text-sm text-amber">{step.item.notes[0]}</div> : null}
+        {paused ? (
+          <div className="absolute inset-0 grid place-items-center bg-black/50 backdrop-blur-[2px]">
+            <span className="flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 font-semibold text-white">
+              <Pause size={18} /> Paused
+            </span>
+          </div>
+        ) : null}
       </div>
-      <div className="mt-3 flex justify-center">
+      <div className="flex items-center gap-3 px-4 pt-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display text-[26px] font-bold leading-tight">{ex.name}</h1>
+          <div className="mt-0.5 text-muted">{describeWork(step)}</div>
+          {step.item.notes.length ? <div className="mt-1 line-clamp-2 text-sm text-amber">{step.item.notes[0]}</div> : null}
+        </div>
         {step.seconds !== undefined ? (
-          <Ring progress={1 - t / step.seconds}>
-            <div className="font-display text-6xl font-bold tabular">{fmt(step.seconds - t)}</div>
-            <div className="text-xs font-medium uppercase tracking-wider text-muted">{paused ? 'paused' : 'seconds'}</div>
+          <Ring progress={1 - t / step.seconds} className="h-[min(36vw,19vh)] w-[min(36vw,19vh)] min-h-28 min-w-28">
+            <div className="font-display text-5xl font-bold tabular leading-none">{fmt(step.seconds - t)}</div>
+            <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-muted">{paused ? 'paused' : 'seconds'}</div>
           </Ring>
         ) : (
-          <Ring progress={count !== null ? count / Math.max(1, step.reps ?? 1) : 0}>
-            <div className="font-display text-6xl font-bold tabular">{count !== null ? count : (step.reps ?? 0)}</div>
-            <div className="text-xs font-medium uppercase tracking-wider text-muted">{paused ? 'paused' : count !== null ? `of ${step.reps} reps` : 'reps — your pace'}</div>
+          <Ring progress={count !== null ? count / Math.max(1, target) : 0} className="h-[min(36vw,19vh)] w-[min(36vw,19vh)] min-h-28 min-w-28" burstKey={count ?? undefined}>
+            <div key={showCount} className="font-display text-5xl font-bold tabular leading-none animate-count-pop">
+              {showCount}
+            </div>
+            <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-muted">{paused ? 'paused' : count !== null ? `of ${target} reps` : 'your pace'}</div>
           </Ring>
         )}
       </div>
       {captionBar}
-      <div className="mt-auto grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
-        <button type="button" aria-label="Previous exercise" onClick={back} className="grid h-14 w-14 place-items-center rounded-full border border-line bg-surface-2 text-muted">
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 px-3 pt-2 min-[360px]:gap-3 min-[360px]:px-4" style={{ paddingBottom: 'calc(var(--safe-bottom) + 14px)' }}>
+        <button type="button" aria-label="Previous exercise" onClick={back} className="grid h-12 w-12 place-items-center rounded-full border border-line bg-surface-2 text-muted active:scale-90 min-[360px]:h-14 min-[360px]:w-14">
           <SkipBack size={22} />
         </button>
-        <div className="grid grid-cols-2 gap-2">
-          <Button size="lg" variant="secondary" onClick={togglePause} icon={paused ? <Play size={20} /> : <Pause size={20} />}>
-            {paused ? 'Resume' : 'Pause'}
-          </Button>
-          <Button size="lg" onClick={doneSet} icon={<Check size={20} />}>
+        <div className="grid min-w-0 grid-cols-[auto_1fr] gap-2">
+          <Button size="lg" variant="secondary" className="w-12 px-0 min-[360px]:w-14" onClick={togglePause} aria-label={paused ? 'Resume' : 'Pause'} icon={paused ? <Play size={20} /> : <Pause size={20} />} />
+          <Button size="lg" className="min-w-0 px-3" onClick={doneSet} icon={<Check size={22} strokeWidth={3} />}>
             Done
           </Button>
         </div>
-        <button type="button" aria-label="Skip" onClick={skip} className="grid h-14 w-14 place-items-center rounded-full border border-line bg-surface-2 text-muted">
+        <button type="button" aria-label="Skip" onClick={skip} className="grid h-12 w-12 place-items-center rounded-full border border-line bg-surface-2 text-muted active:scale-90 min-[360px]:h-14 min-[360px]:w-14">
           <ChevronsRight size={22} />
         </button>
       </div>
@@ -399,18 +439,34 @@ function RestScreen({
   const total = step.seconds + extra
   const tip = useMemo(() => (REST_TIPS.length ? REST_TIPS[(cursor * 7) % REST_TIPS.length] : undefined), [cursor])
   const short = step.reason === 'switch' || step.reason === 'side'
+  const left = total - t
+  const ready = step.reason === 'ready'
+  // Box-ish breathing: 4 s in, 4 s out, synced to the breathe animation.
+  const inhale = Math.floor(t / 4) % 2 === 0
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex h-dvh flex-col overflow-y-auto overscroll-contain">
       {header}
-      <div className="mt-6 flex flex-col items-center">
+      <div className="mt-3 flex flex-col items-center">
         <div className="text-sm font-semibold uppercase tracking-[0.2em] text-teal">{step.label}</div>
-        <div className="mt-3">
-          <Ring progress={1 - t / total} tone="teal">
-            <div className="font-display text-6xl font-bold tabular">{fmt(total - t)}</div>
-            <div className="text-xs font-medium uppercase tracking-wider text-muted">{paused ? 'paused' : 'seconds'}</div>
-          </Ring>
+        <div className="relative mt-2 grid place-items-center">
+          {!short && !ready && !paused ? <span aria-hidden className="absolute h-[min(52vw,30vh)] w-[min(52vw,30vh)] rounded-full bg-teal/10 animate-breathe" /> : null}
+          {ready && left <= 3 && left > 0 && !paused ? (
+            <div key={Math.ceil(left)} className="grid h-[min(44vw,25vh)] w-[min(44vw,25vh)] place-items-center font-display text-[110px] font-black leading-none text-teal animate-zoom-out">
+              {Math.ceil(left)}
+            </div>
+          ) : (
+            <Ring progress={1 - t / total} tone="teal" className="h-[min(44vw,25vh)] w-[min(44vw,25vh)] min-h-28 min-w-28">
+              <div className="font-display text-6xl font-bold tabular">{fmt(left)}</div>
+              <div className="text-xs font-medium uppercase tracking-wider text-muted">{paused ? 'paused' : 'seconds'}</div>
+            </Ring>
+          )}
         </div>
-        <div className="mt-4 flex gap-2">
+        {!short && !ready ? (
+          <div className="mt-2 flex items-center gap-1.5 text-sm font-medium text-teal" aria-hidden>
+            <Wind size={15} /> {inhale ? 'Breathe in…' : 'Breathe out…'}
+          </div>
+        ) : null}
+        <div className="mt-3 flex gap-2">
           {!short ? (
             <Button variant="secondary" size="sm" icon={<Plus size={16} />} onClick={() => setExtra((x) => x + 15)}>
               15 s
@@ -425,7 +481,7 @@ function RestScreen({
         </div>
       </div>
       {captionBar}
-      <div className="mt-auto space-y-3 px-4" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
+      <div className="mt-auto space-y-2.5 px-4 pt-2" style={{ paddingBottom: 'calc(var(--safe-bottom) + 14px)' }}>
         {last && lastEx && values[last.id] !== undefined ? (
           <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-3">
             <div className="min-w-0 flex-1">
@@ -444,8 +500,8 @@ function RestScreen({
           </div>
         ) : null}
         {next && nextEx ? (
-          <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-2">
-            <div className="w-24 shrink-0 overflow-hidden rounded-xl bg-bg">
+          <div className="flex items-center gap-3 rounded-2xl border border-ember/30 bg-surface p-2">
+            <div className="w-24 shrink-0 overflow-hidden rounded-xl bg-bg min-[360px]:w-28">
               <Mannequin motion={motionFor(nextEx)} speed={0.7} palette={palette} className="aspect-[4/3] w-full" title={nextEx.name} />
             </div>
             <div className="min-w-0 flex-1">
@@ -458,10 +514,10 @@ function RestScreen({
             </div>
           </div>
         ) : null}
-        {tip && !short ? (
-          <div className="flex gap-2 rounded-2xl bg-surface-2 p-3 text-sm text-muted">
+        {tip && !short && !ready ? (
+          <div className="flex gap-2 rounded-2xl bg-surface-2 p-3 text-sm text-muted [@media(max-height:720px)]:hidden">
             <Lightbulb size={18} className="mt-0.5 shrink-0 text-amber" />
-            <span>
+            <span className="line-clamp-3">
               <b className="text-ink">{tip.title}.</b> {tip.text}
             </span>
           </div>

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { ChevronLeft } from 'lucide-react'
+import { EdgeSwipeBack } from './EdgeSwipeBack'
 
 export function PageHeader({
   title,
@@ -14,6 +15,7 @@ export function PageHeader({
   right?: ReactNode
 }) {
   const navigate = useNavigate()
+  const goBack = () => (typeof back === 'string' ? navigate(back) : navigate(-1))
   return (
     <header className="safe-top sticky top-0 z-20 bg-bg/85 backdrop-blur-xl">
       <div className="flex items-center gap-2 px-4 pt-3 pb-2 min-h-14">
@@ -21,7 +23,7 @@ export function PageHeader({
           <button
             aria-label="Back"
             className="-ml-2 h-10 w-10 grid place-items-center rounded-full text-muted hover:text-ink hover:bg-surface-2"
-            onClick={() => (typeof back === 'string' ? navigate(back) : navigate(-1))}
+            onClick={goBack}
           >
             <ChevronLeft size={24} />
           </button>
@@ -32,6 +34,7 @@ export function PageHeader({
         </div>
         {right}
       </div>
+      {back ? <EdgeSwipeBack onBack={goBack} /> : null}
     </header>
   )
 }

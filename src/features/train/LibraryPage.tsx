@@ -50,6 +50,10 @@ export default function LibraryPage() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            inputMode="search"
+            enterKeyHint="search"
+            autoCorrect="off"
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
             placeholder="Search exercises or muscles"
             className="h-full flex-1 bg-transparent text-ink outline-none placeholder:text-faint"
           />

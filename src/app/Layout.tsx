@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
 import { Outlet, useNavigate } from 'react-router'
 import { Bell, X } from 'lucide-react'
+import { CelebrationHost } from './CelebrationHost'
 import { TabBar } from './TabBar'
 import { UpdateToast } from './UpdateToast'
 import { useBackgroundSync, useInAppToast } from './useBackgroundSync'
+import { useRewardWatch } from './useRewardWatch'
 
 function InAppToast() {
   const toast = useInAppToast((s) => s.toast)
@@ -41,6 +43,7 @@ function InAppToast() {
 /** Shell for the five main tabs. Full-screen flows (player, onboarding) render outside it. */
 export function TabLayout() {
   useBackgroundSync()
+  useRewardWatch({ floaters: true, badgeScreen: false })
   return (
     <div className="min-h-full">
       <main className="mx-auto max-w-xl pb-tabbar">
@@ -49,8 +52,15 @@ export function TabLayout() {
       <TabBar />
       <UpdateToast />
       <InAppToast />
+      <CelebrationHost />
     </div>
   )
+}
+
+/** Rewards only make sense once there's a profile (not on the welcome screens). */
+function FullScreenRewards() {
+  useRewardWatch({ floaters: false, badgeScreen: true })
+  return <CelebrationHost floaters={false} />
 }
 
 export function FullScreenLayout() {
@@ -59,7 +69,8 @@ export function FullScreenLayout() {
       <main className="mx-auto max-w-xl">
         <Outlet />
       </main>
-      <UpdateToast />
+      <UpdateToast placement="top" />
+      <FullScreenRewards />
     </div>
   )
 }

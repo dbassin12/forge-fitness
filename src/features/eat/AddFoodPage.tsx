@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { haptic } from '@/device/haptics'
+import { sfx } from '@/device/sfx'
 import { useSearchParams } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Barcode, ChefHat, Clock, Globe, Loader2, PenLine, Plus, Search, Sparkles, Star, Zap } from 'lucide-react'
@@ -91,12 +93,16 @@ export default function AddFoodPage() {
 
   const log = async (e: NewEntry) => {
     await addEntry({ ...e, meal, date }, profile)
+    sfx.pop()
+    haptic('medium')
     setToast(`Added ${e.name.split(',')[0]} to ${MEAL_LABEL[meal].toLowerCase()}`)
     window.setTimeout(() => setToast(null), 2200)
   }
 
   const logMany = async (entries: Omit<NewEntry, 'date' | 'meal'>[]) => {
     for (const e of entries) await addEntry({ ...e, meal, date }, profile)
+    sfx.pop()
+    haptic('medium')
     setToast(`Added ${entries.length === 1 ? entries[0]!.name : `${entries.length} items`} to ${MEAL_LABEL[meal].toLowerCase()}`)
     window.setTimeout(() => setToast(null), 2200)
   }
@@ -161,7 +167,7 @@ export default function AddFoodPage() {
         </div>
         <label className="mt-3 flex h-12 items-center gap-2 rounded-2xl border border-line bg-surface px-3 text-muted focus-within:border-ember">
           <Search size={18} />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search foods, e.g. eggs, banana" className="h-full flex-1 bg-transparent text-ink outline-none placeholder:text-faint" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} inputMode="search" enterKeyHint="search" onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()} placeholder="Search foods, e.g. eggs, banana" className="h-full flex-1 bg-transparent text-ink outline-none placeholder:text-faint" />
         </label>
         <Button className="mt-3" block variant="secondary" size="sm" icon={<Sparkles size={16} />} onClick={() => setClaudeSheet({ id: Date.now(), resume: false })}>
           Estimate with Claude: photo or description

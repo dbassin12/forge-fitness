@@ -4,11 +4,12 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { BookOpen, Check, ChevronRight, Clock, Coffee, Flame, Play, Zap } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
 import { usePalette } from '@/app/theme'
-import { getExercise, motionFor } from '@/data/exercises'
+import { EXERCISES, getExercise, motionFor } from '@/data/exercises'
 import { db } from '@/db/db'
 import {
   describeTarget,
   generateSession,
+  isAllowed,
   LADDERS,
   mainExercises,
   planContext,
@@ -81,6 +82,8 @@ export default function TrainPage() {
       .filter((x) => x.cur)
   }, [plan])
 
+  const allowedIds = new Set(plan ? EXERCISES.filter((e) => isAllowed(e, planContext(plan.inputs))).map((e) => e.id) : [])
+
   if (!plan || !next) return <PageHeader title="Train" />
   const p = plan.profile
   const items = mainExercises(next)
@@ -131,7 +134,7 @@ export default function TrainPage() {
             <Zap size={18} className="text-amber" /> Short on time?
           </div>
           <p className="mt-0.5 text-sm text-muted">Squeeze today's workout into fewer minutes — the most important moves stay.</p>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {[5, 10, 15]
               .filter((m) => m < p.sessionMinutes)
               .map((m) => (
@@ -184,21 +187,43 @@ export default function TrainPage() {
         </Card>
         <p className="mt-2 px-1 text-xs text-faint">Missed a day? No problem — the next workout simply moves to your next training day.</p>
 
-        <SectionTitle>Your levels</SectionTitle>
+        <SectionTitle action={<span className="text-xs text-muted">Hit the top of your reps to climb</span>}>Your levels</SectionTitle>
         <Card className="py-1">
           <ul className="divide-y divide-line/60">
             {levels.map(({ ladder, cur, next: nx, total }) => {
               const ex = getExercise(cur!.exerciseId)!
+              const rungs = LADDERS[ladder].exercises
               return (
                 <li key={ladder}>
-                  <Link to={`/exercise/${ex.id}`} className="flex items-center gap-3 py-3">
+                  <Link to={`/exercise/${ex.id}`} viewTransition className="pressable flex items-center gap-3 py-3">
+                    <div className="w-16 shrink-0 overflow-hidden rounded-xl bg-bg">
+                      <Mannequin motion={motionFor(ex)} playing={false} time={1} palette={palette} className="aspect-[4/3] w-full" title={ex.name} />
+                    </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs font-medium uppercase tracking-wider text-faint">{LADDERS[ladder].name}</div>
-                      <div className="truncate font-semibold">{ex.name}</div>
-                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-2">
-                        <div className="h-full rounded-full bg-ember" style={{ width: `${((cur!.rung + 1) / total) * 100}%` }} />
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-xs font-medium uppercase tracking-wider text-faint">{LADDERS[ladder].name}</span>
+                        <span className="shrink-0 text-xs font-semibold text-ember tabular">
+                          Lv {cur!.rung + 1}/{total}
+                        </span>
                       </div>
-                      {nx ? <div className="mt-1 truncate text-xs text-muted">Next: {getExercise(nx.exerciseId)?.name}</div> : <div className="mt-1 text-xs text-good">Top level — now we add challenges</div>}
+                      <div className="truncate font-semibold">{ex.name}</div>
+                      <div className="mt-1.5 flex items-center" aria-hidden>
+                        {rungs.map((id, k) => {
+                          const allowed = allowedIds.has(id)
+                          return (
+                            <span key={id} className="flex flex-1 items-center last:flex-none">
+                              <span
+                                className={cx(
+                                  'h-2.5 w-2.5 shrink-0 rounded-full',
+                                  k < cur!.rung ? 'bg-ember' : k === cur!.rung ? 'bg-ember ring-4 ring-ember/25' : allowed ? 'bg-surface-3' : 'border border-dashed border-faint',
+                                )}
+                              />
+                              {k < rungs.length - 1 ? <span className={cx('h-0.5 flex-1', k < cur!.rung ? 'bg-ember' : 'bg-surface-3')} /> : null}
+                            </span>
+                          )
+                        })}
+                      </div>
+                      {nx ? <div className="mt-1.5 truncate text-xs text-muted">Next: {getExercise(nx.exerciseId)?.name}</div> : <div className="mt-1.5 text-xs text-good">Top level, now we add challenges</div>}
                     </div>
                     <ChevronRight className="shrink-0 text-faint" size={18} />
                   </Link>

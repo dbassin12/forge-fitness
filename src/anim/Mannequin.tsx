@@ -134,6 +134,8 @@ export function Mannequin({
       L.onSample?.(s)
     }
 
+    let lastT = Number.NaN
+    let lastSig = ''
     const loop = (now: number) => {
       const L = latest.current
       const dt = Math.min(0.1, (now - prevNow) / 1000)
@@ -145,7 +147,14 @@ export function Mannequin({
         if (L.playing) localT += dt * L.speed
         t = localT
       }
-      if (visible) render(t)
+      // A paused or still figure only needs drawing again when its time or colors change.
+      const sig = L.palette.highlight + L.palette.near + String(L.tint) + JSON.stringify(L.highlight ?? null)
+      const still = !L.clock && (!L.playing || L.time !== undefined) && !L.pulse?.length
+      if (visible && (!still || t !== lastT || sig !== lastSig)) {
+        render(t)
+        lastT = t
+        lastSig = sig
+      }
       raf = requestAnimationFrame(loop)
     }
 

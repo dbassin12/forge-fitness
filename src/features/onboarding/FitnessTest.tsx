@@ -286,10 +286,10 @@ export function FitnessTest({ onDone }: { onDone: (r: TestResult) => void }) {
       </div>
       <h2 className="font-display text-2xl font-bold">{part.title}</h2>
       <Card className="mt-3 overflow-hidden p-0">
-        <Mannequin motion={motionFor(ex)} palette={palette} pulse={hl.primary} className="aspect-[16/10] w-full bg-bg" title={ex.name} />
+        <Mannequin motion={motionFor(ex)} palette={palette} pulse={hl.primary} className="h-[min(24vh,220px)] w-full bg-bg" title={ex.name} />
       </Card>
-      <p className="mt-3 text-[15px] leading-relaxed text-muted">{part.how}</p>
-      <div className="mt-5" key={part.id}>
+      <p className="mt-3 text-[15px] leading-relaxed text-muted [@media(max-height:700px)]:text-sm">{part.how}</p>
+      <div className="mt-4" key={part.id}>
         {part.id === 'pushups' ? <PushupPart onDone={finish} /> : part.id === 'squats' ? <SquatPart onDone={finish} /> : <PlankPart onDone={finish} />}
       </div>
     </div>

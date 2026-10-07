@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { expectNoErrors, onboard, recordOpens, trackErrors } from './helpers'
+import { dismissCelebrations, expectNoErrors, onboard, recordOpens, trackErrors } from './helpers'
 
 test('is an installable app with a manifest and service worker', async ({ page, request }) => {
   const manifest = (await (await request.get('/manifest.webmanifest')).json()) as { name: string; display: string; start_url: string; icons: { sizes: string; purpose?: string }[] }
@@ -16,7 +16,7 @@ test('is an installable app with a manifest and service worker', async ({ page, 
 test('onboarding builds a plan and a full workout is logged', async ({ page }) => {
   const errors = trackErrors(page)
   await onboard(page)
-  await expect(page.getByRole('heading', { name: 'Train' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Start workout|Do it anyway/ })).toBeVisible()
 
   // A short "exercise snack" runs through every player screen quickly.
   await page.goto('/#/workout?snack=3')
@@ -136,4 +136,137 @@ test('opens offline once installed', async ({ page, context }) => {
   await page.goto('/#/train/library')
   await expect(page.getByPlaceholder(/Search/)).toBeVisible()
   await context.setOffline(false)
+})
+
+test('Today shows daily quests and the streak week', async ({ page }) => {
+  const errors = trackErrors(page)
+  await onboard(page)
+  await page.goto('/#/today')
+  await expect(page.getByText('Daily quests')).toBeVisible()
+  await expect(page.getByRole('img', { name: /of 3 quests done/ })).toBeVisible()
+  await expect(page.getByText(/Light your streak|week streak/)).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible()
+  // The "Log a glass of water" Home Screen shortcut.
+  await page.goto('/#/today?water=1')
+  await expect(page.getByRole('status').filter({ hasText: /oz of water/ })).toBeVisible()
+  await expect(page).toHaveURL(/#\/today$/)
+  await page.goto('/#/eat')
+  await expect(page.getByText(/^1 of \d+ glasses$|^1$/).first()).toBeVisible()
+  await expectNoErrors(errors)
+})
+
+test('Play: spin the wheel, do the move and save the session', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await onboard(page)
+  await page.getByRole('link', { name: 'Play' }).click()
+  await expect(page.getByRole('heading', { name: 'Play' })).toBeVisible()
+  await page.getByRole('link', { name: /Spin the wheel/ }).click()
+  await page.getByRole('button', { name: 'Spin', exact: true }).first().click()
+  await page.getByRole('button', { name: /Do it · / }).click()
+  await expect(page.getByRole('button', { name: 'Done' })).toBeEnabled({ timeout: 6000 })
+  await page.getByRole('button', { name: 'Done' }).click()
+  await page.getByRole('button', { name: /Finish & save/ }).click()
+  await expect(page.getByRole('heading', { name: 'Play' })).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Wheel session saved' })).toBeVisible()
+  await expectNoErrors(errors)
+})
+
+test('Play: a quick deck of cards runs to the end', async ({ page }) => {
+  const errors = trackErrors(page)
+  await onboard(page)
+  await page.goto('/#/play/deck')
+  await page.getByRole('button', { name: /Quick · 13/ }).click()
+  await page.getByRole('button', { name: 'Shuffle & start' }).click()
+  for (let i = 0; i < 13; i++) {
+    const done = page.getByRole('button', { name: /Done · next card/ })
+    await expect(done).toBeEnabled()
+    await done.click()
+  }
+  await expect(page.getByRole('heading', { name: /Deck done!|New best time!/ })).toBeVisible()
+  await expectNoErrors(errors)
+})
+
+test('Play: a plank challenge sets a first record', async ({ page }) => {
+  const errors = trackErrors(page)
+  await onboard(page)
+  await page.goto('/#/play/challenge/plank')
+  await page.getByRole('button', { name: 'Start' }).click()
+  await expect(page.getByText('Hold it!')).toBeVisible({ timeout: 8000 })
+  await page.waitForTimeout(2200)
+  await page.getByRole('button', { name: 'Stop' }).click()
+  await expect(page.getByRole('heading', { name: 'First record set!' })).toBeVisible()
+  await page.getByRole('button', { name: 'Save result' }).click()
+  await expect(page.getByRole('dialog', { name: 'Celebration' }).getByText('New personal best')).toBeVisible()
+  await dismissCelebrations(page)
+  await page.getByRole('button', { name: 'Done' }).click()
+  await expect(page.getByRole('heading', { name: 'Play' })).toBeVisible()
+  await expectNoErrors(errors)
+})
+
+test('guide, weekly recap and "try a set" all work', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await onboard(page)
+  await page.getByRole('link', { name: /See how Forge works/ }).click()
+  await expect(page.getByRole('heading', { name: 'How Forge works' })).toBeVisible()
+  await page.getByRole('button', { name: 'Something hurts.' }).click()
+  await expect(page.getByText(/Aches & limits/)).toBeVisible()
+
+  await page.goto('/#/recap')
+  await expect(page.getByRole('dialog', { name: 'Weekly recap' })).toBeVisible()
+  for (let i = 0; i < 8 && !(await page.getByRole('button', { name: 'Let’s go' }).isVisible()); i++) await page.mouse.click(300, 400)
+  await page.getByRole('button', { name: 'Let’s go' }).click()
+  await page.waitForURL(/today/)
+
+  await page.goto('/#/exercise/bodyweight-squat')
+  await page.getByRole('button', { name: 'Try a set' }).click()
+  await expect(page.getByRole('button', { name: 'Done' })).toBeEnabled({ timeout: 6000 })
+  await page.getByRole('button', { name: 'Done' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Nice set!' })).toBeVisible()
+  await expectNoErrors(errors)
+})
+
+test('Look & feel: theme, accent and coach personality stick', async ({ page }) => {
+  const errors = trackErrors(page)
+  await onboard(page)
+  await page.getByRole('link', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: /Look & feel/ }).click()
+  await page.getByRole('button', { name: 'Light', exact: true }).click()
+  await page.getByRole('button', { name: 'Ocean', exact: true }).click()
+  await page.getByRole('button', { name: /Drill sergeant/ }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await expect(page.locator('html')).toHaveAttribute('data-accent', 'ocean')
+  await expect(page.getByRole('button', { name: /Violet, unlocks at level 3/ })).toBeDisabled()
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await expect(page.locator('html')).toHaveAttribute('data-accent', 'ocean')
+  await page.goto('/#/workout')
+  await expect(page.getByRole('button', { name: /Drill/ })).toHaveAttribute('aria-pressed', 'true')
+  await expectNoErrors(errors)
+})
+
+test('phone reminders: no setup, straight into the calendar', async ({ page }) => {
+  const errors = trackErrors(page)
+  await onboard(page)
+  await expect(page.getByText('Get reminders on your phone')).toBeVisible()
+  await page.goto('/#/more/reminders')
+  await expect(page.getByRole('radio', { name: /Phone reminders/ })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByText(/APP_PASSCODE/)).toHaveCount(0)
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Add \d+ reminders? to my calendar/ }).click()])
+  expect(download.suggestedFilename()).toBe('forge-reminders.ics')
+  const ics = readFileSync(await download.path(), 'utf8')
+  expect(ics.startsWith('BEGIN:VCALENDAR')).toBe(true)
+  expect(ics).toContain('BEGIN:VALARM')
+  expect(ics).toMatch(/SUMMARY:.*Workout time/)
+  await expect(page.getByText(/In your calendar since/)).toBeVisible()
+  await expect(page.getByRole('link', { name: /Google Calendar/ })).toHaveAttribute('href', /calendar\.google\.com\/calendar\/render\?action=TEMPLATE/)
+  // Smart notifications are still there for anyone who set up the server.
+  await page.getByRole('radio', { name: /Smart notifications/ }).click()
+  await expect(page.getByText(/APP_PASSCODE/).first()).toBeVisible()
+  await page.getByRole('radio', { name: /Phone reminders/ }).click()
+  await page.goto('/#/today')
+  await expect(page.getByText('Get reminders on your phone')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /Get phone reminders, done/ })).toBeVisible()
+  await expectNoErrors(errors)
 })

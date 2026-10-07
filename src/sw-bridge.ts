@@ -52,7 +52,17 @@ export interface SwContext {
   streakWeeks: number
   thisWeek: number
   weekTarget: number
+  /** The coach personality picked in the app (Look & feel). */
+  coach?: 'hype' | 'calm' | 'drill' | 'zen'
 }
+
+/** Workout and streak nudges in the voice of the user's coach. */
+const VOICE = {
+  hype: { workout: ['🔥', 'Let’s go!'], streakTitle: (w: number) => (w > 0 ? `🔥 ${w}-week streak on the line!` : '🔥 Still time to train today!'), streakBody: 'Even 5 minutes keeps the fire alive. Tap and go!' },
+  calm: { workout: ['🙂', 'Whenever you’re ready.'], streakTitle: (w: number) => (w > 0 ? `🙂 Your ${w}-week streak is waiting` : '🙂 Still time for a short workout'), streakBody: 'A gentle 5-minute workout still counts.' },
+  drill: { workout: ['🪖', 'Move it, recruit!'], streakTitle: (w: number) => (w > 0 ? `🪖 ${w}-week streak in danger!` : '🪖 No workout yet, recruit!'), streakBody: 'Five minutes. Right now. Tap to start.' },
+  zen: { workout: ['🧘', 'Breathe, then begin.'], streakTitle: (w: number) => (w > 0 ? `🧘 Keep your ${w}-week rhythm` : '🧘 A moment for you'), streakBody: 'Five mindful minutes keep your streak.' },
+} as const
 
 const pad = (n: number) => String(n).padStart(2, '0')
 export function localISODate(d = new Date()): string {
@@ -64,12 +74,17 @@ export function personalize(type: string, ctx: SwContext | undefined, meal?: str
   if (!ctx || ctx.date !== localISODate()) return null
   const water = ctx.imperial ? `${Math.round(ctx.waterMl / 29.5735)}/${Math.round(ctx.waterTargetMl / 29.5735)} oz` : `${(ctx.waterMl / 1000).toFixed(1)}/${(ctx.waterTargetMl / 1000).toFixed(1)} L`
   switch (type) {
-    case 'workout':
+    case 'workout': {
       if (ctx.workoutDone) return { title: '✅ Already trained today', body: 'Nice work. Fancy a 3-minute stretch instead?' }
       if (!ctx.nextWorkout) return null
-      return { title: `💪 ${ctx.nextWorkout.title} · ${ctx.nextWorkout.minutes} min`, body: `${ctx.nextWorkout.exercises.slice(0, 3).join(', ')}${ctx.nextWorkout.exercises.length > 3 ? '…' : ''}` }
+      const moves = `${ctx.nextWorkout.exercises.slice(0, 3).join(', ')}${ctx.nextWorkout.exercises.length > 3 ? '…' : ''}`
+      if (!ctx.coach) return { title: `💪 ${ctx.nextWorkout.title} · ${ctx.nextWorkout.minutes} min`, body: moves }
+      const [emoji, line] = VOICE[ctx.coach].workout
+      return { title: `${emoji} ${ctx.nextWorkout.title} · ${ctx.nextWorkout.minutes} min`, body: `${line} ${moves}` }
+    }
     case 'streak':
       if (ctx.workoutDone) return { title: '🔥 Streak safe', body: `${ctx.thisWeek}/${ctx.weekTarget} workouts this week. See you next time!` }
+      if (ctx.coach) return { title: VOICE[ctx.coach].streakTitle(ctx.streakWeeks), body: VOICE[ctx.coach].streakBody }
       return { title: ctx.streakWeeks > 0 ? `🔥 ${ctx.streakWeeks}-week streak on the line` : '🔥 Still time to train today', body: 'Even a 5-minute express workout counts. Tap to start.' }
     case 'water':
       if (ctx.waterMl >= ctx.waterTargetMl) return { title: '💧 Water goal reached', body: `${water} — great job staying hydrated.` }
