@@ -25,7 +25,7 @@ function ItemRow({ it, onSwap, swapped }: { it: PlannedItem; onSwap?: () => void
         <Mannequin motion={motionFor(ex)} playing={false} time={0.9} palette={palette} className="aspect-[4/3] w-full" title={ex.name} />
       </Link>
       <div className="min-w-0 flex-1">
-        <Link to={`/exercise/${ex.id}`} className="block truncate font-semibold">
+        <Link to={`/exercise/${ex.id}`} className="line-clamp-2 block font-semibold leading-snug">
           {ex.name}
         </Link>
         <div className="text-sm text-muted">

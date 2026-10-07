@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, ExternalLink, PlayCircle, Wind } from 'lucide-react'
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Dumbbell, ExternalLink, PlayCircle, Wind } from 'lucide-react'
+import { useCelebrate } from '@/app/celebrate'
+import { MoveRunner } from '../play/MoveRunner'
 import { EQUIP_LABEL, EXERCISES, MUSCLE_LABEL, PATTERN_LABEL, getExercise, highlightFor, motionFor, youtubeUrl } from '@/data/exercises'
 import { Mannequin } from '@/anim/Mannequin'
 import { PageHeader } from '@/ui/PageHeader'
@@ -17,6 +19,7 @@ export default function ExerciseDetailPage() {
   const { id = '' } = useParams()
   const ex = getExercise(id)
   const [tutorial, setTutorial] = useState(false)
+  const [trying, setTrying] = useState(false)
   const palette = usePalette()
   const neighbors = useMemo(() => {
     if (!ex) return { easier: undefined, harder: undefined }
@@ -60,9 +63,8 @@ export default function ExerciseDetailPage() {
           {ex.impact === 'high' ? <Tag tone="bad">Jumping</Tag> : null}
         </div>
         <p className="mt-3 text-[15px] text-muted">{c.summary}</p>
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
           <Button
-            block
             size="lg"
             icon={<PlayCircle size={22} />}
             onClick={() => {
@@ -71,7 +73,19 @@ export default function ExerciseDetailPage() {
               setTutorial(true)
             }}
           >
-            Watch voiced tutorial
+            Watch tutorial
+          </Button>
+          <Button
+            size="lg"
+            variant="secondary"
+            icon={<Dumbbell size={20} />}
+            onClick={() => {
+              speech.unlock()
+              unlockAudio()
+              setTrying(true)
+            }}
+          >
+            Try a set
           </Button>
         </div>
 
@@ -166,6 +180,17 @@ export default function ExerciseDetailPage() {
         </a>
       </div>
       {tutorial ? <TutorialPlayer exercise={ex} onClose={() => setTutorial(false)} /> : null}
+      {trying ? (
+        <MoveRunner
+          move={{ exerciseId: ex.id, measure: ex.measure === 'time' ? 'time' : 'reps', amount: ex.measure === 'time' ? ex.range[0] : Math.round((ex.range[0] + ex.range[1]) / 2) }}
+          title={`Try it: ${ex.name}`}
+          onCancel={() => setTrying(false)}
+          onDone={() => {
+            setTrying(false)
+            useCelebrate.getState().toast({ tone: 'info', title: 'Nice set!', text: `You tried ${ex.name}.`, emoji: '💪' })
+          }}
+        />
+      ) : null}
     </>
   )
 }

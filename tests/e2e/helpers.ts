@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test'
 
-/** Fresh install → onboarding with sensible answers → lands on the Train tab. */
+/** Fresh install → onboarding with sensible answers → lands on the Today tab. */
 export async function onboard(page: Page): Promise<void> {
   await page.goto('/#/')
   await page.waitForURL(/welcome/)
@@ -13,7 +13,7 @@ export async function onboard(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Continue' }).click()
   await page.getByRole('button', { name: /Skip — use my experience level/ }).click()
   await page.getByRole('button', { name: 'Start my plan' }).click()
-  await page.waitForURL(/train/)
+  await page.waitForURL(/today/)
 }
 
 /** Collects console errors and uncaught exceptions so every test can assert a clean run. */

@@ -167,3 +167,32 @@ describe('play: wheel and challenges', () => {
     }
   })
 })
+
+describe('achievement progress', () => {
+  it('covers every countable achievement and agrees with its check', async () => {
+    const { ACHIEVEMENTS, EMPTY_STATS, achievementProgress } = await import('@/engines/gamification')
+    const yesNo = new Set(['real-pushup', 'early-bird', 'night-owl'])
+    for (const a of ACHIEVEMENTS) {
+      const p = achievementProgress(a.id, EMPTY_STATS)
+      if (yesNo.has(a.id)) {
+        expect(p).toBeNull()
+        continue
+      }
+      expect(p, a.id).not.toBeNull()
+      expect(a.check(EMPTY_STATS)).toBe(false)
+    }
+    const s = { ...EMPTY_STATS, pushupReps: 40 }
+    expect(achievementProgress('pushups-100', s)).toEqual({ value: 40, target: 100 })
+    expect(achievementProgress('pushups-100', { ...s, pushupReps: 400 })).toEqual({ value: 100, target: 100 })
+  })
+})
+
+describe('plural exercise names', async () => {
+  const { pluralName } = await import('@/engines/play')
+  it('pluralizes the way people say it', () => {
+    expect(pluralName('Bodyweight squat', 10)).toBe('bodyweight squats')
+    expect(pluralName('Crunch', 8)).toBe('crunches')
+    expect(pluralName('Jumping jacks', 20)).toBe('jumping jacks')
+    expect(pluralName('Incline push-up', 1)).toBe('incline push-up')
+  })
+})

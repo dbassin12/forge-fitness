@@ -123,3 +123,52 @@ export const ACHIEVEMENTS: Achievement[] = [
 export function newlyUnlocked(stats: Stats, unlocked: ReadonlySet<string>): Achievement[] {
   return ACHIEVEMENTS.filter((x) => !unlocked.has(x.id) && x.check(stats))
 }
+
+/** What each countable achievement measures, so the trophy shelf can show progress. */
+const NEED: Record<string, [keyof Stats, number]> = {
+  'first-rep': ['workouts', 1],
+  'three-done': ['workouts', 3],
+  'ten-done': ['workouts', 10],
+  'twentyfive-done': ['workouts', 25],
+  'fifty-done': ['workouts', 50],
+  'hundred-done': ['workouts', 100],
+  'snack-1': ['snacks', 1],
+  'snack-10': ['snacks', 10],
+  'pushups-100': ['pushupReps', 100],
+  'pushups-1000': ['pushupReps', 1000],
+  'squats-500': ['squatReps', 500],
+  'plank-60': ['bestPlankSec', 60],
+  'plank-120': ['bestPlankSec', 120],
+  'minutes-60': ['minutes', 60],
+  'minutes-600': ['minutes', 600],
+  'pr-1': ['prs', 1],
+  'pr-10': ['prs', 10],
+  'level-up': ['levelUps', 1],
+  'level-up-10': ['levelUps', 10],
+  'streak-2': ['weeklyStreak', 2],
+  'streak-4': ['weeklyStreak', 4],
+  'streak-12': ['weeklyStreak', 12],
+  'daily-7': ['dailyStreak', 7],
+  retest: ['tests', 2],
+  'food-1': ['foodLogs', 1],
+  'food-100': ['foodLogs', 100],
+  'protein-7': ['proteinDays', 7],
+  'water-7': ['waterDays', 7],
+  'weigh-4': ['weighIns', 4],
+  'photo-1': ['photos', 1],
+  'quest-1': ['quests', 1],
+  'quest-50': ['quests', 50],
+  'perfect-1': ['perfectDays', 1],
+  'perfect-7': ['perfectDays', 7],
+  'play-1': ['plays', 1],
+  'play-20': ['plays', 20],
+  'deck-52': ['fullDecks', 1],
+}
+
+/** Progress toward an achievement (null for yes/no ones like "Early Bird"). */
+export function achievementProgress(id: string, s: Stats): { value: number; target: number } | null {
+  const need = NEED[id]
+  if (!need) return null
+  const v = s[need[0]]
+  return { value: Math.min(need[1], typeof v === 'number' ? v : v ? 1 : 0), target: need[1] }
+}

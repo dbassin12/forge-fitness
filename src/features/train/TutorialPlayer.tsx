@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { markActivity } from '@/state/quests'
 import { createPortal } from 'react-dom'
 import { Check, ChevronLeft, ChevronRight, Pause, Play, Snail, Volume2, VolumeX, X } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
@@ -41,6 +42,14 @@ export function TutorialPlayer({ exercise, onClose }: { exercise: Exercise; onCl
   }, [idx, playing, seg.text, script.length])
 
   useEffect(() => () => speech.cancel(), [])
+
+  // Watching a few chapters counts toward the "watch a tutorial" quest (once per opening).
+  const counted = useRef(false)
+  useEffect(() => {
+    if (counted.current || idx < 2) return
+    counted.current = true
+    void markActivity('tutorial')
+  }, [idx])
 
   const go = (i: number) => {
     speech.cancel()

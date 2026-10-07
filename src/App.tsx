@@ -22,6 +22,8 @@ const WorkoutPlayer = lazy(() => import('@/features/player/WorkoutPlayer'))
 const RetestPage = lazy(() => import('@/features/progress/RetestPage'))
 const CoachPage = lazy(() => import('@/features/coach/CoachPage'))
 const PlayPage = lazy(() => import('@/features/play/PlayPage'))
+const GuidePage = lazy(() => import('@/features/guide/GuidePage'))
+const RecapPage = lazy(() => import('@/features/recap/RecapPage'))
 const WheelPage = lazy(() => import('@/features/play/WheelPage'))
 const DeckPage = lazy(() => import('@/features/play/DeckPage'))
 const ChallengePage = lazy(() => import('@/features/play/ChallengePage'))
@@ -73,6 +75,7 @@ const router = createHashRouter([
       { path: 'more', element: <Page><MorePage /></Page> },
       { path: 'more/reminders', element: <Page><RemindersPage /></Page> },
       { path: 'play', element: <Page><PlayPage /></Page> },
+      { path: 'guide', element: <Page><GuidePage /></Page> },
     ],
   },
   {
@@ -109,6 +112,7 @@ const router = createHashRouter([
           </RequireProfile>
         ),
       },
+      { path: 'recap', element: <RequireProfile><Page><RecapPage /></Page></RequireProfile> },
       { path: 'play/wheel', element: <RequireProfile><Page><WheelPage /></Page></RequireProfile> },
       { path: 'play/deck', element: <RequireProfile><Page><DeckPage /></Page></RequireProfile> },
       { path: 'play/challenge/:id', element: <RequireProfile><Page><ChallengePage /></Page></RequireProfile> },

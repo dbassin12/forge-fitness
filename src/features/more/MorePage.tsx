@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import {
   Apple,
   Bell,
+  BookOpen,
   Bot,
   CalendarDays,
   ChevronRight,
@@ -128,6 +129,7 @@ export default function MorePage() {
             <Row icon={<Bell size={18} />} title="Reminders" sub="Workouts, meals, water, streaks" to="/more/reminders" />
             <Row icon={<Volume2 size={18} />} title="Voice & sounds" sub="Voice, speed, beeps, rep counting" onClick={() => setPanel('voice')} />
             <Row icon={<Bot size={18} />} title="Ask Claude" sub="Coach answers and meal estimates in your Claude app" to="/coach" />
+            <Row icon={<BookOpen size={18} />} title="How Forge works" sub="Plan, player, quests, games, food, reminders" to="/guide" />
           </ul>
         </Card>
 

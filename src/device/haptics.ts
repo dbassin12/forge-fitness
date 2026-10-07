@@ -4,6 +4,9 @@ import { usePrefs } from '@/app/prefs'
 export function vibrate(pattern: number | number[]): void {
   if (!usePrefs.getState().haptics) return
   try {
+    // Browsers refuse (and log a warning) before the first tap on the page.
+    const ua = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation
+    if (ua && !ua.hasBeenActive) return
     if ('vibrate' in navigator) navigator.vibrate(pattern)
   } catch {
     /* ignore */

@@ -126,7 +126,7 @@ export default function WheelPage() {
         <Wheel
           ref={wheelRef}
           labels={slices.map((s) => s.emoji)}
-          size={Math.min(320, typeof window !== 'undefined' ? window.innerWidth - 48 : 300)}
+          size={Math.min(320, typeof window !== 'undefined' ? Math.min(window.innerWidth - 48, window.innerHeight * 0.45) : 300)}
           hub={
             <button
               type="button"
@@ -154,11 +154,9 @@ export default function WheelPage() {
             </div>
           </div>
           <div className="mt-3 grid grid-cols-[auto_1fr] gap-2">
-            <Button variant="secondary" icon={<RotateCw size={16} />} onClick={spin}>
-              Re-spin
-            </Button>
-            <Button icon={<Play size={18} fill="currentColor" />} onClick={() => setRunning(true)}>
-              Let’s do it · +{nextXp} XP
+            <Button variant="secondary" className="w-12 px-0" aria-label="Spin again" icon={<RotateCw size={18} />} onClick={spin} />
+            <Button className="min-w-0" icon={<Play size={18} fill="currentColor" />} onClick={() => setRunning(true)}>
+              Do it · +{nextXp} XP
             </Button>
           </div>
         </div>

@@ -141,8 +141,15 @@ const WHEEL_IDEAS: { ladder?: LadderId; ids: string[]; emoji: string; reps?: num
   { ids: ['skaters', 'step-back-burpee', 'squat-thrust', 'march-in-place'], emoji: '⚡', reps: 10 },
 ]
 
+/** "squat" → "squats", "crunch" → "crunches"; names that are already plural stay as they are. */
+export function pluralName(name: string, n: number): string {
+  const lower = name.toLowerCase()
+  if (n === 1 || /s$/.test(lower)) return lower
+  return /(ch|sh|x)$/.test(lower) ? `${lower}es` : `${lower}s`
+}
+
 function moveLabel(ex: Exercise, amount: number, measure: 'reps' | 'time'): string {
-  return measure === 'time' ? `${amount}s ${ex.name.toLowerCase()}` : `${amount} ${ex.name.toLowerCase()}${ex.perSide ? ' / side' : ''}`
+  return measure === 'time' ? `${amount}s ${ex.name.toLowerCase()}` : `${amount} ${pluralName(ex.name, amount)}${ex.perSide ? ' / side' : ''}`
 }
 
 /** Eight wheel slices for today, at the user's level and with only allowed moves. */

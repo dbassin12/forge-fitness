@@ -380,17 +380,17 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
         )}
       </div>
       {captionBar}
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 pt-2" style={{ paddingBottom: 'calc(var(--safe-bottom) + 14px)' }}>
-        <button type="button" aria-label="Previous exercise" onClick={back} className="grid h-14 w-14 place-items-center rounded-full border border-line bg-surface-2 text-muted active:scale-90">
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 px-3 pt-2 min-[360px]:gap-3 min-[360px]:px-4" style={{ paddingBottom: 'calc(var(--safe-bottom) + 14px)' }}>
+        <button type="button" aria-label="Previous exercise" onClick={back} className="grid h-12 w-12 place-items-center rounded-full border border-line bg-surface-2 text-muted active:scale-90 min-[360px]:h-14 min-[360px]:w-14">
           <SkipBack size={22} />
         </button>
-        <div className="grid grid-cols-[auto_1fr] gap-2">
-          <Button size="lg" variant="secondary" className="w-14 px-0" onClick={togglePause} aria-label={paused ? 'Resume' : 'Pause'} icon={paused ? <Play size={20} /> : <Pause size={20} />} />
-          <Button size="lg" onClick={doneSet} icon={<Check size={22} strokeWidth={3} />}>
+        <div className="grid min-w-0 grid-cols-[auto_1fr] gap-2">
+          <Button size="lg" variant="secondary" className="w-12 px-0 min-[360px]:w-14" onClick={togglePause} aria-label={paused ? 'Resume' : 'Pause'} icon={paused ? <Play size={20} /> : <Pause size={20} />} />
+          <Button size="lg" className="min-w-0 px-3" onClick={doneSet} icon={<Check size={22} strokeWidth={3} />}>
             Done
           </Button>
         </div>
-        <button type="button" aria-label="Skip" onClick={skip} className="grid h-14 w-14 place-items-center rounded-full border border-line bg-surface-2 text-muted active:scale-90">
+        <button type="button" aria-label="Skip" onClick={skip} className="grid h-12 w-12 place-items-center rounded-full border border-line bg-surface-2 text-muted active:scale-90 min-[360px]:h-14 min-[360px]:w-14">
           <ChevronsRight size={22} />
         </button>
       </div>
@@ -446,16 +446,16 @@ function RestScreen({
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
       {header}
-      <div className="mt-4 flex flex-col items-center">
+      <div className="mt-3 flex flex-col items-center">
         <div className="text-sm font-semibold uppercase tracking-[0.2em] text-teal">{step.label}</div>
-        <div className="relative mt-3 grid place-items-center">
-          {!short && !ready && !paused ? <span aria-hidden className="absolute h-48 w-48 rounded-full bg-teal/10 animate-breathe" /> : null}
+        <div className="relative mt-2 grid place-items-center">
+          {!short && !ready && !paused ? <span aria-hidden className="absolute h-[min(52vw,30vh)] w-[min(52vw,30vh)] rounded-full bg-teal/10 animate-breathe" /> : null}
           {ready && left <= 3 && left > 0 && !paused ? (
-            <div key={Math.ceil(left)} className="grid h-44 w-44 place-items-center font-display text-[110px] font-black leading-none text-teal animate-zoom-out">
+            <div key={Math.ceil(left)} className="grid h-[min(44vw,25vh)] w-[min(44vw,25vh)] place-items-center font-display text-[110px] font-black leading-none text-teal animate-zoom-out">
               {Math.ceil(left)}
             </div>
           ) : (
-            <Ring progress={1 - t / total} tone="teal">
+            <Ring progress={1 - t / total} tone="teal" className="h-[min(44vw,25vh)] w-[min(44vw,25vh)] min-h-28 min-w-28">
               <div className="font-display text-6xl font-bold tabular">{fmt(left)}</div>
               <div className="text-xs font-medium uppercase tracking-wider text-muted">{paused ? 'paused' : 'seconds'}</div>
             </Ring>
@@ -501,7 +501,7 @@ function RestScreen({
         ) : null}
         {next && nextEx ? (
           <div className="flex items-center gap-3 rounded-2xl border border-ember/30 bg-surface p-2">
-            <div className="w-28 shrink-0 overflow-hidden rounded-xl bg-bg">
+            <div className="w-24 shrink-0 overflow-hidden rounded-xl bg-bg min-[360px]:w-28">
               <Mannequin motion={motionFor(nextEx)} speed={0.7} palette={palette} className="aspect-[4/3] w-full" title={nextEx.name} />
             </div>
             <div className="min-w-0 flex-1">
@@ -515,7 +515,7 @@ function RestScreen({
           </div>
         ) : null}
         {tip && !short && !ready ? (
-          <div className="flex gap-2 rounded-2xl bg-surface-2 p-3 text-sm text-muted">
+          <div className="flex gap-2 rounded-2xl bg-surface-2 p-3 text-sm text-muted [@media(max-height:720px)]:hidden">
             <Lightbulb size={18} className="mt-0.5 shrink-0 text-amber" />
             <span className="line-clamp-3">
               <b className="text-ink">{tip.title}.</b> {tip.text}

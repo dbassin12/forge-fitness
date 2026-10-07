@@ -9,7 +9,7 @@ import { highlightFor, motionFor } from '@/data/exercises'
 import { haptic } from '@/device/haptics'
 import { sfx } from '@/device/sfx'
 import { planContext } from '@/engines/plan'
-import { buildDeck, cardReps, deckPlan, deckTotals, RANK_LABEL, SUIT_RED, SUIT_SYMBOL, SUITS, type Card as PlayingCard, type DeckMode, type DeckSize } from '@/engines/play'
+import { buildDeck, cardReps, deckPlan, deckTotals, pluralName, RANK_LABEL, SUIT_RED, SUIT_SYMBOL, SUITS, type Card as PlayingCard, type DeckMode, type DeckSize } from '@/engines/play'
 import { usePlan } from '@/state/plan'
 import { logPlay, saveDeckTime, useDeckBests } from '@/state/play'
 import { Button } from '@/ui/Button'
@@ -89,7 +89,8 @@ export default function DeckPage() {
       const c = deck[i]
       if (c && dp) {
         const ex = dp.suits[c.suit]
-        void speech.speak(`${cardReps(c, mode, ex)} ${ex.name}.`, { priority: 'cue', interrupt: true })
+        const n = cardReps(c, mode, ex)
+        void speech.speak(`${n} ${pluralName(ex.name, n)}.`, { priority: 'cue', interrupt: true })
       }
     }, 350)
     return () => window.clearTimeout(id)
@@ -279,7 +280,7 @@ export default function DeckPage() {
         <div className="h-full bg-ember transition-[width] duration-500" style={{ width: `${(i / deck.length) * 100}%` }} />
       </div>
 
-      <div className="relative mx-auto mt-5 h-[min(42vh,300px)] w-[min(60vw,210px)] [perspective:900px]">
+      <div className="relative mx-auto mt-4 h-[min(36vh,300px)] w-[min(25vh,210px)] [perspective:900px]">
         {/* The rest of the deck peeking out behind. */}
         {deck.length - i > 1 ? <CardBack className="absolute inset-0 translate-x-2 translate-y-2 rotate-3 opacity-60" /> : null}
         <div
@@ -296,15 +297,15 @@ export default function DeckPage() {
         </div>
       </div>
 
-      <div className={cx('mt-5 text-center transition duration-300', flipped ? 'opacity-100' : 'translate-y-2 opacity-0')}>
-        <div className="font-display text-4xl font-black tabular">
+      <div className={cx('mt-4 text-center transition duration-300', flipped ? 'opacity-100' : 'translate-y-2 opacity-0')}>
+        <div className="font-display text-3xl font-black tabular min-[360px]:text-4xl">
           {reps}
-          <span className="ml-2 text-2xl font-bold">{ex.name.toLowerCase()}</span>
+          <span className="ml-2 text-2xl font-bold">{pluralName(ex.name, reps)}</span>
         </div>
         {ex.perSide ? <div className="text-sm text-muted">per side</div> : null}
       </div>
 
-      <div className="mx-auto mt-3 w-40 overflow-hidden rounded-2xl border border-line bg-surface">
+      <div className="mx-auto mt-3 w-36 overflow-hidden rounded-2xl border border-line bg-surface [@media(max-height:600px)]:hidden">
         <Mannequin motion={motionFor(ex)} palette={palette} pulse={highlightFor(ex).primary} className="aspect-[4/3] w-full" title={ex.name} />
       </div>
 
@@ -312,8 +313,8 @@ export default function DeckPage() {
         <Button size="lg" variant="secondary" icon={<ChevronsRight size={20} />} onClick={() => next(true)} aria-label="Skip card">
           Skip
         </Button>
-        <Button size="lg" icon={<Check size={20} />} disabled={!flipped} onClick={() => next(false)}>
-          Done · next card
+        <Button size="lg" className="min-w-0" icon={<Check size={20} strokeWidth={3} />} disabled={!flipped} onClick={() => next(false)} aria-label="Done · next card">
+          Done
         </Button>
       </div>
     </div>

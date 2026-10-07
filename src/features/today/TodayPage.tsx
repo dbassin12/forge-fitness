@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Bell, Bot, Check, ChevronRight, Coffee, Droplet, Eye, Lightbulb, Play, Plus, Scale, Settings, Utensils, Zap } from 'lucide-react'
+import { Bell, Bot, Check, ChevronRight, Coffee, Droplet, Eye, Lightbulb, Play, Plus, Scale, Settings, Utensils, X, Zap } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
 import { usePalette } from '@/app/theme'
 import { db, kvGet, kvSet } from '@/db/db'
@@ -18,7 +18,7 @@ import { planDates, useLevel } from '@/state/gamification'
 import { addWater, OZ_ML, targetsFor, totalsOf, useDay, useNutritionSettings } from '@/state/nutrition'
 import { swapsFor, usePlan } from '@/state/plan'
 import { useQuests } from '@/state/quests'
-import { updateProfile } from '@/state/store'
+import { useStarter } from '@/state/starter'
 import { Button } from '@/ui/Button'
 import { Card } from '@/ui/Card'
 import { Chip } from '@/ui/Chip'
@@ -26,6 +26,7 @@ import { ProgressRing } from '@/ui/ProgressRing'
 import { unlockAudio } from '@/voice/beeps'
 import { CalorieRing, MacroBar } from '../eat/Rings'
 import { QuestCard } from './QuestCard'
+import { StarterCard } from './StarterCard'
 import { StreakCard } from './StreakCard'
 
 function greeting(h: number) {
@@ -41,6 +42,7 @@ export default function TodayPage() {
   const level = useLevel()
   const palette = usePalette()
   const quests = useQuests(plan?.profile)
+  const starter = useStarter()
   const workouts = useLiveQuery(() => db.workouts.orderBy('date').toArray(), [])
   const reviewDismissed = useLiveQuery(async () => (await kvGet<string>('review.dismissed')) ?? '', [])
   const remindersOn = useLiveQuery(async () => !!(await kvGet<{ enabled?: boolean }>('reminders'))?.enabled, [])
@@ -144,58 +146,21 @@ export default function TodayPage() {
       </header>
 
       {showReview && review ? (
-        <Card className="mb-3 border-violet/40">
-          <div className="text-xs font-semibold uppercase tracking-wider text-violet">Last week in review</div>
-          <div className="mt-1 font-semibold">{review.headline}</div>
-          <ul className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-sm text-muted">
-            <li>
-              Workouts: <b className="text-ink">{review.workouts}/{review.target}</b>
-            </li>
-            <li>
-              Minutes: <b className="text-ink">{review.minutes}</b>
-            </li>
-            {review.avgKcal ? (
-              <li>
-                Avg calories: <b className="text-ink">{Math.round(review.avgKcal).toLocaleString()}</b>
-              </li>
-            ) : null}
-            {review.loggedDays ? (
-              <li>
-                Protein days: <b className="text-ink">{review.proteinDays}/{review.loggedDays}</b>
-              </li>
-            ) : null}
-            {review.weightDeltaKg !== undefined ? (
-              <li>
-                Weight:{' '}
-                <b className="text-ink">
-                  {review.weightDeltaKg >= 0 ? '+' : ''}
-                  {(imperial ? review.weightDeltaKg * 2.20462 : review.weightDeltaKg).toFixed(1)} {imperial ? 'lb' : 'kg'}
-                </b>
-              </li>
-            ) : null}
-          </ul>
-          {review.suggestion ? (
-            <div className="mt-3">
-              <p className="text-sm">{review.suggestion.text}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {review.suggestion.options.map((o) => (
-                  <Chip
-                    key={o.label}
-                    onClick={async () => {
-                      await updateProfile({ ...(o.daysPerWeek ? { daysPerWeek: o.daysPerWeek, trainingDays: spread(o.daysPerWeek, p.trainingDays) } : {}), ...(o.sessionMinutes ? { sessionMinutes: o.sessionMinutes } : {}) })
-                      await kvSet('review.dismissed', lastWeek)
-                    }}
-                  >
-                    {o.label}
-                  </Chip>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          <Button size="sm" variant="ghost" className="mt-2 -ml-2" onClick={() => void kvSet('review.dismissed', lastWeek)}>
-            Got it
-          </Button>
-        </Card>
+        <div className="mb-3 flex items-center gap-3 rounded-[var(--radius-card)] border border-violet/40 bg-gradient-to-r from-violet/20 via-surface to-surface p-3">
+          <Link to="/recap" viewTransition className="pressable flex min-w-0 flex-1 items-center gap-3" aria-label="Watch your week in review">
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-gradient-to-tr from-ember via-amber to-violet p-[3px]">
+              <span className="grid h-full w-full place-items-center rounded-full bg-surface text-2xl">🎬</span>
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs font-semibold uppercase tracking-wider text-violet">Your week in review</span>
+              <span className="block truncate font-semibold">{review.headline}</span>
+              <span className="block text-sm text-muted">Tap to watch · 30 seconds</span>
+            </span>
+          </Link>
+          <button type="button" aria-label="Skip the recap" onClick={() => void kvSet('review.dismissed', lastWeek)} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-faint hover:bg-surface-2">
+            <X size={18} />
+          </button>
+        </div>
       ) : null}
 
       {planDoneToday ? (
@@ -274,6 +239,8 @@ export default function TodayPage() {
           </div>
         </Card>
       )}
+
+      {starter ? <StarterCard starter={starter} /> : null}
 
       {quests ? <QuestCard board={quests} /> : null}
 
@@ -357,16 +324,4 @@ export default function TodayPage() {
       <div className="h-2" />
     </div>
   )
-}
-
-/** Keep existing training days when changing the count (drop the last / add a spread day). */
-function spread(n: number, current: number[]): number[] {
-  const sorted = [...current].sort()
-  if (n <= sorted.length) return sorted.slice(0, n)
-  const out = new Set(sorted)
-  for (const d of [1, 3, 5, 2, 4, 6, 7]) {
-    if (out.size >= n) break
-    out.add(d)
-  }
-  return [...out].sort()
 }

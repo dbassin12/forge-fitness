@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronRight, Plus, Scale, Trophy } from 'lucide-react'
+import { ChevronRight, Plus, Scale, Settings, Trophy } from 'lucide-react'
 import { db } from '@/db/db'
 import { getExercise } from '@/data/exercises'
 import { levelTitle, weeklyStreak } from '@/engines/gamification'
@@ -12,15 +12,14 @@ import { kgToLb, lbToKg } from '@/lib/units'
 import { logWeight, useWeights } from '@/state/body'
 import { planDates, useLevel, useUnlocked } from '@/state/gamification'
 import { usePlan } from '@/state/plan'
-import { ACHIEVEMENTS } from '@/engines/gamification'
 import { Button } from '@/ui/Button'
 import { Card, SectionTitle } from '@/ui/Card'
 import { ChartFrame, ColumnChart, LegendDot, LegendLine, StatTile, TimeChart } from '@/ui/charts/Charts'
-import { cx } from '@/ui/cx'
 import { PageHeader } from '@/ui/PageHeader'
 import { Sheet } from '@/ui/Sheet'
 import { Stepper } from '@/ui/Stepper'
 import { BodySection } from './BodySection'
+import { TrophyShelf } from './TrophyShelf'
 
 const DAY = 86_400_000
 const toX = (d: string) => parseISODate(d).getTime()
@@ -84,8 +83,28 @@ export default function ProgressPage() {
 
   return (
     <>
-      <PageHeader title="Progress" subtitle="Every rep and every meal adds up" />
+      <PageHeader
+        title="Progress"
+        subtitle="Every rep and every meal adds up"
+        right={
+          <Link to="/more" viewTransition aria-label="Settings" className="pressable grid h-10 w-10 place-items-center rounded-full border border-line bg-surface text-muted">
+            <Settings size={18} />
+          </Link>
+        }
+      />
       <div className="px-4">
+        {(workouts ?? []).some((w) => w.date < startOfWeek(todayISO())) ? (
+          <Link to="/recap" viewTransition className="pressable mb-3 flex items-center gap-3 rounded-[var(--radius-card)] border border-violet/40 bg-gradient-to-r from-violet/20 via-surface to-surface p-3">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-tr from-ember via-amber to-violet p-[3px]">
+              <span className="grid h-full w-full place-items-center rounded-full bg-surface text-xl">🎬</span>
+            </span>
+            <span className="flex-1">
+              <span className="block font-semibold">Last week in review</span>
+              <span className="block text-sm text-muted">Your stats as a 30-second story</span>
+            </span>
+            <ChevronRight size={18} className="text-faint" />
+          </Link>
+        ) : null}
         <div className="grid grid-cols-2 gap-2">
           <StatTile
             label="Weight (7-day avg)"
@@ -216,28 +235,7 @@ export default function ProgressPage() {
 
         <BodySection imperial={imperial} />
 
-        <SectionTitle>Achievements</SectionTitle>
-        <Card>
-          <div className="mb-3 text-sm text-muted">
-            {unlocked?.size ?? 0} of {ACHIEVEMENTS.length} unlocked
-          </div>
-          <ul className="grid grid-cols-4 gap-2">
-            {ACHIEVEMENTS.map((a) => {
-              const got = unlocked?.has(a.id)
-              return (
-                <li key={a.id} className={cx('flex flex-col items-center rounded-2xl p-2 text-center', got ? 'bg-amber/10' : 'bg-surface-2')} title={a.description}>
-                  <span className={cx('text-2xl', !got && 'opacity-25 grayscale')} aria-hidden>
-                    {a.badge}
-                  </span>
-                  <span className={cx('mt-1 line-clamp-2 text-[10px] leading-tight', got ? 'text-ink' : 'text-faint')}>{a.title}</span>
-                  <span className="sr-only">
-                    {got ? 'Unlocked' : 'Locked'}: {a.description}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-        </Card>
+        <TrophyShelf plan={plan} unlocked={unlocked} />
         <div className="h-4" />
       </div>
       <WeighSheet open={weighOpen} onClose={() => setWeighOpen(false)} imperial={imperial} initialKg={weights?.[weights.length - 1]?.kg ?? p.weightKg} onSave={(kg) => void logWeight(kg, p)} />

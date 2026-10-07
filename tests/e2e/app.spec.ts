@@ -16,7 +16,7 @@ test('is an installable app with a manifest and service worker', async ({ page, 
 test('onboarding builds a plan and a full workout is logged', async ({ page }) => {
   const errors = trackErrors(page)
   await onboard(page)
-  await expect(page.getByRole('heading', { name: 'Train' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Start workout|Do it anyway/ })).toBeVisible()
 
   // A short "exercise snack" runs through every player screen quickly.
   await page.goto('/#/workout?snack=3')
@@ -157,7 +157,7 @@ test('Play: spin the wheel, do the move and save the session', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'Play' })).toBeVisible()
   await page.getByRole('link', { name: /Spin the wheel/ }).click()
   await page.getByRole('button', { name: 'Spin', exact: true }).first().click()
-  await page.getByRole('button', { name: /Let’s do it/ }).click()
+  await page.getByRole('button', { name: /Do it · / }).click()
   await expect(page.getByRole('button', { name: 'Done' })).toBeEnabled({ timeout: 6000 })
   await page.getByRole('button', { name: 'Done' }).click()
   await page.getByRole('button', { name: /Finish & save/ }).click()
@@ -195,5 +195,28 @@ test('Play: a plank challenge sets a first record', async ({ page }) => {
   await dismissCelebrations(page)
   await page.getByRole('button', { name: 'Done' }).click()
   await expect(page.getByRole('heading', { name: 'Play' })).toBeVisible()
+  await expectNoErrors(errors)
+})
+
+test('guide, weekly recap and "try a set" all work', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await onboard(page)
+  await page.getByRole('link', { name: /See how Forge works/ }).click()
+  await expect(page.getByRole('heading', { name: 'How Forge works' })).toBeVisible()
+  await page.getByRole('button', { name: 'Something hurts.' }).click()
+  await expect(page.getByText(/Aches & limits/)).toBeVisible()
+
+  await page.goto('/#/recap')
+  await expect(page.getByRole('dialog', { name: 'Weekly recap' })).toBeVisible()
+  for (let i = 0; i < 8 && !(await page.getByRole('button', { name: 'Let’s go' }).isVisible()); i++) await page.mouse.click(300, 400)
+  await page.getByRole('button', { name: 'Let’s go' }).click()
+  await page.waitForURL(/today/)
+
+  await page.goto('/#/exercise/bodyweight-squat')
+  await page.getByRole('button', { name: 'Try a set' }).click()
+  await expect(page.getByRole('button', { name: 'Done' })).toBeEnabled({ timeout: 6000 })
+  await page.getByRole('button', { name: 'Done' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Nice set!' })).toBeVisible()
   await expectNoErrors(errors)
 })

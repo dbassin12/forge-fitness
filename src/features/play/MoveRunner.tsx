@@ -148,11 +148,11 @@ export function MoveRunner({ move, title, onDone, onCancel }: { move: PlayMove; 
         <h1 className="font-display text-2xl font-bold">{ex.name}</h1>
         <div className="text-muted">{move.measure === 'time' ? `${move.amount} seconds` : `${move.amount} reps${perSide ? ' each side' : ''}`}</div>
       </div>
-      <div className="grid h-[220px] shrink-0 place-items-center">
+      <div className="grid h-[min(220px,32vh)] shrink-0 place-items-center">
         {stage === 'lead' ? (
           <LeadIn onGo={() => setStage('go')} />
         ) : (
-          <div className="relative grid h-44 w-44 place-items-center text-ember">
+          <div className="relative grid h-[min(176px,27vh)] w-[min(176px,27vh)] place-items-center text-ember">
             <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100" aria-hidden>
               <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeOpacity={0.15} strokeWidth="6" />
               <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${Math.min(1, progress) * C} ${C}`} />
