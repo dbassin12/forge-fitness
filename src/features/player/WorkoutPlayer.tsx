@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowDown, ArrowUp, Clock, Flame, Play, RotateCcw, Share2, Sparkles, Star, Zap } from 'lucide-react'
+import { APP, isBloom, W } from '@/app/brand'
 import { burst } from '@/app/confetti'
 import { COACH_STYLES, usePrefs } from '@/app/prefs'
 import { accentInfo, usePalette, useTheme } from '@/app/theme'
@@ -33,6 +34,7 @@ import { speech } from '@/voice/speech'
 import { blockSummary, gearFor } from '../train/sessionMeta'
 import { useSessionFromParams } from '../train/useSessionParams'
 import { finishWorkout, type FinishResult, type StepValues } from './finish'
+import { StreakIcon } from '../today/StreakCard'
 import { RunView } from './RunView'
 import { buildSteps } from './steps'
 
@@ -175,8 +177,8 @@ export default function WorkoutPlayer() {
           onComplete={complete}
           onQuit={() => setQuitOpen(true)}
         />
-        <Sheet open={quitOpen} onClose={() => setQuitOpen(false)} title="End workout?">
-          <p className="text-sm text-muted">Save what you've done so far, or keep going. Even a few sets count.</p>
+        <Sheet open={quitOpen} onClose={() => setQuitOpen(false)} title={`End ${W.workout}?`}>
+          <p className="text-sm text-muted">{isBloom ? 'Save what you’ve done so far, or keep going. Even a few poses count.' : "Save what you've done so far, or keep going. Even a few sets count."}</p>
           <div className="mt-4 grid gap-2">
             <Button size="lg" onClick={() => setQuitOpen(false)}>
               Keep going
@@ -198,7 +200,7 @@ export default function WorkoutPlayer() {
                 navigate(-1)
               }}
             >
-              Discard workout
+              Discard {W.workout}
             </Button>
           </div>
         </Sheet>
@@ -207,17 +209,23 @@ export default function WorkoutPlayer() {
   }
 
   if ((phase === 'feedback' || phase === 'saving') && run) {
-    const opts: { r: Rating; label: string; text: string; emoji: string; tone: string }[] = [
-      { r: 'easy', label: 'Too easy', text: 'I had plenty left — level me up', emoji: '😎', tone: 'border-good/40 hover:bg-good/10' },
-      { r: 'right', label: 'Just right', text: 'Challenging but doable', emoji: '💪', tone: 'border-amber/40 hover:bg-amber/10' },
-      { r: 'hard', label: 'Too hard', text: 'I struggled to finish', emoji: '🥵', tone: 'border-bad/40 hover:bg-bad/10' },
-    ]
+    const opts: { r: Rating; label: string; text: string; emoji: string; tone: string }[] = isBloom
+      ? [
+          { r: 'easy', label: 'Too gentle', text: 'I’d enjoy going a little deeper', emoji: '🌱', tone: 'border-good/40 hover:bg-good/10' },
+          { r: 'right', label: 'Just right', text: 'A good stretch, and I could breathe easily', emoji: '🧘', tone: 'border-amber/40 hover:bg-amber/10' },
+          { r: 'hard', label: 'Too much', text: 'Some poses felt like a strain', emoji: '😮‍💨', tone: 'border-bad/40 hover:bg-bad/10' },
+        ]
+      : [
+          { r: 'easy', label: 'Too easy', text: 'I had plenty left — level me up', emoji: '😎', tone: 'border-good/40 hover:bg-good/10' },
+          { r: 'right', label: 'Just right', text: 'Challenging but doable', emoji: '💪', tone: 'border-amber/40 hover:bg-amber/10' },
+          { r: 'hard', label: 'Too hard', text: 'I struggled to finish', emoji: '🥵', tone: 'border-bad/40 hover:bg-bad/10' },
+        ]
     return (
       <div className="flex min-h-dvh flex-col px-4 safe-top">
         <div className="mt-10 text-center">
-          <div className="text-6xl animate-bounce-in">🎉</div>
-          <h1 className="mt-3 font-display text-3xl font-bold animate-fade-up">Workout done!</h1>
-          <p className="mt-1 text-muted animate-fade-up [animation-delay:120ms]">How did that feel? Your next workout adapts to your answer.</p>
+          <div className="text-6xl animate-bounce-in">{isBloom ? '🌸' : '🎉'}</div>
+          <h1 className="mt-3 font-display text-3xl font-bold animate-fade-up">{W.Workout} done!</h1>
+          <p className="mt-1 text-muted animate-fade-up [animation-delay:120ms]">How did that feel? Your next {W.workout} adapts to your answer.</p>
         </div>
         <div className="mt-8 space-y-3">
           {opts.map(({ r, label, text, emoji, tone }, i) => (
@@ -285,15 +293,19 @@ export default function WorkoutPlayer() {
         </Card>
       ) : null}
       <div className="mt-6">
-        <div className="text-sm font-semibold uppercase tracking-wider text-ember">{fresh.snack ? 'Movement snack' : `Workout ${fresh.index + 1}`}</div>
+        <div className="text-sm font-semibold uppercase tracking-wider text-ember">{fresh.snack ? (isBloom ? 'Mini flow' : 'Movement snack') : `${W.Workout} ${fresh.index + 1}`}</div>
         <h1 className="mt-1 font-display text-3xl font-bold">{s.title}</h1>
         <div className="mt-1 flex gap-4 text-muted">
           <span className="flex items-center gap-1">
             <Clock size={16} /> {s.minutes} min
           </span>
-          <span className="flex items-center gap-1">
-            <Flame size={16} /> ~{s.estKcal} kcal
-          </span>
+          {isBloom ? (
+            <span>{new Set(s.blocks.flatMap((b) => b.items.map((it) => it.exerciseId))).size} poses</span>
+          ) : (
+            <span className="flex items-center gap-1">
+              <Flame size={16} /> ~{s.estKcal} kcal
+            </span>
+          )}
         </div>
       </div>
       <Card className="mt-5 divide-y divide-line/60 py-1">
@@ -311,11 +323,11 @@ export default function WorkoutPlayer() {
       <CoachPicker />
       <div className="mt-3 rounded-2xl bg-surface-2 px-3 py-1">
         <Toggle checked={voice.enabled} onChange={(x) => voice.update({ enabled: x })} label="Voice coach" />
-        <Toggle checked={voice.countReps} onChange={(x) => voice.update({ countReps: x })} label="Count my reps in tempo" />
+        <Toggle checked={voice.countReps} onChange={(x) => voice.update({ countReps: x })} label={isBloom ? 'Count slow movements aloud' : 'Count my reps in tempo'} />
       </div>
       <div className="mt-auto pt-6" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
         <Button block size="lg" icon={<Play size={22} fill="currentColor" />} onClick={() => start(null)} className={cx('h-16 text-lg', resumable ? 'opacity-90' : 'animate-glow')}>
-          {resumable ? 'Start fresh' : "Let's go"}
+          {resumable ? 'Start fresh' : isBloom ? 'Begin' : "Let's go"}
         </Button>
       </div>
     </div>
@@ -327,8 +339,8 @@ function CoachPicker() {
   const update = usePrefs((s) => s.update)
   return (
     <div className="mt-4">
-      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted">Your coach today</div>
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted">{isBloom ? 'Your guide today' : 'Your coach today'}</div>
+      <div className={cx('grid gap-1.5', COACH_STYLES.length === 3 ? 'grid-cols-3' : 'grid-cols-4')}>
         {COACH_STYLES.map((c) => (
           <button
             key={c.id}
@@ -403,12 +415,19 @@ function Summary({ result, onDone }: { result: FinishResult; onDone: () => void 
   const sets = result.log.exercises.filter((e) => e.block === 'main' || e.block === 'finisher').reduce((n, e) => n + e.sets.length, 0)
   const changes = result.changes.filter((c) => c.kind !== 'goal_down' || result.changes.length < 6)
   const firstMain = result.log.exercises.find((e) => e.block === 'main')
-  const stats = [
-    { k: 'Minutes', v: result.minutes, prefix: '' },
-    { k: 'Calories', v: result.log.calories, prefix: '~' },
-    { k: 'Sets', v: sets, prefix: '' },
-    { k: 'XP earned', v: result.xp, prefix: '+' },
-  ]
+  const poses = new Set(result.log.exercises.map((e) => e.exerciseId)).size
+  const stats = isBloom
+    ? [
+        { k: 'Minutes', v: result.minutes, prefix: '' },
+        { k: 'Poses', v: poses, prefix: '' },
+        { k: 'XP earned', v: result.xp, prefix: '+' },
+      ]
+    : [
+        { k: 'Minutes', v: result.minutes, prefix: '' },
+        { k: 'Calories', v: result.log.calories, prefix: '~' },
+        { k: 'Sets', v: sets, prefix: '' },
+        { k: 'XP earned', v: result.xp, prefix: '+' },
+      ]
 
   const share = async () => {
     setSharing('Making your card…')
@@ -420,8 +439,10 @@ function Summary({ result, onDone }: { result: FinishResult; onDone: () => void 
       minutes: result.minutes,
       kcal: result.log.calories,
       sets,
+      poses,
       xp: result.xp,
       streakWeeks: streak?.weeks ?? 0,
+      app: APP.id,
       motion: ex ? motionFor(ex) : undefined,
       palette,
       accent: theme === 'light' ? a.light : a.dark,
@@ -430,7 +451,9 @@ function Summary({ result, onDone }: { result: FinishResult; onDone: () => void 
       setSharing('Couldn’t make the image on this phone.')
       return
     }
-    const how = await shareImage(blob, 'forge-workout.png', `Just finished ${result.log.title} with Forge 💪`)
+    const how = isBloom
+      ? await shareImage(blob, 'bloom-practice.png', `Just finished ${result.log.title} with Bloom 🪷`)
+      : await shareImage(blob, 'forge-workout.png', `Just finished ${result.log.title} with Forge 💪`)
     setSharing(how === 'downloaded' ? 'Saved the image.' : null)
   }
 
@@ -438,13 +461,13 @@ function Summary({ result, onDone }: { result: FinishResult; onDone: () => void 
     <div className="flex min-h-dvh flex-col px-4 safe-top">
       <div className="mt-8 text-center">
         <div className="relative mx-auto grid h-24 w-24 place-items-center">
-          <span aria-hidden className="absolute inset-0 rounded-full bg-amber/25 animate-ping [animation-duration:2.2s] [animation-iteration-count:2]" />
-          <span className="relative text-6xl animate-bounce-in">🏆</span>
+          <span aria-hidden className={cx('absolute inset-0 rounded-full animate-ping [animation-duration:2.2s] [animation-iteration-count:2]', isBloom ? 'bg-ember/25' : 'bg-amber/25')} />
+          <span className="relative text-6xl animate-bounce-in">{isBloom ? '🪷' : '🏆'}</span>
         </div>
-        <h1 className="mt-2 font-display text-3xl font-bold animate-fade-up">Nice work!</h1>
+        <h1 className="mt-2 font-display text-3xl font-bold animate-fade-up">{isBloom ? 'Beautiful practice' : 'Nice work!'}</h1>
         <p className="text-muted animate-fade-up [animation-delay:100ms]">{result.log.title}</p>
       </div>
-      <div className="mt-6 grid grid-cols-2 gap-2">
+      <div className={cx('mt-6 grid gap-2', stats.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
         {stats.map((x, i) => (
           <Card key={x.k} className="animate-rise py-3 text-center" style={{ animationDelay: `${150 + i * 90}ms` }}>
             <div className={cx('font-display text-3xl font-bold tabular', x.k === 'XP earned' && 'text-violet')}>
@@ -458,13 +481,17 @@ function Summary({ result, onDone }: { result: FinishResult; onDone: () => void 
       <XpBar gained={result.xp} />
       {streak ? (
         <Card className="mt-3 flex items-center gap-3 animate-fade-up [animation-delay:650ms]">
-          <Flame className="animate-flame text-ember" size={28} />
+          {isBloom ? <StreakIcon weeks={streak.weeks} size={34} /> : <Flame className="animate-flame text-ember" size={28} />}
           <div>
             <div className="font-semibold">
               {streak.weeks > 0 ? `${streak.weeks}-week streak` : 'Streak building'} · {Math.min(streak.thisWeek, streak.target)}/{streak.target} this week
             </div>
             <div className="text-sm text-muted">
-              {streak.thisWeek >= streak.target ? 'Weekly goal hit — anything more is a bonus.' : `${streak.target - streak.thisWeek} more to hit this week's goal.`}
+              {streak.thisWeek >= streak.target
+                ? isBloom
+                  ? 'Weekly goal reached. Anything more is a gift.'
+                  : 'Weekly goal hit — anything more is a bonus.'
+                : `${streak.target - streak.thisWeek} more to ${isBloom ? 'reach' : 'hit'} this week's goal.`}
             </div>
           </div>
         </Card>

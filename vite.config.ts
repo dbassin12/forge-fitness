@@ -12,9 +12,19 @@ const r = (p: string) => fileURLToPath(new URL(p, import.meta.url))
  * plugin links Forge's manifest into every page; Bloom keeps only its own (public/bloom/).
  */
 function bloomManifest(): Plugin {
+  // Locally (npm run dev / preview), /bloom without the slash would fall back to Forge's page.
+  const slash = (req: { url?: string }, res: { statusCode: number; setHeader: (k: string, v: string) => void; end: () => void }, next: () => void) => {
+    const m = req.url?.match(/^\/bloom(\?.*)?$/)
+    if (!m) return next()
+    res.statusCode = 302
+    res.setHeader('Location', `/bloom/${m[1] ?? ''}`)
+    res.end()
+  }
   return {
     name: 'bloom-manifest',
     enforce: 'post',
+    configureServer: (server) => void server.middlewares.use(slash),
+    configurePreviewServer: (server) => void server.middlewares.use(slash),
     transformIndexHtml: {
       order: 'post',
       handler(html, ctx) {

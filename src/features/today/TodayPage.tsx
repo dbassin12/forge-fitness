@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Bell, Bot, Check, ChevronRight, Coffee, Droplet, Eye, Play, Plus, Scale, Settings, Utensils, X, Zap } from 'lucide-react'
+import { Bell, Bot, Check, ChevronRight, Coffee, Droplet, Eye, Flower2, Play, Plus, Salad, Scale, Settings, Utensils, Wind, X, Zap } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
+import { isBloom, W } from '@/app/brand'
 import { useCelebrate } from '@/app/celebrate'
 import { usePalette } from '@/app/theme'
 import { db, kvGet, kvSet } from '@/db/db'
@@ -32,13 +33,21 @@ import { QuestCard } from './QuestCard'
 import { StarterCard } from './StarterCard'
 import { StreakCard } from './StreakCard'
 
-const MOOD_LINE: Record<MascotMood, string> = {
-  cheer: 'Ember: perfect day! 💎',
-  fired: 'Ember: you trained today 🔥',
-  happy: 'Ember: nice progress',
-  calm: 'Ember’s tip of the day',
-  sleepy: 'Ember: rest well tonight',
-}
+const MOOD_LINE: Record<MascotMood, string> = isBloom
+  ? {
+      cheer: 'Lila: a perfect day! 🌸',
+      fired: 'Lila: you practiced today 🌿',
+      happy: 'Lila: lovely progress',
+      calm: 'Lila’s thought for today',
+      sleepy: 'Lila: rest well tonight 🌙',
+    }
+  : {
+      cheer: 'Ember: perfect day! 💎',
+      fired: 'Ember: you trained today 🔥',
+      happy: 'Ember: nice progress',
+      calm: 'Ember’s tip of the day',
+      sleepy: 'Ember: rest well tonight',
+    }
 
 function greeting(h: number) {
   return h < 5 ? 'Up early' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
@@ -208,7 +217,7 @@ export default function TodayPage() {
               <Check size={26} strokeWidth={3} />
             </span>
             <div className="flex-1">
-              <div className="font-semibold">Workout done — nice!</div>
+              <div className="font-semibold">{isBloom ? 'Practice done — lovely!' : 'Workout done — nice!'}</div>
               <div className="text-sm text-muted">
                 {planDoneToday.title} · {Math.max(1, Math.round((planDoneToday.finishedAt - planDoneToday.startedAt) / 60000))} min · +{planDoneToday.xp} XP
               </div>
@@ -225,14 +234,14 @@ export default function TodayPage() {
           <div aria-hidden className="pointer-events-none absolute -top-16 -right-10 h-48 w-48 rounded-full bg-ember/20 blur-3xl" />
           <div className="relative flex items-start gap-3">
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold uppercase tracking-wider text-ember">{trainingDay ? "Today's workout" : 'Rest day — or get ahead'}</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-ember">{trainingDay ? `Today's ${W.workout}` : isBloom ? 'Rest day — or a gentle flow?' : 'Rest day — or get ahead'}</div>
               <div className="mt-1 font-display text-2xl font-bold leading-tight">{next.title}</div>
               <div className="mt-1 text-sm text-muted">
-                {next.minutes} min · ~{next.estKcal} kcal · {items.length} moves
+                {isBloom ? `${next.minutes} min · ${items.length} poses` : `${next.minutes} min · ~${next.estKcal} kcal · ${items.length} moves`}
               </div>
             </div>
             {firstEx ? (
-              <Link to="/train/session" viewTransition aria-label="Preview the workout" className="pressable -mr-1 w-28 shrink-0 overflow-hidden rounded-2xl border border-line/70 bg-bg/50">
+              <Link to="/train/session" viewTransition aria-label={`Preview the ${W.workout}`} className="pressable -mr-1 w-28 shrink-0 overflow-hidden rounded-2xl border border-line/70 bg-bg/50">
                 <Mannequin motion={motionFor(firstEx)} palette={palette} pulse={highlightFor(firstEx).primary} speed={0.85} className="aspect-[4/3] w-full" title={`${firstEx.name} preview`} />
               </Link>
             ) : null}
@@ -255,9 +264,9 @@ export default function TodayPage() {
                 navigate('/workout', { viewTransition: true })
               }}
             >
-              {trainingDay ? 'Start workout' : 'Do it anyway'}
+              {trainingDay ? (isBloom ? 'Begin practice' : 'Start workout') : isBloom ? 'Practice anyway' : 'Do it anyway'}
             </Button>
-            <Button size="lg" variant="secondary" aria-label="Preview workout" className="w-14 px-0" icon={<Eye size={20} />} onClick={() => navigate('/train/session', { viewTransition: true })} />
+            <Button size="lg" variant="secondary" aria-label={`Preview ${W.workout}`} className="w-14 px-0" icon={<Eye size={20} />} onClick={() => navigate('/train/session', { viewTransition: true })} />
           </div>
           <div className="relative mt-3 flex flex-wrap items-center gap-2 text-sm">
             <Zap size={15} className="text-amber" />
@@ -271,7 +280,7 @@ export default function TodayPage() {
               ))}
             <Chip className="h-8" onClick={() => navigate('/workout?snack=3')}>
               <span className="inline-flex items-center gap-1">
-                <Coffee size={13} /> 3-min snack
+                {isBloom ? <Flower2 size={13} /> : <Coffee size={13} />} {isBloom ? '3-min mini flow' : '3-min snack'}
               </span>
             </Chip>
           </div>
@@ -281,6 +290,22 @@ export default function TodayPage() {
       {starter ? <StarterCard starter={starter} /> : null}
 
       {quests ? <QuestCard board={quests} /> : null}
+
+      {isBloom ? (
+        <Link to="/breathe/calm?min=1" viewTransition className="pressable mt-3 block">
+          <Card className="flex items-center gap-3 border-teal/30 bg-gradient-to-r from-teal/15 via-surface to-surface">
+            <span className="relative grid h-12 w-12 shrink-0 place-items-center" aria-hidden>
+              <span className="absolute inset-0 rounded-full bg-teal/25 animate-breath" />
+              <Wind className="relative text-teal" size={22} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold">One calm minute</span>
+              <span className="block text-sm text-muted">Breathe in for four, out for six</span>
+            </span>
+            <ChevronRight className="shrink-0 text-faint" />
+          </Card>
+        </Link>
+      ) : null}
 
       <Card className="mt-3">
         <Link to="/eat" className="flex items-center gap-4">
@@ -315,9 +340,15 @@ export default function TodayPage() {
           >
             +{settings.glassOz} oz
           </Button>
-          <Button size="sm" variant="secondary" icon={<Scale size={15} />} onClick={() => navigate('/progress')}>
-            Weight
-          </Button>
+          {isBloom ? (
+            <Button size="sm" variant="secondary" icon={<Salad size={15} />} onClick={() => navigate('/eat/plan')}>
+              Meals
+            </Button>
+          ) : (
+            <Button size="sm" variant="secondary" icon={<Scale size={15} />} onClick={() => navigate('/progress')}>
+              Weight
+            </Button>
+          )}
         </div>
       </Card>
 
@@ -338,7 +369,7 @@ export default function TodayPage() {
           <Bot size={20} className="shrink-0 text-ember" />
           <div className="flex-1">
             <div className="font-semibold">Ask Claude</div>
-            <div className="text-sm text-muted">“What should I eat tonight?” · “Swap for sore knees?”</div>
+            <div className="text-sm text-muted">{isBloom ? '“A gentle flow for tight hips?” · “A cosy dinner idea?”' : '“What should I eat tonight?” · “Swap for sore knees?”'}</div>
           </div>
           <ChevronRight className="text-faint" />
         </Card>
@@ -350,7 +381,7 @@ export default function TodayPage() {
             <Bell size={20} className="shrink-0 text-sky" />
             <div className="flex-1">
               <div className="font-semibold">Get reminders on your phone</div>
-              <div className="text-sm text-muted">Workout, meal and water nudges. No setup: they go in your calendar.</div>
+              <div className="text-sm text-muted">{W.Workout}, meal and water nudges. No setup: they go in your calendar.</div>
             </div>
             <ChevronRight className="text-faint" />
           </Card>
@@ -358,7 +389,7 @@ export default function TodayPage() {
       ) : null}
 
       <Link to="/train/library" className="mt-3 flex items-center justify-center gap-1.5 py-4 text-sm text-muted">
-        <Plus size={15} /> Browse all exercises
+        <Plus size={15} /> Browse all {W.exercises}
       </Link>
       <div className="h-2" />
     </div>

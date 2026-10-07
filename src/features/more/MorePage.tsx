@@ -4,11 +4,13 @@ import {
   Apple,
   Bell,
   BookOpen,
+  Check,
   Bot,
   CalendarDays,
   ChevronRight,
   Download,
   Dumbbell,
+  Flower2,
   HardDrive,
   HeartPulse,
   Info,
@@ -21,10 +23,11 @@ import {
   User,
   Volume2,
 } from 'lucide-react'
+import { APP, isBloom, W } from '@/app/brand'
 import { COACH_STYLES, usePrefs } from '@/app/prefs'
 import { accentInfo, useTheme } from '@/app/theme'
-import type { Ache, DietStyle, Equipment, Experience, Goal, Profile } from '@/domain/types'
-import { splitName } from '@/engines/plan'
+import type { Ache, DietStyle, Equipment, Experience, Goal, Intention, Profile } from '@/domain/types'
+import { planInputsFromProfile, programName } from '@/engines/plan'
 import { WEEKDAY_SHORT } from '@/lib/dates'
 import { downloadBlob, exportBackup, parseBackup, requestPersistence, restoreBackup, wipeAll } from '@/state/backup'
 import { saveNutritionSettings, useNutritionSettings } from '@/state/nutrition'
@@ -40,6 +43,7 @@ import { Stepper } from '@/ui/Stepper'
 import { Toggle } from '@/ui/Toggle'
 import { useVoiceSettings } from '@/voice/settings'
 import { speech } from '@/voice/speech'
+import { ACHES, BLOOM_ACHES, INTENTIONS, PREGNANCY_NOTE } from '../onboarding/choices'
 import { InstallGuide } from '../onboarding/InstallGuide'
 import { EquipmentEditor } from '../settings/EquipmentEditor'
 import { FeelPanel } from '../settings/FeelPanel'
@@ -74,6 +78,16 @@ function Row({ icon, title, sub, onClick, to }: { icon: ReactNode; title: string
 
 const GOAL_LABEL: Record<Goal, string> = { lose_fat: 'Lose fat', build_muscle: 'Build muscle', get_stronger: 'Get stronger', general_fitness: 'Feel fit & healthy' }
 const DIET_LABEL: Record<DietStyle, string> = { none: 'No restrictions', kosher: 'Kosher-style', vegetarian: 'Vegetarian', pescatarian: 'Pescatarian', vegan: 'Vegan' }
+
+function intentionsLabel(list: Intention[] | undefined): string {
+  const titles = (list ?? []).map((i) => INTENTIONS.find((x) => x.id === i)?.title).filter(Boolean)
+  return titles.length ? titles.join(', ') : 'Gentle yoga'
+}
+
+function propsLabel(e: Equipment): string {
+  const have = [e.mat && 'mat', e.chair && 'chair', e.wall && 'wall'].filter(Boolean)
+  return have.length ? `${have.join(', ')}`.replace(/^./, (c) => c.toUpperCase()) : 'Just the floor'
+}
 
 export default function MorePage() {
   const profile = useProfile()
@@ -110,15 +124,24 @@ export default function MorePage() {
 
         <Card className="py-1">
           <ul className="divide-y divide-line/60">
-            <Row icon={<User size={18} />} title={p.name || 'Your profile'} sub={`${GOAL_LABEL[p.goal]} · ${p.experience}`} onClick={() => setPanel('profile')} />
+            <Row icon={<User size={18} />} title={p.name || 'Your profile'} sub={`${isBloom ? intentionsLabel(p.intentions) : GOAL_LABEL[p.goal]} · ${p.experience}`} onClick={() => setPanel('profile')} />
             <Row
               icon={<CalendarDays size={18} />}
               title="Schedule"
-              sub={`${splitName(p.daysPerWeek, p.sessionMinutes)} · ${p.trainingDays.map((d) => WEEKDAY_SHORT[d - 1]).join(' ')} · ${p.sessionMinutes} min`}
+              sub={`${programName(planInputsFromProfile(p))} · ${p.trainingDays.map((d) => WEEKDAY_SHORT[d - 1]).join(' ')} · ${p.sessionMinutes} min`}
               onClick={() => setPanel('schedule')}
             />
-            <Row icon={<Dumbbell size={18} />} title="Equipment" sub={dbs.filter((d) => d.found).map((d) => `${d.count}×${d.weightLb} lb`).join(', ') || 'Bodyweight only'} onClick={() => setPanel('equipment')} />
-            <Row icon={<HeartPulse size={18} />} title="Aches & limits" sub={p.aches.length ? p.aches.join(', ').replace('_', ' ') : 'None'} onClick={() => setPanel('health')} />
+            {isBloom ? (
+              <Row icon={<Flower2 size={18} />} title="Props" sub={propsLabel(p.equipment)} onClick={() => setPanel('equipment')} />
+            ) : (
+              <Row icon={<Dumbbell size={18} />} title="Equipment" sub={dbs.filter((d) => d.found).map((d) => `${d.count}×${d.weightLb} lb`).join(', ') || 'Bodyweight only'} onClick={() => setPanel('equipment')} />
+            )}
+            <Row
+              icon={<HeartPulse size={18} />}
+              title={isBloom ? 'Be gentle with' : 'Aches & limits'}
+              sub={p.aches.length ? p.aches.map((a) => (a === 'pregnancy' ? 'pregnancy' : a.replace('_', ' '))).join(', ') : 'None'}
+              onClick={() => setPanel('health')}
+            />
             <Row icon={<Apple size={18} />} title="Food & nutrition" sub={`${DIET_LABEL[p.diet]} · ${p.trackingMode === 'lite' ? 'Lite' : 'Full'} tracking`} onClick={() => setPanel('food')} />
           </ul>
         </Card>
@@ -126,10 +149,15 @@ export default function MorePage() {
         <SectionTitle>Coaching</SectionTitle>
         <Card className="py-1">
           <ul className="divide-y divide-line/60">
-            <Row icon={<Bell size={18} />} title="Reminders" sub="Workouts, meals, water, streaks" to="/more/reminders" />
-            <Row icon={<Volume2 size={18} />} title="Voice & sounds" sub="Voice, speed, beeps, rep counting" onClick={() => setPanel('voice')} />
+            <Row icon={<Bell size={18} />} title="Reminders" sub={`${W.Workout}s, meals, water, streaks`} to="/more/reminders" />
+            <Row icon={<Volume2 size={18} />} title="Voice & sounds" sub={isBloom ? 'Voice, speed, chimes, counting' : 'Voice, speed, beeps, rep counting'} onClick={() => setPanel('voice')} />
             <Row icon={<Bot size={18} />} title="Ask Claude" sub="Coach answers and meal estimates in your Claude app" to="/coach" />
-            <Row icon={<BookOpen size={18} />} title="How Forge works" sub="Plan, player, quests, games, food, reminders" to="/guide" />
+            <Row
+              icon={<BookOpen size={18} />}
+              title={`How ${APP.name} works`}
+              sub={isBloom ? 'Practices, breathing, quests, food, reminders' : 'Plan, player, quests, games, food, reminders'}
+              to="/guide"
+            />
           </ul>
         </Card>
 
@@ -139,11 +167,11 @@ export default function MorePage() {
             <Row
               icon={theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
               title="Look & feel"
-              sub={`${mode === 'auto' ? 'Auto' : mode === 'dark' ? 'Dark' : 'Light'} · ${accentInfo(accent).name} · ${COACH_STYLES.find((c) => c.id === coach)?.name ?? ''} coach`}
+              sub={`${mode === 'auto' ? 'Auto' : mode === 'dark' ? 'Dark' : 'Light'} · ${accentInfo(accent).name} · ${COACH_STYLES.find((c) => c.id === coach)?.name ?? ''} ${isBloom ? 'guide' : 'coach'}`}
               onClick={() => setPanel('feel')}
             />
             <Row icon={<HardDrive size={18} />} title="Backup & data" sub="Export, restore, storage" onClick={() => setPanel('data')} />
-            <Row icon={<Sparkles size={18} />} title="Animation lab" sub="Every exercise animation, frame by frame" to="/lab" />
+            <Row icon={<Sparkles size={18} />} title="Animation lab" sub={`Every ${W.exercise} animation, frame by frame`} to="/lab" />
           </ul>
         </Card>
 
@@ -154,8 +182,8 @@ export default function MorePage() {
         <Card className="mt-3 flex gap-3 text-xs text-muted">
           <Info size={16} className="mt-0.5 shrink-0" />
           <p>
-            Forge keeps your data on this phone. Food data partly from Open Food Facts (ODbL). Forge gives general fitness guidance, not medical advice —
-            stop if something hurts and check with a doctor if unsure.
+            {APP.name} keeps your data on this phone. Food data partly from Open Food Facts (ODbL). {APP.name} gives general {isBloom ? 'wellbeing' : 'fitness'} guidance, not
+            medical advice — stop if something hurts and check with a doctor if unsure.
           </p>
         </Card>
         <div className="h-4" />
@@ -167,10 +195,10 @@ export default function MorePage() {
       <Sheet open={panel === 'schedule'} onClose={close} title="Schedule">
         <ScheduleEditor p={p} onDone={close} />
       </Sheet>
-      <Sheet open={panel === 'equipment'} onClose={close} title="Equipment">
+      <Sheet open={panel === 'equipment'} onClose={close} title={isBloom ? 'Props' : 'Equipment'}>
         <EquipmentPanel p={p} onDone={close} />
       </Sheet>
-      <Sheet open={panel === 'health'} onClose={close} title="Aches & limits">
+      <Sheet open={panel === 'health'} onClose={close} title={isBloom ? 'Be gentle with' : 'Aches & limits'}>
         <HealthEditor p={p} onDone={close} />
       </Sheet>
       <Sheet open={panel === 'food'} onClose={close} title="Food & nutrition">
@@ -199,16 +227,33 @@ function ProfileEditor({ p, onDone }: { p: Profile; onDone: () => void }) {
         <span className="mb-1 block text-sm text-muted">First name</span>
         <input className={inputCls} value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} />
       </label>
-      <div>
-        <div className="mb-1 text-sm text-muted">Goal</div>
-        <div className="flex flex-wrap gap-2">
-          {(Object.keys(GOAL_LABEL) as Goal[]).map((g) => (
-            <Chip key={g} active={d.goal === g} onClick={() => setD({ ...d, goal: g })}>
-              {GOAL_LABEL[g]}
-            </Chip>
-          ))}
+      {isBloom ? (
+        <div>
+          <div className="mb-1 text-sm text-muted">What you’d like from yoga</div>
+          <div className="flex flex-wrap gap-2">
+            {INTENTIONS.map((x) => {
+              const on = (d.intentions ?? []).includes(x.id)
+              return (
+                <Chip key={x.id} active={on} onClick={() => setD({ ...d, intentions: on ? (d.intentions ?? []).filter((y) => y !== x.id) : [...(d.intentions ?? []), x.id] })}>
+                  {x.emoji} {x.title}
+                </Chip>
+              )
+            })}
+          </div>
+          <p className="mt-1.5 text-xs text-muted">Your week of practices leans toward what you pick.</p>
         </div>
-      </div>
+      ) : (
+        <div>
+          <div className="mb-1 text-sm text-muted">Goal</div>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(GOAL_LABEL) as Goal[]).map((g) => (
+              <Chip key={g} active={d.goal === g} onClick={() => setD({ ...d, goal: g })}>
+                {GOAL_LABEL[g]}
+              </Chip>
+            ))}
+          </div>
+        </div>
+      )}
       <div>
         <div className="mb-1 text-sm text-muted">Experience</div>
         <Segmented<Experience>
@@ -218,7 +263,7 @@ function ProfileEditor({ p, onDone }: { p: Profile; onDone: () => void }) {
           options={[
             { value: 'beginner', label: 'New' },
             { value: 'intermediate', label: 'Some' },
-            { value: 'advanced', label: 'Experienced' },
+            { value: 'advanced', label: isBloom ? 'Regular' : 'Experienced' },
           ]}
         />
       </div>
@@ -239,7 +284,7 @@ function ProfileEditor({ p, onDone }: { p: Profile; onDone: () => void }) {
         block
         size="lg"
         onClick={async () => {
-          await updateProfile({ name: d.name.trim(), goal: d.goal, experience: d.experience, units: d.units })
+          await updateProfile({ name: d.name.trim(), goal: d.goal, experience: d.experience, units: d.units, intentions: d.intentions })
           onDone()
         }}
       >
@@ -256,7 +301,9 @@ function ScheduleEditor({ p, onDone }: { p: Profile; onDone: () => void }) {
   return (
     <div className="space-y-5">
       <div>
-        <div className="mb-2 text-sm text-muted">Training days ({days.length} a week)</div>
+        <div className="mb-2 text-sm text-muted">
+          {isBloom ? 'Practice days' : 'Training days'} ({days.length} a week)
+        </div>
         <div className="grid grid-cols-7 gap-1.5">
           {WEEKDAY_SHORT.map((w, k) => {
             const on = days.includes(k + 1)
@@ -275,9 +322,9 @@ function ScheduleEditor({ p, onDone }: { p: Profile; onDone: () => void }) {
         </div>
       </div>
       <div>
-        <div className="mb-2 text-sm text-muted">Minutes per workout</div>
+        <div className="mb-2 text-sm text-muted">Minutes per {W.workout}</div>
         <div className="flex flex-wrap gap-2">
-          {[5, 10, 15, 20, 30, 45, 60].map((m) => (
+          {(isBloom ? [5, 10, 15, 20, 30, 45] : [5, 10, 15, 20, 30, 45, 60]).map((m) => (
             <Chip key={m} active={minutes === m} onClick={() => setMinutes(m)}>
               {m}
             </Chip>
@@ -285,7 +332,7 @@ function ScheduleEditor({ p, onDone }: { p: Profile; onDone: () => void }) {
         </div>
       </div>
       <label className="block">
-        <span className="mb-1 block text-sm text-muted">Usual workout time</span>
+        <span className="mb-1 block text-sm text-muted">Usual {W.workout} time</span>
         <input type="time" className={inputCls} value={time} onChange={(e) => setTime(e.target.value || '07:00')} />
       </label>
       <p className="text-xs text-muted">Your progress carries over — only the weekly layout changes.</p>
@@ -309,7 +356,16 @@ function EquipmentPanel({ p, onDone }: { p: Profile; onDone: () => void }) {
   const [quiet, setQuiet] = useState(!!p.quietMode)
   return (
     <div>
-      <EquipmentEditor equipment={eq} quietMode={quiet} onChange={setEq} onQuietMode={setQuiet} />
+      {isBloom ? (
+        <Card>
+          <p className="pb-1 text-sm text-muted">Bloom only uses what you have. Everything works on a carpet or a folded blanket too.</p>
+          <Toggle checked={eq.mat} onChange={(v) => setEq({ ...eq, mat: v })} label="Yoga mat or soft rug" />
+          <Toggle checked={eq.chair} onChange={(v) => setEq({ ...eq, chair: v })} label="Sturdy chair" description="For balance and chair-supported poses" />
+          <Toggle checked={eq.wall} onChange={(v) => setEq({ ...eq, wall: v })} label="Clear wall space" description="For legs up the wall and balance practice" />
+        </Card>
+      ) : (
+        <EquipmentEditor equipment={eq} quietMode={quiet} onChange={setEq} onQuietMode={setQuiet} />
+      )}
       <Button
         block
         size="lg"
@@ -327,15 +383,11 @@ function EquipmentPanel({ p, onDone }: { p: Profile; onDone: () => void }) {
 
 function HealthEditor({ p, onDone }: { p: Profile; onDone: () => void }) {
   const [aches, setAches] = useState<Ache[]>(p.aches)
-  const all: { id: Ache; label: string }[] = [
-    { id: 'knees', label: 'Knees' },
-    { id: 'lower_back', label: 'Lower back' },
-    { id: 'shoulders', label: 'Shoulders' },
-    { id: 'wrists', label: 'Wrists' },
-  ]
+  const all = isBloom ? BLOOM_ACHES : ACHES
+  const pregnant = aches.includes('pregnancy')
   return (
     <div>
-      <p className="text-sm text-muted">Moves that could aggravate these are swapped out; the rest get extra cues.</p>
+      <p className="text-sm text-muted">{isBloom ? 'Poses that could bother these are swapped out; the rest get extra cues.' : 'Moves that could aggravate these are swapped out; the rest get extra cues.'}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {all.map((a) => (
           <Chip key={a.id} active={aches.includes(a.id)} onClick={() => setAches(aches.includes(a.id) ? aches.filter((x) => x !== a.id) : [...aches, a.id])}>
@@ -343,6 +395,28 @@ function HealthEditor({ p, onDone }: { p: Profile; onDone: () => void }) {
           </Chip>
         ))}
       </div>
+      {isBloom ? (
+        <>
+          <button
+            type="button"
+            aria-pressed={pregnant}
+            onClick={() => setAches(pregnant ? aches.filter((x) => x !== 'pregnancy') : [...aches, 'pregnancy'])}
+            className={cx('mt-4 flex w-full items-center gap-3 rounded-2xl border p-3 text-left', pregnant ? 'border-ember bg-ember/10' : 'border-line bg-surface')}
+          >
+            <span className="text-2xl" aria-hidden>
+              🤰
+            </span>
+            <span className="flex-1">
+              <span className="block font-semibold">I’m pregnant</span>
+              <span className="block text-sm text-muted">Skips belly-down poses, deep twists and core work on your back.</span>
+            </span>
+            <span className={cx('grid h-6 w-6 place-items-center rounded-full border', pregnant ? 'border-ember bg-ember text-on-accent' : 'border-line')}>
+              {pregnant ? <Check size={14} strokeWidth={3} /> : null}
+            </span>
+          </button>
+          {pregnant ? <Card className="mt-2 border-amber/40 bg-amber/10 text-sm">{PREGNANCY_NOTE}</Card> : null}
+        </>
+      ) : null}
       <Button
         block
         size="lg"
@@ -387,11 +461,13 @@ function FoodEditor({ p, onDone }: { p: Profile; onDone: () => void }) {
           onChange={setMode}
           options={[
             { value: 'full', label: 'Full (calories & macros)' },
-            { value: 'lite', label: 'Lite' },
+            { value: 'lite', label: isBloom ? 'Light touch' : 'Lite' },
           ]}
         />
       </div>
-      <Toggle checked={settings.eatBack} onChange={(v) => void saveNutritionSettings({ eatBack: v })} label="Eat back workout calories" description="Add calories burned in workouts to your daily budget" />
+      {isBloom ? null : (
+        <Toggle checked={settings.eatBack} onChange={(v) => void saveNutritionSettings({ eatBack: v })} label="Eat back workout calories" description="Add calories burned in workouts to your daily budget" />
+      )}
       <div className="flex items-center justify-between">
         <span className="font-medium">Water glass size</span>
         <Stepper value={settings.glassOz} onChange={(v) => void saveNutritionSettings({ glassOz: v })} min={4} max={32} step={2} unit="oz" label="glass size" />
@@ -424,9 +500,14 @@ function VoiceEditor() {
   const english = voices.filter((x) => x.lang.toLowerCase().startsWith('en'))
   return (
     <div className="space-y-2">
-      <Toggle checked={v.enabled} onChange={(x) => v.update({ enabled: x })} label="Voice coach" description="Captions always show, even when muted" />
-      <Toggle checked={v.countReps} onChange={(x) => v.update({ countReps: x })} label="Count my reps in tempo" description="Off = go at your own pace and tap Done" />
-      <Toggle checked={v.beeps} onChange={(x) => v.update({ beeps: x })} label="Countdown beeps" />
+      <Toggle checked={v.enabled} onChange={(x) => v.update({ enabled: x })} label={isBloom ? 'Voice guide' : 'Voice coach'} description="Captions always show, even when muted" />
+      <Toggle
+        checked={v.countReps}
+        onChange={(x) => v.update({ countReps: x })}
+        label={isBloom ? 'Count slow movements aloud' : 'Count my reps in tempo'}
+        description="Off = go at your own pace and tap Done"
+      />
+      <Toggle checked={v.beeps} onChange={(x) => v.update({ beeps: x })} label={isBloom ? 'Countdown chimes' : 'Countdown beeps'} />
       <Toggle checked={v.mixWithMusic} onChange={(x) => v.update({ mixWithMusic: x })} label="Play over my music" description="iPhone: keep your music playing under the coach" />
       <label className="block pt-2">
         <span className="mb-1 block text-sm text-muted">Voice</span>
@@ -450,7 +531,7 @@ function VoiceEditor() {
         icon={<Volume2 size={16} />}
         onClick={() => {
           speech.unlock()
-          void speech.speak("Let's go! Ten push-ups. Keep your body in one straight line.", { interrupt: true })
+          void speech.speak(isBloom ? 'Breathe in. Thirty seconds in tree pose. Find a still point ahead of you.' : "Let's go! Ten push-ups. Keep your body in one straight line.", { interrupt: true })
         }}
       >
         Preview voice
@@ -479,7 +560,7 @@ function DataPanel() {
         icon={<Download size={16} />}
         onClick={async () => {
           const blob = await exportBackup(photos)
-          downloadBlob(blob, `forge-backup-${new Date().toISOString().slice(0, 10)}.json`)
+          downloadBlob(blob, `${APP.storagePrefix}-backup-${new Date().toISOString().slice(0, 10)}.json`)
           setMsg('Backup downloaded.')
         }}
       >
@@ -524,7 +605,7 @@ function DataPanel() {
         variant="danger"
         icon={<Trash2 size={16} />}
         onClick={async () => {
-          if (!confirm('Delete ALL Forge data on this phone? This cannot be undone.')) return
+          if (!confirm(`Delete ALL ${APP.name} data on this phone? This cannot be undone.`)) return
           await wipeAll()
           navigate('/welcome', { replace: true })
         }}

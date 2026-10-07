@@ -2,11 +2,12 @@ import { useEffect, useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, kvGet, kvSet } from '@/db/db'
 import { ACHIEVEMENTS, levelForXp, levelTitle } from '@/engines/gamification'
-import { QUESTS } from '@/engines/quests'
+import { questDef } from '@/engines/quests'
 import { addDays, startOfWeek, todayISO } from '@/lib/dates'
 import { checkAchievements, useTotalXp } from '@/state/gamification'
 import { evaluateQuests, useQuestSignal } from '@/state/quests'
 import { useProfile } from '@/state/store'
+import { isBloom } from './brand'
 import { useCelebrate } from './celebrate'
 import { MASCOT_GEAR } from '@/ui/Mascot'
 import { ACCENTS } from './theme'
@@ -40,7 +41,7 @@ export function useRewardWatch({ floaters, badgeScreen }: { floaters: boolean; b
       const { completed, perfect, facts } = await evaluateQuests(profile, today)
       const { toast } = useCelebrate.getState()
       for (const id of completed) {
-        const q = QUESTS[id]
+        const q = questDef(id, facts.yoga)
         toast({ tone: 'quest', title: 'Quest complete!', text: q.title(facts), xp: q.xp, emoji: q.emoji })
       }
       if (perfect) toast({ tone: 'perfect', title: 'Perfect day!', text: 'All three quests done. Bonus XP!', xp: 40, emoji: '💎' })
@@ -97,7 +98,11 @@ export function useRewardWatch({ floaters, badgeScreen }: { floaters: boolean; b
       const key = `weekgoal:${monday}`
       if (await kvGet<boolean>(key)) return
       await kvSet(key, true)
-      useCelebrate.getState().toast({ tone: 'perfect', title: 'Weekly goal hit! 🔥', text: `${weekDone} workouts this week. Your streak grows.`, emoji: '🎯' })
+      useCelebrate.getState().toast(
+        isBloom
+          ? { tone: 'perfect', title: 'Weekly goal reached 🌸', text: `${weekDone} practices this week. Lovely consistency.`, emoji: '🪷' }
+          : { tone: 'perfect', title: 'Weekly goal hit! 🔥', text: `${weekDone} workouts this week. Your streak grows.`, emoji: '🎯' },
+      )
     })
   }, [profile, weekDone, monday])
 

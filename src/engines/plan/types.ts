@@ -80,6 +80,10 @@ export interface FitnessTest {
   squats60?: number
   /** Forearm plank hold in seconds. */
   plankSec?: number
+  /** Bloom's check-in: where a soft-kneed forward fold reaches (0 thighs, 1 knees, 2 shins, 3 ankles, 4 floor). */
+  foldReach?: number
+  /** Bloom's check-in: seconds steady on one foot. */
+  balanceSec?: number
 }
 
 export interface ProgressState {

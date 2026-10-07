@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { ArrowLeftRight, Clock, Flame, Info, Play } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
+import { isBloom, W } from '@/app/brand'
 import { usePalette } from '@/app/theme'
 import { getExercise, motionFor } from '@/data/exercises'
 import { describeTarget, planContext, type PlannedItem } from '@/engines/plan'
@@ -52,23 +53,26 @@ export default function SessionPage() {
   const [swapItem, setSwapItem] = useState<PlannedItem | null>(null)
   const ctx = useMemo(() => (plan ? planContext(plan.inputs) : null), [plan])
 
-  if (!plan || !data || !ctx) return <PageHeader title="Workout" back="/train" />
+  if (!plan || !data || !ctx) return <PageHeader title={W.Workout} back="/train" />
   const { session: s, index, snack } = data
   const swaps = swapsFor(plan, index) ?? {}
   const gear = gearFor(s)
   const weekLabel = snack ? 'Snack' : s.deload ? 'Deload week' : `Week ${s.mesoWeek + 1} of 4`
+  const subtitle = isBloom ? (snack ? 'A few minutes, nothing needed' : `Practice ${index + 1}`) : snack ? 'Quick movement break' : `Workout ${index + 1} · ${weekLabel}`
 
   return (
     <>
-      <PageHeader title={s.title} subtitle={snack ? 'Quick movement break' : `Workout ${index + 1} · ${weekLabel}`} back="/train" />
+      <PageHeader title={s.title} subtitle={subtitle} back="/train" />
       <div className="px-4">
         <div className="flex flex-wrap gap-2">
           <Tag tone="ember">
             <Clock size={13} /> {s.minutes} min
           </Tag>
-          <Tag tone="amber">
-            <Flame size={13} /> ~{s.estKcal} kcal
-          </Tag>
+          {isBloom ? null : (
+            <Tag tone="amber">
+              <Flame size={13} /> ~{s.estKcal} kcal
+            </Tag>
+          )}
           {s.express ? <Tag tone="sky">Express</Tag> : null}
           {s.deload ? <Tag tone="teal">Lighter week</Tag> : null}
         </div>
@@ -105,7 +109,7 @@ export default function SessionPage() {
         ) : null}
         <div className="sticky bottom-[calc(var(--tabbar-h)+var(--safe-bottom)+12px)] mt-6">
           <Button block size="lg" icon={<Play size={20} />} onClick={() => navigate(`/workout?${params.toString()}`)}>
-            Start workout
+            {isBloom ? 'Begin practice' : 'Start workout'}
           </Button>
         </div>
       </div>

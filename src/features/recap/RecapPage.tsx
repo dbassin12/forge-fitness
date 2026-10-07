@@ -19,7 +19,7 @@ import { Button } from '@/ui/Button'
 import { CountUp } from '@/ui/CountUp'
 import { cx } from '@/ui/cx'
 import { ProgressRing } from '@/ui/ProgressRing'
-import { Flame } from '../today/StreakCard'
+import { StreakIcon } from '../today/StreakCard'
 
 const SLIDE_MS = 6000
 
@@ -144,7 +144,7 @@ function slides(d: RecapData): Slide[] {
         <>
           <Rise className="text-sm font-bold uppercase tracking-[0.3em] text-white/80">Streak & XP</Rise>
           <Rise delay={150} className="mt-6 grid place-items-center">
-            <Flame weeks={Math.max(1, d.streakWeeks)} size={120} />
+            <StreakIcon weeks={Math.max(1, d.streakWeeks)} size={120} />
           </Rise>
           <Rise delay={250} className="mt-2 font-display text-4xl font-black">
             {d.streakWeeks > 0 ? `${d.streakWeeks}-week streak` : 'Streak: ready to start'}

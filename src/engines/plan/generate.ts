@@ -1,3 +1,4 @@
+import { isBloom } from '@/app/brand'
 import { EXERCISES, getExercise, type Exercise } from '@/data/exercises'
 import type { Experience, ISODate } from '@/domain/types'
 import { addDays, isoWeekday } from '@/lib/dates'
@@ -7,7 +8,7 @@ import { LADDERS, type Region } from './ladders'
 import { makeTarget, prescribe, targetValue } from './prescribe'
 import { repSeconds, SIDE_SWITCH_SEC, sessionKcal, sessionSeconds, SWITCH_SEC, workSeconds } from './duration'
 import { rotationFor, TEMPLATES } from './templates'
-import { generateYogaSession, generateYogaSnack } from './yoga'
+import { generateYogaSession, generateYogaSnack, type MiniFlowKind } from './yoga'
 import type {
   YogaTemplateId,
   Focus,
@@ -671,8 +672,8 @@ const SNACK_PATTERNS = [
 ] as const
 
 /** A 2–5 minute no-equipment-needed micro-workout for between meetings (a mini flow in Bloom). */
-export function generateSnack(inputs: PlanInputs, minutes: number, variant = 0, hour?: number): PlannedSession {
-  if (inputs.program === 'yoga') return generateYogaSnack(inputs, minutes, variant, hour)
+export function generateSnack(inputs: PlanInputs, minutes: number, variant = 0, hour?: number, flow?: MiniFlowKind): PlannedSession {
+  if (inputs.program === 'yoga') return generateYogaSnack(inputs, minutes, variant, hour, flow)
   const ctx = planContext(inputs)
   const targetSec = clamp(Math.round(minutes), 1, 10) * 60
   const patterns = SNACK_PATTERNS[Math.abs(variant) % SNACK_PATTERNS.length]
@@ -762,9 +763,16 @@ export function mainExercises(s: PlannedSession): PlannedItem[] {
   return s.blocks.filter((b) => b.kind === 'main').flatMap((b) => b.items)
 }
 
+/** The word for a count: "reps" in Forge; in Bloom flows go in "rounds" and other moves in "times". */
+export function repWord(exerciseId: string, n: number): string {
+  if (!isBloom) return n === 1 ? 'rep' : 'reps'
+  return getExercise(exerciseId)?.pattern === 'flow' ? (n === 1 ? 'round' : 'rounds') : n === 1 ? 'time' : 'times'
+}
+
 export function describeTarget(it: PlannedItem): string {
   const v = targetValue(it.target)
   const unit = it.target.kind === 'time' ? 's' : ''
   const side = it.perSide ? ' / side' : ''
-  return it.target.kind === 'time' ? `${v}${unit}${side}` : `${v} reps${side}`
+  if (it.target.kind === 'time') return `${v}${unit}${side}`
+  return isBloom ? `${v} ${repWord(it.exerciseId, v)}${side}` : `${v} reps${side}`
 }

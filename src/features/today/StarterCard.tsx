@@ -1,19 +1,20 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router'
 import { BookOpen, Check, ChevronRight, X } from 'lucide-react'
+import { APP } from '@/app/brand'
 import { useCelebrate } from '@/app/celebrate'
 import { dismissStarter, rewardStarter, STARTER_XP, type Starter } from '@/state/starter'
 import { Card } from '@/ui/Card'
 import { cx } from '@/ui/cx'
 import { ProgressRing } from '@/ui/ProgressRing'
 
-/** "Get started" checklist: the first things worth doing in Forge, with a bonus for finishing. */
+/** "Get started" checklist: the first things worth doing in the app, with a bonus for finishing. */
 export function StarterCard({ starter }: { starter: Starter }) {
   const all = starter.done === starter.items.length
   useEffect(() => {
     if (!all || starter.rewarded) return
     void rewardStarter().then((first) => {
-      if (first) useCelebrate.getState().toast({ tone: 'perfect', title: 'You’re all set!', text: 'Getting started: complete', xp: STARTER_XP, emoji: '🚀' })
+      if (first) useCelebrate.getState().toast({ tone: 'perfect', title: 'You’re all set!', text: 'Getting started: complete', xp: STARTER_XP, emoji: APP.id === 'bloom' ? '🌸' : '🚀' })
     })
   }, [all, starter.rewarded])
   if (starter.dismissed || (all && starter.rewarded)) return null
@@ -50,7 +51,7 @@ export function StarterCard({ starter }: { starter: Starter }) {
         ))}
       </ul>
       <Link to="/guide" viewTransition className="flex items-center gap-2 border-t border-line/60 px-4 py-2.5 text-sm font-medium text-teal">
-        <BookOpen size={16} /> New here? See how Forge works
+        <BookOpen size={16} /> New here? See how {APP.name} works
         <ChevronRight size={16} className="ml-auto" />
       </Link>
     </Card>

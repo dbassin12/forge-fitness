@@ -346,9 +346,9 @@ export function miniFlowFor(hour: number | undefined, variant = 0): MiniFlowKind
 }
 
 /** A 2–10 minute mini flow: a few poses that need nothing but a little floor. */
-export function generateYogaSnack(inputs: PlanInputs, minutes: number, variant = 0, hour?: number): PlannedSession {
+export function generateYogaSnack(inputs: PlanInputs, minutes: number, variant = 0, hour?: number, pick?: MiniFlowKind): PlannedSession {
   const ctx = planContext({ ...inputs, program: 'yoga' })
-  const kind = miniFlowFor(hour, variant)
+  const kind = pick ?? miniFlowFor(hour, variant)
   const flow = MINI_FLOWS[kind]
   const targetSec = clamp(Math.round(minutes), 1, 10) * 60
   const poses = flow.ids.map((id) => getExercise(id)).filter((e): e is Exercise => !!e && isAllowed(e, ctx))

@@ -59,6 +59,16 @@ export function applyTest(state: ProgressState, t: FitnessTest): ProgressState {
     setRung(state, 'core_lat', pl < 20 ? 0 : pl < 45 ? 1 : pl < 90 ? 2 : 3)
     setRung(state, 'core_flex', pl < 20 ? 0 : pl < 45 ? 1 : pl < 90 ? 2 : 3)
   }
+  // Bloom's flexibility and balance check-in sets where folds and balances start.
+  if (t.foldReach !== undefined) {
+    const f = Math.max(0, Math.min(4, Math.round(t.foldReach)))
+    setRung(state, 'y_fold', f <= 1 ? 0 : f === 2 ? 1 : 2)
+    setRung(state, 'y_hip', f <= 1 ? 1 : f <= 3 ? 2 : 3)
+  }
+  if (t.balanceSec !== undefined) {
+    const b = Math.max(0, t.balanceSec)
+    setRung(state, 'y_balance', b < 10 ? 0 : b < 25 ? 1 : b < 45 ? 2 : 3)
+  }
   if (pu !== undefined || sq !== undefined) {
     const parts = [sq !== undefined ? sq / 45 : undefined, pu !== undefined ? pu / 30 : undefined].filter((x) => x !== undefined)
     const fitness = (parts.reduce((a, b) => a + b, 0) / parts.length) * 2

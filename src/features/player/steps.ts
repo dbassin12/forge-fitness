@@ -1,5 +1,5 @@
 import { getExercise, motionFor } from '@/data/exercises'
-import { BLOCK_GAP_SEC, BOTH_SIDES_PER_CYCLE, SWITCH_SEC, type BlockKind, type PlannedItem, type PlannedSession } from '@/engines/plan'
+import { BLOCK_GAP_SEC, BOTH_SIDES_PER_CYCLE, repWord, SWITCH_SEC, type BlockKind, type PlannedItem, type PlannedSession } from '@/engines/plan'
 
 export interface WorkStep {
   kind: 'work'
@@ -135,5 +135,5 @@ export function prevWork(steps: Step[], i: number): number {
 export function describeWork(w: WorkStep): string {
   if (w.seconds !== undefined) return `${w.seconds} seconds${w.side ? (w.side === 1 ? ', first side' : ', second side') : ''}`
   const r = w.reps ?? 0
-  return `${r} ${r === 1 ? 'rep' : 'reps'}${w.cyclesPerRep === 2 ? ' each side' : w.side ? (w.side === 1 ? ', first side' : ', second side') : w.item.perSide ? ' each side' : ''}`
+  return `${r} ${repWord(w.item.exerciseId, r)}${w.cyclesPerRep === 2 ? ' each side' : w.side ? (w.side === 1 ? ', first side' : ', second side') : w.item.perSide ? ' each side' : ''}`
 }

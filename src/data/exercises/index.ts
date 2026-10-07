@@ -147,6 +147,6 @@ export function highlightFor(ex: Exercise): { primary: SegmentGroup[]; secondary
 }
 
 export function youtubeUrl(ex: Exercise): string {
-  const q = ex.youtube ?? `${ex.name} proper form tutorial`
+  const q = ex.youtube ?? (ex.apps?.includes('bloom') && !ex.apps.includes('forge') ? `${ex.name} yoga for beginners` : `${ex.name} proper form tutorial`)
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`
 }

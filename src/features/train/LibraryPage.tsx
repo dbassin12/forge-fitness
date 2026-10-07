@@ -5,9 +5,10 @@ import { EXERCISES, MUSCLE_LABEL, PATTERN_LABEL, motionFor, type Pattern } from 
 import { Mannequin } from '@/anim/Mannequin'
 import { PageHeader } from '@/ui/PageHeader'
 import { Chip, LevelDots } from '@/ui/Chip'
+import { isBloom } from '@/app/brand'
 import { usePalette } from '@/app/theme'
 
-const GROUPS: Array<{ label: string; patterns: Pattern[] }> = [
+const FORGE_GROUPS: Array<{ label: string; patterns: Pattern[] }> = [
   { label: 'All', patterns: [] },
   { label: 'Push', patterns: ['h_push', 'v_push'] },
   { label: 'Pull', patterns: ['h_pull', 'v_pull'] },
@@ -18,9 +19,27 @@ const GROUPS: Array<{ label: string; patterns: Pattern[] }> = [
   { label: 'Mobility', patterns: ['mobility'] },
 ]
 
+const BLOOM_GROUPS: Array<{ label: string; patterns: Pattern[] }> = [
+  { label: 'All', patterns: [] },
+  { label: 'Flows', patterns: ['flow'] },
+  { label: 'Standing', patterns: ['standing'] },
+  { label: 'Balance', patterns: ['balance'] },
+  { label: 'Hips', patterns: ['hip'] },
+  { label: 'Folds', patterns: ['fold'] },
+  { label: 'Backbends & twists', patterns: ['backbend', 'twist'] },
+  { label: 'Core', patterns: ['core'] },
+  { label: 'Stretches', patterns: ['mobility'] },
+  { label: 'Restore', patterns: ['restore'] },
+  { label: 'Gentle strength', patterns: ['bridge', 'h_push', 'squat', 'cond'] },
+]
+
+const GROUPS = isBloom ? BLOOM_GROUPS : FORGE_GROUPS
+
 type EquipFilter = 'any' | 'none' | 'db'
 
-const ORDER: Pattern[] = ['h_push', 'v_push', 'h_pull', 'v_pull', 'squat', 'lunge', 'hinge', 'bridge', 'core', 'cond', 'arms', 'mobility']
+const ORDER: Pattern[] = isBloom
+  ? ['flow', 'standing', 'balance', 'hip', 'fold', 'backbend', 'twist', 'core', 'mobility', 'restore', 'bridge', 'h_push', 'squat', 'cond']
+  : ['h_push', 'v_push', 'h_pull', 'v_pull', 'squat', 'lunge', 'hinge', 'bridge', 'core', 'cond', 'arms', 'mobility']
 
 export default function LibraryPage() {
   const [q, setQ] = useState('')
@@ -43,7 +62,7 @@ export default function LibraryPage() {
 
   return (
     <>
-      <PageHeader title="Exercise library" subtitle={`${EXERCISES.length} animated, voiced guides`} back="/train" />
+      <PageHeader title={isBloom ? 'Pose library' : 'Exercise library'} subtitle={`${EXERCISES.length} animated, voiced guides`} back="/train" />
       <div className="px-4">
         <label className="flex h-11 items-center gap-2 rounded-2xl border border-line bg-surface px-3 text-muted focus-within:border-ember">
           <Search size={18} />
@@ -54,7 +73,7 @@ export default function LibraryPage() {
             enterKeyHint="search"
             autoCorrect="off"
             onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-            placeholder="Search exercises or muscles"
+            placeholder={isBloom ? 'Search poses or body areas' : 'Search exercises or muscles'}
             className="h-full flex-1 bg-transparent text-ink outline-none placeholder:text-faint"
           />
         </label>
@@ -65,11 +84,13 @@ export default function LibraryPage() {
             </Chip>
           ))}
         </div>
-        <div className="no-scrollbar -mx-4 mt-2 flex gap-2 overflow-x-auto px-4">
-          <Chip active={equip === 'any'} onClick={() => setEquip('any')}>Any equipment</Chip>
-          <Chip active={equip === 'none'} onClick={() => setEquip('none')}>No dumbbells</Chip>
-          <Chip active={equip === 'db'} onClick={() => setEquip('db')}>Dumbbells</Chip>
-        </div>
+        {isBloom ? null : (
+          <div className="no-scrollbar -mx-4 mt-2 flex gap-2 overflow-x-auto px-4">
+            <Chip active={equip === 'any'} onClick={() => setEquip('any')}>Any equipment</Chip>
+            <Chip active={equip === 'none'} onClick={() => setEquip('none')}>No dumbbells</Chip>
+            <Chip active={equip === 'db'} onClick={() => setEquip('db')}>Dumbbells</Chip>
+          </div>
+        )}
         <ul className="mt-4 grid grid-cols-2 gap-3">
           {list.map((e) => (
             <li key={e.id}>
@@ -88,7 +109,7 @@ export default function LibraryPage() {
             </li>
           ))}
         </ul>
-        {list.length === 0 ? <p className="mt-10 text-center text-muted">No exercises match.</p> : null}
+        {list.length === 0 ? <p className="mt-10 text-center text-muted">{isBloom ? 'No poses match.' : 'No exercises match.'}</p> : null}
       </div>
     </>
   )

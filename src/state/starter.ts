@@ -1,9 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, kvGet, kvSet } from '@/db/db'
+import { isBloom } from '@/app/brand'
 import { isStandalone } from '@/app/pwa'
 import { addXp } from './gamification'
 
-export type StarterId = 'tutorial' | 'workout' | 'food' | 'play' | 'reminders' | 'install'
+export type StarterId = 'tutorial' | 'workout' | 'food' | 'play' | 'breathe' | 'reminders' | 'install'
 
 export interface StarterItem {
   id: StarterId
@@ -16,7 +17,7 @@ export interface StarterItem {
 
 export const STARTER_XP = 50
 
-const DEFS: Omit<StarterItem, 'done'>[] = [
+const FORGE_DEFS: Omit<StarterItem, 'done'>[] = [
   { id: 'tutorial', emoji: '🎬', title: 'Watch a voiced tutorial', text: 'See how Forge teaches a move', to: '/exercise/bodyweight-squat' },
   { id: 'workout', emoji: '🏋️', title: 'Do your first workout', text: 'Or a 3-minute snack to start small', to: '/workout' },
   { id: 'food', emoji: '🍳', title: 'Log something you ate', text: 'Search, scan a barcode, or ask Claude', to: '/eat/add' },
@@ -24,6 +25,17 @@ const DEFS: Omit<StarterItem, 'done'>[] = [
   { id: 'reminders', emoji: '🔔', title: 'Get phone reminders', text: 'No setup: they go in your calendar', to: '/more/reminders' },
   { id: 'install', emoji: '📲', title: 'Add Forge to your Home Screen', text: 'Full screen, offline, notifications', to: '/guide#install' },
 ]
+
+const BLOOM_DEFS: Omit<StarterItem, 'done'>[] = [
+  { id: 'tutorial', emoji: '🎬', title: 'Watch a voiced tutorial', text: 'See how Bloom teaches a pose', to: '/exercise/tree-pose' },
+  { id: 'workout', emoji: '🧘', title: 'Do your first practice', text: 'Or a 3-minute mini flow to start small', to: '/workout' },
+  { id: 'breathe', emoji: '🌬️', title: 'Take one calm minute', text: 'A guided breathing session', to: '/breathe/calm?min=1' },
+  { id: 'food', emoji: '🥗', title: 'Log something you ate', text: 'Search, scan a barcode, or ask Claude', to: '/eat/add' },
+  { id: 'reminders', emoji: '🔔', title: 'Get gentle reminders', text: 'No setup: they go in your calendar', to: '/more/reminders' },
+  { id: 'install', emoji: '📲', title: 'Add Bloom to your Home Screen', text: 'Full screen, offline, notifications', to: '/guide#install' },
+]
+
+const DEFS = isBloom ? BLOOM_DEFS : FORGE_DEFS
 
 export interface Starter {
   items: StarterItem[]
@@ -46,9 +58,10 @@ export function useStarter(): Starter | undefined {
     ])
     const flags: Record<StarterId, boolean> = {
       tutorial: acts.some((a) => ((a.value as Record<string, number>)?.tutorial ?? 0) > 0),
-      workout: workouts.some((w) => w.kind !== 'test' && !w.sessionKey.startsWith('play:')),
+      workout: workouts.some((w) => w.kind !== 'test' && !w.sessionKey.startsWith('play:') && !w.sessionKey.startsWith('breathe:')),
       food: foods > 0,
       play: workouts.some((w) => w.sessionKey.startsWith('play:')),
+      breathe: workouts.some((w) => w.sessionKey.startsWith('breathe:')),
       reminders: !!reminders?.enabled || !!calendar,
       install: typeof window !== 'undefined' && isStandalone(),
     }
