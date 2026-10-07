@@ -100,7 +100,13 @@ Three commits on `claude/stoic-gauss-qogxju`, branched from `main` at `a7bc192`.
 - **Forge's behavior.** Every Bloom difference goes through `isBloom` / `APP` / `program === 'yoga'`. Keep Forge's wording and tests unchanged when editing shared screens.
 
 ## Where the files are on your computer
-After the `git pull` above, everything is inside the folder you cloned into, for example `~/forge-fitness`:
+If you downloaded `forge-fitness-bloom.zip` from the Claude app, it's in your Downloads folder. Double-click it to unzip, which gives you:
+- **Mac:** `~/Downloads/forge-fitness/` (that is, `/Users/<you>/Downloads/forge-fitness/`)
+- **Windows:** `C:\Users\<you>\Downloads\forge-fitness\`
+
+The zip is a full git checkout of `claude/stoic-gauss-qogxju`, with history and the GitHub remote. It leaves out `node_modules`, so run `npm install` once. You can also get the same folder with `git clone https://github.com/dbassin12/forge-fitness` and `git checkout claude/stoic-gauss-qogxju`.
+
+Inside `forge-fitness/`:
 - `STATUS.md`: this handoff
 - `README.md`: the "Bloom" section and how to run it
 - `bloom/index.html`: Bloom's page; the app opens at `/bloom/`
@@ -109,14 +115,12 @@ After the `git pull` above, everything is inside the folder you cloned into, for
 - `tests/unit/bloom*.test.ts` and `tests/e2e/bloom.spec.ts`: Bloom's tests
 
 ## Prompt for a local Claude session
-Open the cloned folder in the Claude Desktop app, or run `claude` (or `claude remote-control`) in it, and paste:
+Open `~/Downloads/forge-fitness` in the Claude Desktop app, or run `claude` (or `claude remote-control`) inside that folder, and paste:
 
-> You're picking up work on my repo dbassin12/forge-fitness in this folder. If it isn't cloned here yet, clone https://github.com/dbassin12/forge-fitness first.
+> You're picking up work on my repo dbassin12/forge-fitness, unzipped at ~/Downloads/forge-fitness (this folder). Read STATUS.md here first; it's the handoff from the previous session.
 >
-> Read STATUS.md in the repo root first; it's the handoff from the previous session.
+> Context: I asked for a gentle yoga app for my wife Michal, who wants yoga rather than intense workouts. It's built as "Bloom", a second app in this repo at /bloom/ that shares the engine of Forge, my calisthenics app at /. Forge must keep working exactly as before. All the work is on branch `claude/stoic-gauss-qogxju` (already checked out here), open as draft PR #4.
 >
-> Context: I asked for a gentle yoga app for my wife Michal, who wants yoga rather than intense workouts. It's built as "Bloom", a second app in this repo at /bloom/ that shares the engine of Forge, my calisthenics app at /. Forge must keep working exactly as before. All the work is on branch `claude/stoic-gauss-qogxju`, open as draft PR #4.
->
-> 1. Check out `claude/stoic-gauss-qogxju`, pull, then run `npm install` and `npm run check`, and tell me if anything fails.
+> 1. Run `git pull` to pick up anything newer, then `npm install` and `npm run check`, and tell me if anything fails.
 > 2. Start `npm run dev` and give me the Bloom address (http://localhost:5173/bloom/) so I can try it.
 > 3. Then wait for what I want to change. Route every Bloom difference through `isBloom` / `APP` from `src/app/brand.ts`, keep Forge's behavior and tests unchanged, and follow the "Don't Touch" list in STATUS.md. Before you push, run `npm run check`, plus `npm run e2e` for UI changes (run `npx playwright install chromium` once first).
