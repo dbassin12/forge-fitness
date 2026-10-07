@@ -64,6 +64,9 @@ function apply(theme: ThemeName, accent: Accent) {
   root.dataset.theme = theme
   root.dataset.accent = accent
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0b0d10' : '#f6f7f9')
+  // iPhone Home Screen apps draw white status-bar text over the page with "black-translucent";
+  // in light mode ask for the default (dark text) bar, which iOS applies from the next launch.
+  document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute('content', theme === 'light' ? 'default' : 'black-translucent')
 }
 
 interface ThemeState {

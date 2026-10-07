@@ -246,6 +246,27 @@ textarea {
   scrollbar-width: none;
 }
 
+/* Light mode in an installed iPhone app: until iOS picks up the dark-text status bar on the next
+   launch, tint the area behind the (white) clock and battery so they stay readable. */
+@media (display-mode: standalone) {
+  [data-theme="light"] body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: env(safe-area-inset-top, 0px);
+    background: linear-gradient(rgb(15 18 24 / 0.6), rgb(15 18 24 / 0.4));
+    z-index: 100;
+    pointer-events: none;
+  }
+}
+
+/* No iOS long-press callout or text selection on hold-to-pause / tap-to-count surfaces. */
+.no-callout {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Page transitions between tabs and screens (View Transitions; ignored where unsupported). */
 ::view-transition-old(root) {
   animation: vt-out 140ms ease-in both;

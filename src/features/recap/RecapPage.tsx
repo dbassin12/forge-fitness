@@ -334,7 +334,7 @@ export default function RecapPage() {
 
   return (
     <div
-      className={cx('fixed inset-0 z-40 select-none overflow-hidden bg-gradient-to-b text-white transition-colors duration-500', slide ? slide.bg : 'from-[#1e293b] via-[#0f172a] to-black')}
+      className={cx('no-callout fixed inset-0 z-40 overflow-hidden bg-gradient-to-b text-white transition-colors duration-500', slide ? slide.bg : 'from-[#1e293b] via-[#0f172a] to-black')}
       onPointerDown={() => {
         held.current = false
         window.setTimeout(() => {

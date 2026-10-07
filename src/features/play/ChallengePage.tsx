@@ -297,7 +297,7 @@ function Running({ def, t, taps, best, onTap, onStop, exName }: { def: Challenge
           onTap()
         }}
         aria-label={`Count a rep. ${taps} so far`}
-        className="relative mt-4 mb-4 flex flex-1 flex-col items-center justify-center overflow-hidden rounded-[2rem] border-2 border-dashed border-ember/50 bg-ember/5 active:bg-ember/15"
+        className="no-callout relative mt-4 mb-4 flex flex-1 touch-manipulation flex-col items-center justify-center overflow-hidden rounded-[2rem] border-2 border-dashed border-ember/50 bg-ember/5 active:bg-ember/15"
         style={{ marginBottom: 'calc(var(--safe-bottom) + 16px)' }}
       >
         <span key={taps} className="pointer-events-none absolute h-48 w-48 rounded-full bg-ember/30 animate-burst" aria-hidden />
