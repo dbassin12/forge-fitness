@@ -25,19 +25,33 @@ app, works offline, and keeps your data on your phone.
   quick add, custom foods, a weekly meal plan from 55 quick recipes with a grocery list, and a Lite
   mode that only tracks protein, veggies and water. Kosher-style, vegetarian, vegan and
   pescatarian filters (kosher-style never mixes meat and dairy in a meal).
-- **Motivation and progress.** XP and levels, a weekly-goal streak with freezes, 33
-  achievements, ~300 tips, a skill tree, a Sunday weekly review, weight/measurement/photo
-  tracking and a fitness retest every 4 weeks.
+- **Play.** Games that sneak in a workout: **Spin the wheel** (a random move, with combo XP for
+  spins in a row), **Deck of cards** (the suit picks the move, the number is the reps; quick,
+  half or full deck, best times) and **record challenges** (plank, push-up blitz, squat sprint,
+  wall sit, jack attack) with tap-to-count and personal bests. Every move matches your level,
+  equipment and aches.
+- **Daily quests and rewards.** Three small goals a day (one to move, one to eat well, a bonus)
+  with XP and a perfect-day bonus. XP and levels unlock accent colors and gear for **Ember**,
+  Forge's flame mascot, who gives the daily tip and reacts to your day. 40 achievements on a
+  trophy shelf with progress bars, a weekly-goal streak with freezes, celebrations with confetti,
+  sound effects and vibration, and a weekly recap you can tap through like a story.
+- **Progress.** Weight trend, workouts per week, calories and protein charts, measurements,
+  progress photos, a skill path for every movement and a fitness retest every 4 weeks.
+- **Make it yours.** Auto, dark or light theme; six accent colors; a coach personality (Hype,
+  Calm, Drill sergeant or Zen) that changes what the voice coach and reminders say; and
+  switches for sounds, vibration, confetti and animations.
 - **Reminders.** Real push notifications (even with the app closed) for workouts, a streak
   saver, meals, water, movement snacks, an evening check-in, weigh-ins and the weekly review —
   plus an "Add to calendar" backup.
+- **Instructions built in.** A "Get started" checklist for your first days, a **How Forge
+  works** guide with an FAQ, voiced tutorials and a "Try a set" button on every exercise.
 - **Ask Claude, on your Claude subscription.** Coach questions open the Claude app with a
   summary of your plan, food and workouts attached. Meal estimates work the same way: snap
   the photo in Claude, paste its answer back into Forge, then review and log. No API key.
 
 ## Install it on your phone
 
-1. Open the app's address (for example `https://forge-fitness.vercel.app`) on your phone.
+1. Open the app's address (`https://forge-fitness-liard.vercel.app`) on your phone.
 2. **iPhone (iOS 16.4 or newer):** in **Safari**, tap **Share** → **Add to Home Screen** →
    **Add**. Then open Forge from the new icon. (Notifications only work from the Home Screen
    icon, not from a Safari tab.)
@@ -72,7 +86,7 @@ You need a free [Vercel](https://vercel.com) account connected to GitHub.
 4. **Start the reminder clock.** Merge this work into `main`. The GitHub Actions workflow
    `.github/workflows/fitness-reminders.yml` then runs every 15 minutes and asks the app to send
    any due reminders. It signs in with a short-lived GitHub token, so there's no secret to copy.
-   If your app isn't at `https://forge-fitness.vercel.app`, add a repository **variable**
+   If your app isn't at `https://forge-fitness-liard.vercel.app`, add a repository **variable**
    `FORGE_TICK_URL` (GitHub → Settings → Secrets and variables → Actions → Variables) set to
    `https://<your-domain>/api/tick`.
 5. **Check it.** On the phone: **Settings (gear on Today) → Reminders** shows when the scheduler last ran and warns

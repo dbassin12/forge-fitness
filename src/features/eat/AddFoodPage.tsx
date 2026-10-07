@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { haptic } from '@/device/haptics'
+import { sfx } from '@/device/sfx'
 import { useSearchParams } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Barcode, ChefHat, Clock, Globe, Loader2, PenLine, Plus, Search, Sparkles, Star, Zap } from 'lucide-react'
@@ -91,12 +93,16 @@ export default function AddFoodPage() {
 
   const log = async (e: NewEntry) => {
     await addEntry({ ...e, meal, date }, profile)
+    sfx.pop()
+    haptic('medium')
     setToast(`Added ${e.name.split(',')[0]} to ${MEAL_LABEL[meal].toLowerCase()}`)
     window.setTimeout(() => setToast(null), 2200)
   }
 
   const logMany = async (entries: Omit<NewEntry, 'date' | 'meal'>[]) => {
     for (const e of entries) await addEntry({ ...e, meal, date }, profile)
+    sfx.pop()
+    haptic('medium')
     setToast(`Added ${entries.length === 1 ? entries[0]!.name : `${entries.length} items`} to ${MEAL_LABEL[meal].toLowerCase()}`)
     window.setTimeout(() => setToast(null), 2200)
   }

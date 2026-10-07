@@ -6,6 +6,7 @@ import { usePalette } from '@/app/theme'
 import { getExercise, motionFor } from '@/data/exercises'
 import { LADDERS } from '@/engines/plan'
 import { Card, SectionTitle } from '@/ui/Card'
+import { Mascot } from '@/ui/Mascot'
 import { cx } from '@/ui/cx'
 import { PageHeader } from '@/ui/PageHeader'
 import { InstallGuide } from '../onboarding/InstallGuide'
@@ -146,6 +147,12 @@ export default function GuidePage() {
     <>
       <PageHeader title="How Forge works" subtitle="Two minutes to get the most out of it" back />
       <div className="px-4">
+        <div className="mb-3 flex items-center gap-3 rounded-[var(--radius-card)] border border-ember/30 bg-gradient-to-r from-ember/15 via-surface to-surface p-3">
+          <Mascot mood="happy" size={56} />
+          <p className="text-[15px]">
+            <b>Hi, I’m Ember!</b> <span className="text-muted">Here’s everything Forge can do, in two minutes. Tap a topic to jump to it.</span>
+          </p>
+        </div>
         <nav aria-label="Topics" className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1">
           {SECTIONS.map((s) => (
             <a key={s.id} href={`#/guide#${s.id}`} onClick={(e) => (e.preventDefault(), document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))} className="shrink-0 rounded-full border border-line bg-surface px-3 py-1.5 text-sm">
