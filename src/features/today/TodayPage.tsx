@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useEffect, useMemo, useRef } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Bell, Bot, Check, ChevronRight, Coffee, Droplet, Eye, Lightbulb, Play, Plus, Scale, Settings, Utensils, X, Zap } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
+import { useCelebrate } from '@/app/celebrate'
 import { usePalette } from '@/app/theme'
 import { db, kvGet, kvSet } from '@/db/db'
 import { getExercise, highlightFor, motionFor } from '@/data/exercises'
@@ -43,6 +44,19 @@ export default function TodayPage() {
   const palette = usePalette()
   const quests = useQuests(plan?.profile)
   const starter = useStarter()
+  const [params, setParams] = useSearchParams()
+  const waterDone = useRef(false)
+
+  // Home Screen shortcut "Log a glass of water" opens /today?water=1.
+  useEffect(() => {
+    if (params.get('water') !== '1' || !plan || waterDone.current) return
+    waterDone.current = true
+    setParams({}, { replace: true })
+    void addWater(today, settings.glassOz, plan.profile).then(() => {
+      sfx.bloop()
+      useCelebrate.getState().toast({ tone: 'info', title: `+${settings.glassOz} oz of water`, text: 'Logged from your Home Screen shortcut', emoji: '💧' })
+    })
+  }, [params, plan, settings.glassOz, setParams, today])
   const workouts = useLiveQuery(() => db.workouts.orderBy('date').toArray(), [])
   const reviewDismissed = useLiveQuery(async () => (await kvGet<string>('review.dismissed')) ?? '', [])
   const remindersOn = useLiveQuery(async () => !!(await kvGet<{ enabled?: boolean }>('reminders'))?.enabled, [])

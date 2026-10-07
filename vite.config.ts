@@ -37,9 +37,10 @@ export default defineConfig({
           { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
         shortcuts: [
-          { name: 'Start workout', short_name: 'Workout', url: '/#/train' },
-          { name: 'Log food', short_name: 'Log food', url: '/#/eat' },
-          { name: 'Log water', short_name: 'Water', url: '/#/today?water=1' },
+          { name: 'Start today’s workout', short_name: 'Workout', url: '/#/workout' },
+          { name: 'Spin the wheel', short_name: 'Spin', url: '/#/play/wheel' },
+          { name: 'Log food', short_name: 'Log food', url: '/#/eat/add' },
+          { name: 'Log a glass of water', short_name: 'Water', url: '/#/today?water=1' },
         ],
       },
       injectManifest: {

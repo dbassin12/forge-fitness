@@ -146,6 +146,12 @@ test('Today shows daily quests and the streak week', async ({ page }) => {
   await expect(page.getByRole('img', { name: /of 3 quests done/ })).toBeVisible()
   await expect(page.getByText(/Light your streak|week streak/)).toBeVisible()
   await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible()
+  // The "Log a glass of water" Home Screen shortcut.
+  await page.goto('/#/today?water=1')
+  await expect(page.getByRole('status').filter({ hasText: /oz of water/ })).toBeVisible()
+  await expect(page).toHaveURL(/#\/today$/)
+  await page.goto('/#/eat')
+  await expect(page.getByText(/^1 of \d+ glasses$|^1$/).first()).toBeVisible()
   await expectNoErrors(errors)
 })
 

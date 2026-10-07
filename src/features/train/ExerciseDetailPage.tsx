@@ -63,9 +63,10 @@ export default function ExerciseDetailPage() {
           {ex.impact === 'high' ? <Tag tone="bad">Jumping</Tag> : null}
         </div>
         <p className="mt-3 text-[15px] text-muted">{c.summary}</p>
-        <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
+        <div className="mt-4 flex gap-2">
           <Button
             size="lg"
+            className="min-w-0 flex-1 px-4"
             icon={<PlayCircle size={22} />}
             onClick={() => {
               speech.unlock()
@@ -73,11 +74,12 @@ export default function ExerciseDetailPage() {
               setTutorial(true)
             }}
           >
-            Watch tutorial
+            Tutorial
           </Button>
           <Button
             size="lg"
             variant="secondary"
+            className="px-4"
             icon={<Dumbbell size={20} />}
             onClick={() => {
               speech.unlock()

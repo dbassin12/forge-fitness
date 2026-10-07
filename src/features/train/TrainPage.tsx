@@ -134,7 +134,7 @@ export default function TrainPage() {
             <Zap size={18} className="text-amber" /> Short on time?
           </div>
           <p className="mt-0.5 text-sm text-muted">Squeeze today's workout into fewer minutes — the most important moves stay.</p>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {[5, 10, 15]
               .filter((m) => m < p.sessionMinutes)
               .map((m) => (
