@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie'
+import { APP } from '@/app/brand'
 import type { ISODate } from '@/domain/types'
 
 /** Generic key/value store for singletons: profile, settings, plan state, gamification, etc. */
@@ -164,7 +165,8 @@ export class ForgeDB extends Dexie {
   }
 }
 
-export const db = new ForgeDB()
+/** Forge and Bloom keep separate databases, so both can live on one phone. */
+export const db = new ForgeDB(APP.dbName)
 
 export async function kvGet<T>(key: string): Promise<T | undefined> {
   const row = await db.kv.get(key)

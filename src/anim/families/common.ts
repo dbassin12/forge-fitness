@@ -112,6 +112,7 @@ export function lerpPose(a: Pose, b: Pose, t: number): Pose {
     head: lerp(a.head ?? a.torso, b.head ?? b.torso, t),
     spine: lerpOpt(a.spine, b.spine, t),
     shoulderLift: lerpOpt(a.shoulderLift, b.shoulderLift, t),
+    pelvis: a.pelvis === undefined && b.pelvis === undefined ? undefined : lerp(a.pelvis ?? a.torso, b.pelvis ?? b.torso, t),
     armN: lerpLimb(a.armN, b.armN, t),
     armF: lerpLimb(a.armF, b.armF, t),
     legN: lerpLimb(a.legN, b.legN, t),

@@ -1,4 +1,4 @@
-import type { Ache, Equipment, Experience, Goal, ISODate } from '@/domain/types'
+import type { Ache, Equipment, Experience, Goal, Intention, ISODate, Program } from '@/domain/types'
 
 /** A progression ladder: one movement slot, ordered easiest → hardest. */
 export type LadderId =
@@ -16,6 +16,14 @@ export type LadderId =
   | 'cond'
   | 'biceps'
   | 'triceps'
+  // Yoga (Bloom)
+  | 'y_flow'
+  | 'y_standing'
+  | 'y_balance'
+  | 'y_hip'
+  | 'y_fold'
+  | 'y_back'
+  | 'y_core'
 
 /** 1 = main lift … 4 = optional extra (first to go when time is short). */
 export type Priority = 1 | 2 | 3 | 4
@@ -25,9 +33,12 @@ export interface Slot {
   priority: Priority
 }
 
-export type TemplateId = 'full_a' | 'full_b' | 'full_c' | 'upper_a' | 'upper_b' | 'lower_a' | 'lower_b' | 'cond_core'
+export type StrengthTemplateId = 'full_a' | 'full_b' | 'full_c' | 'upper_a' | 'upper_b' | 'lower_a' | 'lower_b' | 'cond_core'
+/** Bloom's practice themes. */
+export type YogaTemplateId = 'y_morning' | 'y_strength' | 'y_hips' | 'y_back' | 'y_unwind'
+export type TemplateId = StrengthTemplateId | YogaTemplateId
 
-export type Focus = 'full' | 'upper' | 'lower' | 'conditioning'
+export type Focus = 'full' | 'upper' | 'lower' | 'conditioning' | 'yoga'
 
 export interface SessionTemplate {
   id: TemplateId
@@ -92,6 +103,10 @@ export interface PlanInputs {
   /** No jumping (apartments, sensitive joints). */
   quietMode: boolean
   bodyWeightKg: number
+  /** Strength sessions (default) or gentle yoga practices. */
+  program?: Program
+  /** Yoga: what the practice is for (shapes the weekly themes). */
+  intentions?: Intention[]
 }
 
 export type Target =
@@ -156,4 +171,6 @@ export interface PlannedSession {
   blocks: PlannedBlock[]
   estSec: number
   estKcal: number
+  /** Pause between blocks (default BLOCK_GAP_SEC; yoga flows from one part to the next faster). */
+  gapSec?: number
 }

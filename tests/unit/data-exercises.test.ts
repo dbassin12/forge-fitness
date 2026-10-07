@@ -4,13 +4,23 @@ import { COPY_PUSH_PULL } from '@/data/exercises/copy/push-pull'
 import { COPY_LEGS } from '@/data/exercises/copy/legs'
 import { COPY_CORE } from '@/data/exercises/copy/core'
 import { COPY_COND_MOBILITY } from '@/data/exercises/copy/cond-mobility'
-import type { ExerciseCopy, Pattern } from '@/data/exercises/types'
+import { COPY_YOGA } from '@/data/exercises/copy/yoga'
+import type { ExerciseCopy, ExerciseDef, Pattern } from '@/data/exercises/types'
 
-const FILES: Array<{ name: string; copy: Record<string, ExerciseCopy>; patterns: Pattern[] }> = [
+/** Bloom's own poses (apps: ['bloom']) live in the yoga file, whatever their pattern. */
+const bloomOnly = (e: ExerciseDef) => !!e.apps && !e.apps.includes('forge')
+
+const FILES: Array<{ name: string; copy: Record<string, ExerciseCopy>; patterns: Pattern[]; bloom?: boolean }> = [
   { name: 'push-pull', copy: COPY_PUSH_PULL, patterns: ['h_push', 'v_push', 'h_pull', 'v_pull', 'arms'] },
   { name: 'legs', copy: COPY_LEGS, patterns: ['squat', 'lunge', 'hinge', 'bridge'] },
   { name: 'core', copy: COPY_CORE, patterns: ['core'] },
   { name: 'cond-mobility', copy: COPY_COND_MOBILITY, patterns: ['cond', 'mobility'] },
+  {
+    name: 'yoga',
+    copy: COPY_YOGA,
+    patterns: ['flow', 'standing', 'balance', 'hip', 'fold', 'backbend', 'twist', 'restore', 'mobility', 'core'],
+    bloom: true,
+  },
 ]
 
 const words = (s: string) => s.trim().split(/\s+/).length
@@ -33,7 +43,7 @@ describe('exercise catalog', () => {
 
 for (const f of FILES) {
   describe(`exercise copy: ${f.name}`, () => {
-    const defs = EXERCISE_DEFS.filter((e) => f.patterns.includes(e.pattern))
+    const defs = EXERCISE_DEFS.filter((e) => f.patterns.includes(e.pattern) && bloomOnly(e) === !!f.bloom)
     it('covers every exercise in its patterns and nothing else', () => {
       const missing = defs.filter((d) => !f.copy[d.id]).map((d) => d.id)
       expect(missing, 'missing copy').toEqual([])
@@ -71,3 +81,13 @@ for (const f of FILES) {
     }
   })
 }
+
+describe('yoga copy is easy to speak', () => {
+  for (const [id, c] of Object.entries(COPY_YOGA)) {
+    it(`${id} has no digits, symbols or brackets`, () => {
+      const text = [c.summary, ...c.setup, ...c.steps, c.breathing, ...c.cues, ...c.mistakes.flatMap((m) => [m.text, m.fix]), c.easier, c.harder, c.safety ?? ''].join(' ')
+      expect(text).not.toMatch(/[0-9()/&%+=<>]/)
+    })
+  }
+})
+

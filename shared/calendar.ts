@@ -3,9 +3,10 @@
  * with an alert in the phone's own calendar, which then notifies even when Forge is closed.
  * Shared by the app (direct download) and /api/calendar (opens the iPhone "Add All" screen).
  */
-import { defaultText, parseTime, ruleTimes, type ReminderRule, type ReminderType } from './reminder-rules.js'
+import { defaultText, parseTime, ruleTimes, type ReminderApp, type ReminderRule, type ReminderType } from './reminder-rules.js'
 
-export type CoachVoice = 'hype' | 'calm' | 'drill' | 'zen'
+export type CoachVoice = 'hype' | 'calm' | 'drill' | 'zen' | 'sunny'
+const VOICES: CoachVoice[] = ['hype', 'calm', 'drill', 'zen', 'sunny']
 
 export interface CalendarRule {
   id: string
@@ -25,6 +26,8 @@ export interface CalendarConfig {
   coach?: CoachVoice
   /** First local date to schedule from (YYYY-MM-DD, the phone's today). */
   from: string
+  /** Bloom's reminders (absent = Forge, so older links keep working). */
+  app?: 'bloom'
 }
 
 const DAY_CODES = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']
@@ -87,11 +90,26 @@ const VOICE: Record<CoachVoice, { workout: string; streak: string }> = {
   calm: { workout: '🙂 Workout time, whenever you’re ready', streak: '🙂 Trained today? A gentle 5 minutes still counts.' },
   drill: { workout: '🪖 Workout time. Move it, recruit!', streak: '🪖 No workout yet? Five minutes. Now.' },
   zen: { workout: '🧘 Time to move. Breathe, then begin.', streak: '🧘 Trained today? Five mindful minutes keep your rhythm.' },
+  sunny: { workout: '🌼 Workout time — you’ve got this!', streak: '🌼 Trained today? Five happy minutes still count!' },
+}
+
+/** Bloom's practice reminders, in the voice picked in the app. */
+const BLOOM_VOICE: Record<CoachVoice, { workout: string; streak: string }> = {
+  zen: { workout: '🧘 Time for your practice. Breathe, then begin.', streak: '🧘 Practiced today? If not, five slow minutes keep your rhythm.' },
+  calm: { workout: '🌿 Practice time, whenever you’re ready', streak: '🌿 Practiced today? A gentle five-minute flow still counts.' },
+  sunny: { workout: '🌼 Practice time — your mat is waiting!', streak: '🌼 Practiced today? Five happy minutes still count!' },
+  hype: { workout: '🧘 Time for your practice', streak: '🌸 Practiced today? Five gentle minutes still count.' },
+  drill: { workout: '🧘 Time for your practice', streak: '🌸 Practiced today? Five gentle minutes still count.' },
 }
 
 /** Calendar wording: the streak saver can't know if you trained, so it asks. */
-export function eventText(rule: CalendarRule, coach?: CoachVoice): { title: string; body: string; url: string } {
-  const base = defaultText(rule)
+export function eventText(rule: CalendarRule, coach?: CoachVoice, app: ReminderApp = 'forge'): { title: string; body: string; url: string } {
+  const base = defaultText(rule, app)
+  if (app === 'bloom') {
+    if (rule.type === 'workout') return { ...base, title: BLOOM_VOICE[coach ?? 'zen'].workout, body: 'Open Bloom and tap Begin. Short on time? A five-minute flow still counts.' }
+    if (rule.type === 'streak') return { ...base, title: BLOOM_VOICE[coach ?? 'zen'].streak, body: 'Skip this one if you already practiced today. A few minutes of breathing counts too.' }
+    return base
+  }
   if (rule.type === 'workout') return { ...base, title: coach ? VOICE[coach].workout : '💪 Workout time', body: "Open Forge and tap Start. Short on time? The 5- or 10-minute version still counts." }
   if (rule.type === 'streak') return { ...base, title: coach ? VOICE[coach].streak : '🔥 Trained today? If not, 5 minutes saves your streak', body: 'Skip this one if you already worked out. Even a 5-minute express workout counts.' }
   return base
@@ -99,18 +117,20 @@ export function eventText(rule: CalendarRule, coach?: CoachVoice): { title: stri
 
 /** One VEVENT per reminder time, repeating on the rule's days, with an alert when it starts. */
 export function buildReminderCalendar(cfg: CalendarConfig & { origin: string }, now = new Date()): string {
+  const app: ReminderApp = cfg.app ?? 'forge'
+  const name = app === 'bloom' ? 'Bloom' : 'Forge'
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Forge//Phone reminders//EN',
+    `PRODID:-//${name}//Phone reminders//EN`,
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:Forge reminders',
+    `X-WR-CALNAME:${name} reminders`,
   ]
   for (const rule of cfg.rules) {
     const days = [...new Set(rule.days)].filter((d) => d >= 1 && d <= 7).sort()
     if (!days.length) continue
-    const text = eventText(rule, cfg.coach)
+    const text = eventText(rule, cfg.coach, app)
     const link = `${cfg.origin}/${text.url.replace(/^\//, '')}`
     const length = rule.type === 'workout' ? Math.max(5, Math.min(120, Math.round(cfg.minutes))) : 5
     const rrule = days.length === 7 ? 'FREQ=DAILY' : `FREQ=WEEKLY;BYDAY=${days.map((d) => DAY_CODES[d - 1]).join(',')}`
@@ -120,16 +140,16 @@ export function buildReminderCalendar(cfg: CalendarConfig & { origin: string }, 
       if (!t) continue
       lines.push(
         'BEGIN:VEVENT',
-        `UID:forge-${rule.id}-${time.replace(':', '')}@forge-fitness`,
+        `UID:${app}-${rule.id}-${time.replace(':', '')}@forge-fitness`,
         `DTSTAMP:${stamp(now)}`,
         // Floating local time: rings at this clock time wherever the phone is.
         `DTSTART:${start.replace(/-/g, '')}T${pad(t.hour)}${pad(t.minute)}00`,
         `DURATION:PT${length}M`,
         `RRULE:${rrule}`,
         `SUMMARY:${escText(text.title)}`,
-        `DESCRIPTION:${escText(`${text.body}\n\nOpen Forge: ${link}`)}`,
+        `DESCRIPTION:${escText(`${text.body}\n\nOpen ${name}: ${link}`)}`,
         `URL:${link}`,
-        'CATEGORIES:Forge',
+        `CATEGORIES:${name}`,
         'TRANSP:TRANSPARENT',
         'BEGIN:VALARM',
         'ACTION:DISPLAY',
@@ -145,7 +165,7 @@ export function buildReminderCalendar(cfg: CalendarConfig & { origin: string }, 
 }
 
 /** Only what the calendar needs from the reminder settings (enabled, non-custom rules). */
-export function calendarConfig(o: { rules: ReminderRule[]; minutes: number; coach?: CoachVoice; from: string }): CalendarConfig {
+export function calendarConfig(o: { rules: ReminderRule[]; minutes: number; coach?: CoachVoice; from: string; app?: ReminderApp }): CalendarConfig {
   return {
     v: 1,
     rules: o.rules
@@ -154,6 +174,7 @@ export function calendarConfig(o: { rules: ReminderRule[]; minutes: number; coac
     minutes: o.minutes,
     ...(o.coach ? { coach: o.coach } : {}),
     from: o.from,
+    ...(o.app === 'bloom' ? { app: 'bloom' as const } : {}),
   }
 }
 
@@ -184,7 +205,8 @@ export function decodeCalendarConfig(s: string): CalendarConfig | null {
     if (raw.v !== 1 || !Array.isArray(raw.rules) || raw.rules.length > 20) return null
     if (typeof raw.minutes !== 'number' || raw.minutes < 1 || raw.minutes > 180) return null
     if (typeof raw.from !== 'string' || !DATE.test(raw.from)) return null
-    if (raw.coach !== undefined && !['hype', 'calm', 'drill', 'zen'].includes(raw.coach)) return null
+    if (raw.coach !== undefined && !VOICES.includes(raw.coach)) return null
+    if (raw.app !== undefined && raw.app !== 'bloom') return null
     const rules: CalendarRule[] = []
     for (const r of raw.rules as Partial<CalendarRule>[]) {
       if (!r || typeof r.id !== 'string' || !ID.test(r.id) || !TYPES.includes(r.type as CalendarRule['type'])) return null
@@ -194,7 +216,7 @@ export function decodeCalendarConfig(s: string): CalendarConfig | null {
       if (r.meal !== undefined && !['breakfast', 'lunch', 'dinner'].includes(r.meal)) return null
       rules.push({ id: r.id, type: r.type as CalendarRule['type'], days: r.days, ...(r.times ? { times: r.times } : {}), ...(r.every ? { every: r.every } : {}), ...(r.meal ? { meal: r.meal } : {}) })
     }
-    return { v: 1, rules, minutes: raw.minutes, ...(raw.coach ? { coach: raw.coach } : {}), from: raw.from }
+    return { v: 1, rules, minutes: raw.minutes, ...(raw.coach ? { coach: raw.coach } : {}), from: raw.from, ...(raw.app ? { app: raw.app } : {}) }
   } catch {
     return null
   }

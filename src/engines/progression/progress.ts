@@ -184,7 +184,8 @@ export function applyWorkout(
         const q = state.exercises[nextId]
         if (q) Object.assign(q, { topStreak: 0, failStreak: 0 })
         changes.push({ kind: 'advance', exerciseId: ex.id, ladder, message: `Level up! ${nameOf(ex.id)} → ${nameOf(nextId)}` })
-      } else if (p.modifierStage < MODIFIERS.length) {
+      } else if (ctx?.program !== 'yoga' && p.modifierStage < MODIFIERS.length) {
+        // (Yoga doesn't stack "harder" modifiers: at the top of a ladder the hold simply stays.)
         // Top of the ladder (or a swapped-in exercise) with fixed weights: make the reps harder.
         p.modifierStage += 1
         p.topStreak = 0

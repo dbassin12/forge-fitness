@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { isBloom, storageKey } from '@/app/brand'
 
 export interface VoiceSettings {
   /** Spoken coaching on/off (captions always show). */
@@ -15,9 +16,10 @@ export interface VoiceSettings {
   mixWithMusic: boolean
 }
 
-const KEY = 'forge.voice'
+const KEY = storageKey('voice')
 
-const DEFAULTS: VoiceSettings = { enabled: true, rate: 1, pitch: 1, volume: 1, beeps: true, countReps: true, mixWithMusic: true }
+// Bloom's coach speaks a little slower: yoga cues land better unhurried.
+const DEFAULTS: VoiceSettings = { enabled: true, rate: isBloom ? 0.9 : 1, pitch: 1, volume: 1, beeps: true, countReps: true, mixWithMusic: true }
 
 function load(): VoiceSettings {
   try {

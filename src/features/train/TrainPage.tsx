@@ -38,6 +38,11 @@ const SHORT: Record<TemplateId, string> = {
   lower_a: 'Lo',
   lower_b: 'Lo',
   cond_core: 'Cdio',
+  y_morning: '☀️',
+  y_strength: '🌿',
+  y_hips: '🦋',
+  y_back: '🌊',
+  y_unwind: '🌙',
 }
 
 export default function TrainPage() {

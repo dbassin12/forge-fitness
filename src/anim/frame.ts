@@ -67,6 +67,7 @@ export function viewBoxFor(m: Motion, aspect = 4 / 3, pad = 14): ViewBox {
     grow(x1, y1, 2)
   }
   if (m.view !== 'top') maxY = Math.max(maxY, GROUND + 6)
+  if (m.minFrameH && maxY - minY < m.minFrameH) minY = maxY - m.minFrameH
   minX -= pad
   maxX += pad
   minY -= pad

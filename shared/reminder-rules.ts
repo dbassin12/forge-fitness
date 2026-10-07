@@ -6,6 +6,12 @@
 
 export type ReminderType = 'workout' | 'streak' | 'water' | 'meal' | 'snack' | 'checkin' | 'weighin' | 'review' | 'custom'
 
+/** Which app a reminder belongs to: Forge at `/`, Bloom (yoga) at `/bloom/`. */
+export type ReminderApp = 'forge' | 'bloom'
+
+/** Path prefix of each app's pages. */
+export const APP_PATH: Record<ReminderApp, string> = { forge: '/', bloom: '/bloom/' }
+
 export interface ReminderRule {
   id: string
   type: ReminderType
@@ -93,7 +99,8 @@ export function presetRules(style: ReminderStyleName, o: { trainingDays: number[
 }
 
 /** Fallback notification text (the service worker personalizes it when it can). */
-export function defaultText(rule: Pick<ReminderRule, 'type' | 'meal' | 'title' | 'body'>): { title: string; body: string; url: string } {
+export function defaultText(rule: Pick<ReminderRule, 'type' | 'meal' | 'title' | 'body'>, app: ReminderApp = 'forge'): { title: string; body: string; url: string } {
+  if (app === 'bloom') return bloomText(rule)
   switch (rule.type) {
     case 'workout':
       return { title: '💪 Time to train', body: "Today's workout is ready — tap to start.", url: '/#/workout' }
@@ -113,6 +120,31 @@ export function defaultText(rule: Pick<ReminderRule, 'type' | 'meal' | 'title' |
       return { title: '📈 Your week in review', body: 'See how the week went and plan the next one.', url: '/#/progress' }
     case 'custom':
       return { title: rule.title || 'Forge reminder', body: rule.body || '', url: '/#/today' }
+  }
+}
+
+/** Bloom's softer wording; links open Bloom's own pages. */
+function bloomText(rule: Pick<ReminderRule, 'type' | 'meal' | 'title' | 'body'>): { title: string; body: string; url: string } {
+  const at = (hash: string) => `${APP_PATH.bloom}#/${hash}`
+  switch (rule.type) {
+    case 'workout':
+      return { title: '🧘 Time for your practice', body: 'Your mat is waiting. Tap to begin, at your own pace.', url: at('workout') }
+    case 'streak':
+      return { title: '🌸 A moment for you', body: 'Your practice is still here. Even five gentle minutes count.', url: at('today') }
+    case 'water':
+      return { title: '💧 Water break', body: 'A glass of water, and one slow breath.', url: at('eat') }
+    case 'meal':
+      return { title: `🍽️ Log your ${rule.meal ?? 'meal'}`, body: 'Takes a few seconds. Tap to log it.', url: at('eat/add') }
+    case 'snack':
+      return { title: '🌿 Stretch break', body: 'Three minutes to loosen your neck, shoulders and back.', url: at('workout?snack=3') }
+    case 'checkin':
+      return { title: '🌙 Wind down', body: 'A few slow breaths before bed? Tap for a calming breath.', url: at('breathe') }
+    case 'weighin':
+      return { title: '⚖️ Weekly check-in', body: 'Weigh in before breakfast if you like, then log it.', url: at('progress') }
+    case 'review':
+      return { title: '🌱 Your week in review', body: 'See how your week went and plan gently for the next.', url: at('progress') }
+    case 'custom':
+      return { title: rule.title || 'Bloom reminder', body: rule.body || '', url: at('today') }
   }
 }
 

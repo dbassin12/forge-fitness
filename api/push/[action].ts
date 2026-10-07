@@ -76,6 +76,7 @@ export async function POST(req: Request): Promise<Response> {
       d.tz = s.tz
       d.rules = s.rules
       d.context = s.context
+      d.app = s.app
       d.updatedAt = now
       d.lastSeenAt = now
       d.failures = 0
@@ -106,7 +107,12 @@ export async function POST(req: Request): Promise<Response> {
     const d = reg.devices.find((x) => x.id === parsed.data.deviceId)
     if (!d) return json({ error: 'This phone is not registered yet — turn reminders on first.' }, 404)
     const { vapid } = ensureVapid(reg)
-    const res = await sendPush(d, { title: '✅ Forge reminders are on', body: "This is a test. You'll get your reminders right here.", url: '/#/more/reminders', tag: 'test', type: 'test' }, vapid)
+    const bloom = d.app === 'bloom'
+    const res = await sendPush(
+      d,
+      { title: `✅ ${bloom ? 'Bloom' : 'Forge'} reminders are on`, body: "This is a test. You'll get your reminders right here.", url: bloom ? '/bloom/#/more/reminders' : '/#/more/reminders', tag: 'test', type: 'test' },
+      vapid,
+    )
     if (res === 'gone') {
       await updateRegistry((r) => {
         r.devices = r.devices.filter((x) => x.id !== d.id)

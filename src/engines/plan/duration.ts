@@ -68,13 +68,13 @@ export function blockSeconds(b: PlannedBlock): number {
   return b.rounds * roundSeconds(b) + (b.rounds - 1) * b.restSec
 }
 
-export function sessionSeconds(blocks: PlannedBlock[]): number {
+export function sessionSeconds(blocks: PlannedBlock[], gapSec = BLOCK_GAP_SEC): number {
   const live = blocks.filter((b) => b.items.length && b.rounds > 0)
-  return live.reduce((s, b) => s + blockSeconds(b), 0) + BLOCK_GAP_SEC * Math.max(0, live.length - 1)
+  return live.reduce((s, b) => s + blockSeconds(b), 0) + gapSec * Math.max(0, live.length - 1)
 }
 
 /** Calories = MET × kg × hours, with rests and transitions at a light standing MET. */
-export function sessionKcal(blocks: PlannedBlock[], kg: number): number {
+export function sessionKcal(blocks: PlannedBlock[], kg: number, gapSec = BLOCK_GAP_SEC): number {
   let workMetSec = 0
   let workSec = 0
   for (const b of blocks) {
@@ -85,7 +85,7 @@ export function sessionKcal(blocks: PlannedBlock[], kg: number): number {
       workSec += it.workSec * b.rounds
     }
   }
-  const total = sessionSeconds(blocks)
+  const total = sessionSeconds(blocks, gapSec)
   const restSec = Math.max(0, total - workSec)
   return Math.round(((workMetSec + REST_MET * restSec) * kg) / 3600)
 }

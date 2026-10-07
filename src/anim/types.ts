@@ -23,6 +23,11 @@ export interface Pose {
   spine?: number
   /** Extra shoulder elevation along the torso (shrugs). */
   shoulderLift?: number
+  /**
+   * Front/top views only: world angle of the hip line's "up" direction when the pelvis tilts less
+   * than the ribcage (side bends, triangle). Defaults to the torso angle.
+   */
+  pelvis?: number
   /** Side view: near/far limbs. Front/top view: screen-left/screen-right limbs. */
   armN: LimbSpec
   armF: LimbSpec
@@ -53,6 +58,8 @@ export interface Skeleton {
   head: Vec
   headAngle: number
   torsoAngle: number
+  /** Hip line orientation (front/top views): the pelvis angle, or the torso angle. */
+  pelvisAngle: number
   elbowN: Vec
   wristN: Vec
   handN: Vec
@@ -106,4 +113,9 @@ export interface Motion {
   props?: PropSpec[]
   /** Draw a floor line (default true for side/front). */
   floor?: boolean
+  /**
+   * Smallest camera height (world units) so compact poses aren't zoomed in further than a
+   * standing figure would be (keeps the figure a steady size from pose to pose).
+   */
+  minFrameH?: number
 }

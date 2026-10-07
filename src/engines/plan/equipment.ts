@@ -1,4 +1,4 @@
-import type { Ache, Equipment } from '@/domain/types'
+import type { Ache, Equipment, Program } from '@/domain/types'
 import type { ExerciseDef } from '@/data/exercises/types'
 
 /** What the user can actually use right now (unfound dumbbells don't count). */
@@ -21,6 +21,8 @@ export interface PlanContext {
   av: Availability
   aches: Ache[]
   quietMode: boolean
+  /** Yoga practices word their cautions differently and never stack "harder" modifiers. */
+  program?: Program
 }
 
 export function availability(eq: Equipment): Availability {
@@ -94,6 +96,20 @@ const ACHE_NOTE: Record<Ache, string> = {
   lower_back: 'Brace your core and keep your back neutral',
   shoulders: 'Stay in a pain-free shoulder range',
   wrists: 'Wrists complaining? Use fists or dumbbell handles',
+  neck: 'Keep your neck long and relaxed; skip any head turns that pinch',
+  hips: 'Hips: ease in slowly and stay where it feels like a gentle stretch',
+  pregnancy: 'Pregnant: keep room for your belly, use a wall for balance, rest on your side',
+}
+
+/** Bloom's gentler wording for the same cautions. */
+const YOGA_ACHE_NOTE: Record<Ache, string> = {
+  knees: 'Knees: pad them with a folded blanket and bend only as far as feels kind',
+  lower_back: 'Lower back: move slowly, soften your knees and stay out of any pinch',
+  shoulders: 'Shoulders: keep them soft and low; lower your arms if they complain',
+  wrists: 'Wrists: spread your fingers wide, or come down onto your forearms',
+  neck: 'Neck: keep it long and look straight ahead or down',
+  hips: 'Hips: stay where it feels like a gentle stretch, with cushions under you',
+  pregnancy: 'Pregnant: keep room for your belly, stay near a wall and rest on your side',
 }
 
 /** Equipment fallbacks and ache cautions worth saying out loud. */
@@ -102,6 +118,7 @@ export function contextNotes(ex: ExerciseDef, ctx: PlanContext): string[] {
   if (ex.equipment.includes('db_heavy') && ctx.av.missingHeavyLb && ctx.av.heavyLb) {
     notes.push(`Using the ${ctx.av.heavyLb} lb dumbbell until you find the heavier one: lower it slowly`)
   }
-  for (const a of ex.cautionIf ?? []) if (ctx.aches.includes(a)) notes.push(ACHE_NOTE[a])
+  const text = ctx.program === 'yoga' ? YOGA_ACHE_NOTE : ACHE_NOTE
+  for (const a of ex.cautionIf ?? []) if (ctx.aches.includes(a)) notes.push(text[a])
   return notes
 }

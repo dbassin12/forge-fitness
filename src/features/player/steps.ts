@@ -87,7 +87,7 @@ export function buildSteps(s: PlannedSession): Step[] {
     if (seconds > 0) out.push({ kind: 'rest', id: `r${out.length}`, seconds, reason, label })
   }
   s.blocks.forEach((b, bi) => {
-    if (bi > 0) pushRest(BLOCK_GAP_SEC, 'block', `Next: ${b.title}`)
+    if (bi > 0) pushRest(s.gapSec ?? BLOCK_GAP_SEC, 'block', `Next: ${b.title}`)
     for (let round = 1; round <= b.rounds; round++) {
       b.items.forEach((it, ii) => {
         const ws = workSteps(bi, b.kind, b.title, round, b.rounds, ii, it)

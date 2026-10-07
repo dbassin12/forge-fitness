@@ -30,7 +30,7 @@ export interface CoachData {
 
 const GOAL: Record<Profile['goal'], string> = { lose_fat: 'lose fat', build_muscle: 'build muscle', get_stronger: 'get stronger', general_fitness: 'feel fit and healthy' }
 const DIET: Record<Profile['diet'], string> = { none: 'no restrictions', vegetarian: 'vegetarian', vegan: 'vegan', pescatarian: 'pescatarian', kosher: 'kosher-style (no pork or shellfish, no meat with dairy)' }
-const ACHE: Record<Profile['aches'][number], string> = { knees: 'knees', lower_back: 'lower back', shoulders: 'shoulders', wrists: 'wrists' }
+const ACHE: Record<Profile['aches'][number], string> = { knees: 'knees', lower_back: 'lower back', shoulders: 'shoulders', wrists: 'wrists', neck: 'neck', hips: 'hips', pregnancy: 'pregnant' }
 const FEEL = { easy: 'too easy', right: 'just right', hard: 'too hard' } as const
 
 const round = (n: number) => Math.round(n).toLocaleString('en-US')

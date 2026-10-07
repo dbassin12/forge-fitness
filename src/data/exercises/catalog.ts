@@ -34,6 +34,7 @@ import {
   worldsGreatest,
 } from '@/anim/families/stretch'
 import type { ExerciseDef } from './types'
+import { YOGA_DEFS } from './yoga'
 
 /**
  * The structural exercise catalog: what each movement trains, what it needs, how hard it is and
@@ -702,4 +703,7 @@ export const EXERCISE_DEFS: ExerciseDef[] = [
     equipment: [], measure: 'reps', range: [4, 8], met: 2.8, impact: 'none', cautionIf: ['wrists', 'lower_back'],
     tags: ['quiet', 'warmup', 'cooldown'], motion: () => dogToCobra(),
   },
+
+  // ---- Yoga (Bloom) -----------------------------------------------------------------------------
+  ...YOGA_DEFS,
 ]

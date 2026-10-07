@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AlertTriangle, Check, ClipboardPaste, ExternalLink } from 'lucide-react'
+import { storageKey } from '@/app/brand'
 import type { MealSlot } from '@/db/db'
 import type { NewEntry } from '@/state/nutrition'
 import { Button } from '@/ui/Button'
@@ -41,7 +42,7 @@ export function entryFromEstimate(item: FoodEstimateItem, name: string, mult: nu
 
 // Switching to the Claude app can unload Forge on a phone; remembering the pending estimate lets
 // the Add food page reopen this sheet at the paste step when the user comes back.
-const PENDING_KEY = 'forge.claudeMeal'
+const PENDING_KEY = storageKey('claudeMeal')
 const PENDING_MAX_MS = 45 * 60_000
 
 export function pendingClaudeMeal(now = Date.now()): { meal: MealSlot; date: string } | null {

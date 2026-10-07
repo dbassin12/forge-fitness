@@ -1,3 +1,4 @@
+import { isBloom } from '@/app/brand'
 import { usePrefs, type CoachStyle } from '@/app/prefs'
 
 /** Moments where the coach says something with personality. */
@@ -48,15 +49,64 @@ const LINES: Record<CoachStyle, Record<CoachMoment, string[]>> = {
     record: ['A new personal best. Growth is quiet, then sudden.', 'New record. Well earned.'],
     tenLeft: ['Ten seconds. Breathe through it.', 'Ten more seconds, steady breath.'],
   },
+  sunny: {
+    start: ['Here we go! Big breath in!', 'Let’s do this, you’ve got it!'],
+    half: ['Halfway! You’re doing great!', 'Halfway there, lovely!'],
+    oneMore: ['One more! Smile!', 'Last one, make it count!'],
+    setDone: ['Yay! Great set!', 'Gorgeous work!', 'Look at you!'],
+    rest: ['Shake it out and breathe. You’re doing great!', 'Sip of water? The next one will be even better.'],
+    lastRound: ['Last round! Enjoy it!', 'Final round, let’s make it sparkle!'],
+    workoutDone: ['Workout complete! You were amazing today!', 'Done! What a lovely session!'],
+    record: ['New personal best! Amazing!', 'That’s a new record! Wow!'],
+    tenLeft: ['Ten seconds! Almost there!', 'Ten more seconds, you’ve got it!'],
+  },
+}
+
+/** Bloom's coach: yoga words, unhurried, never pushy. */
+const BLOOM_LINES: Partial<Record<CoachStyle, Record<CoachMoment, string[]>>> = {
+  zen: {
+    start: ['Arrive on your mat. Let’s begin.', 'Breathe in. Let’s begin.'],
+    half: ['Halfway. Let your breath stay slow.', 'Halfway. Soften anything you don’t need.'],
+    oneMore: ['One more, slow and easy.', 'Last one. Move with your breath.'],
+    setDone: ['Beautiful.', 'Lovely. Notice how you feel.', 'Let it settle.'],
+    rest: ['Breathe in for four, and out for six.', 'Let your breath come back to easy.'],
+    lastRound: ['Last round. Stay with your breath.', 'One final round. Slow and steady.'],
+    workoutDone: ['Practice complete. Thank your body.', 'All done. Carry this calm with you.'],
+    record: ['That’s your longest hold yet. Lovely.', 'A new personal best. Growth is quiet, then sudden.'],
+    tenLeft: ['Ten seconds. Breathe through it.', 'Ten more seconds. Stay soft.'],
+  },
+  calm: {
+    start: ['Here we go, nice and easy.', 'Let’s begin, gently.'],
+    half: ['Halfway. You’re doing beautifully.', 'Halfway there. Keep breathing.'],
+    oneMore: ['One more.', 'Last one, nice and slow.'],
+    setDone: ['Well done.', 'Lovely work.', 'That looked great.'],
+    rest: ['Take a breath. You’re doing well.', 'Relax your shoulders and breathe.'],
+    lastRound: ['Last round. Nice and easy.', 'Final round. You’ve got this.'],
+    workoutDone: ['Practice complete. Really lovely work today.', 'All done. Be proud of showing up.'],
+    record: ['That’s your longest hold yet.', 'A new personal best. Lovely progress.'],
+    tenLeft: ['Ten seconds left.', 'Ten more seconds.'],
+  },
+  sunny: {
+    start: ['Here we go! Big breath in!', 'Let’s flow! You’ve got this!'],
+    half: ['Halfway! You’re glowing!', 'Halfway there, lovely!'],
+    oneMore: ['One more! Smile!', 'Last one, make it lovely!'],
+    setDone: ['Yay! Beautiful!', 'Gorgeous!', 'Look at you!'],
+    rest: ['Shake it out and breathe. You’re doing great!', 'Sip of water? The next one will feel even better.'],
+    lastRound: ['Last round! Enjoy it!', 'Final round, let’s make it sparkle!'],
+    workoutDone: ['Practice complete! You absolutely glowed today!', 'Done! What a lovely practice!'],
+    record: ['New personal best! Amazing!', 'Your longest hold yet! Wow!'],
+    tenLeft: ['Ten seconds! Almost there!', 'Ten more seconds, you’ve got it!'],
+  },
 }
 
 let counter = 0
 
 /** A line for this moment in the user's chosen coach style (rotates so it doesn't repeat). */
 export function coachLine(moment: CoachMoment, style: CoachStyle = usePrefs.getState().coach): string {
-  const list = LINES[style][moment]
+  const list = (isBloom ? BLOOM_LINES[style] : undefined)?.[moment] ?? LINES[style][moment]
   counter = (counter + 1) % 997
   return list[counter % list.length]
 }
 
 export const COACH_LINES = LINES
+export const BLOOM_COACH_LINES = BLOOM_LINES

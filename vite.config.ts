@@ -1,10 +1,29 @@
 import { defineConfig } from 'vitest/config'
+import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
 
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url))
+
+/**
+ * Bloom (Michal's yoga app) is a second page at /bloom/ with its own Home Screen identity. The PWA
+ * plugin links Forge's manifest into every page; Bloom keeps only its own (public/bloom/).
+ */
+function bloomManifest(): Plugin {
+  return {
+    name: 'bloom-manifest',
+    enforce: 'post',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!ctx.path.startsWith('/bloom/')) return html
+        return html.replace(/<link rel="manifest" href="\/manifest\.webmanifest"[^>]*>/g, '')
+      },
+    },
+  }
+}
 
 export default defineConfig({
   plugins: [
@@ -46,11 +65,12 @@ export default defineConfig({
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2,wasm,json}'],
         // iOS fetches launch screens itself when the app is installed; no need to precache them.
-        globIgnores: ['splash/**'],
+        globIgnores: ['splash/**', 'bloom/splash/**'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
       },
       devOptions: { enabled: false, type: 'module' },
     }),
+    bloomManifest(),
   ],
   resolve: {
     alias: {
@@ -61,6 +81,9 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
+    rollupOptions: {
+      input: { main: r('./index.html'), bloom: r('./bloom/index.html') },
+    },
   },
   test: {
     include: ['tests/unit/**/*.test.{ts,tsx}', 'tests/visual/**/*.test.ts', 'tests/api/**/*.test.ts', 'server/**/*.test.ts', 'shared/**/*.test.ts'],

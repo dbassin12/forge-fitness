@@ -1,15 +1,30 @@
-// Generates PWA icons from scripts/icon.svg using sharp.
-// Usage: node scripts/gen-icons.mjs
+// Generates PWA icons and iPhone launch screens with sharp, for both apps:
+//   Forge (scripts/icon.svg → public/icons, public/splash)
+//   Bloom (scripts/icon-bloom.svg → public/bloom/icons, public/bloom/splash)
+// Usage: node scripts/gen-icons.mjs [forge|bloom]   (no argument = both)
 import sharp from 'sharp'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const out = join(here, '..', 'public', 'icons')
+const APPS = {
+  forge: { svg: 'icon.svg', dir: '', background: '#0b0d10' },
+  bloom: { svg: 'icon-bloom.svg', dir: 'bloom', background: '#faf6f2' },
+}
+const only = process.argv[2]
+for (const [id, app] of Object.entries(APPS)) {
+  if (only && only !== id) continue
+  await generate(app)
+}
+
+async function generate({ svg, dir, background }) {
+const root = join(here, '..', 'public', dir)
+const out = join(root, 'icons')
+const base = dir ? `/${dir}/` : '/'
 await mkdir(out, { recursive: true })
 
-const template = await readFile(join(here, 'icon.svg'), 'utf8')
+const template = await readFile(join(here, svg), 'utf8')
 // Regular icons use the full art; maskable icons shrink the art into the 80% safe zone.
 const regular = template.replace('SCALE', '0.86')
 const maskable = template.replace('SCALE', '0.62').replace('rx="112"', 'rx="0"')
@@ -42,7 +57,7 @@ const SPLASH = [
   [375, 667, 2],
   [414, 736, 3],
 ]
-await mkdir(join(out, '..', 'splash'), { recursive: true })
+await mkdir(join(root, 'splash'), { recursive: true })
 const links = []
 for (const [w, h, r] of SPLASH) {
   const W = w * r
@@ -50,13 +65,14 @@ for (const [w, h, r] of SPLASH) {
   const mark = Math.round(Math.min(W, H) * 0.28)
   const logo = await sharp(Buffer.from(regular)).resize(mark, mark).png().toBuffer()
   const name = `splash-${W}x${H}.png`
-  await sharp({ create: { width: W, height: H, channels: 3, background: '#0b0d10' } })
+  await sharp({ create: { width: W, height: H, channels: 3, background } })
     .composite([{ input: logo, left: Math.round((W - mark) / 2), top: Math.round((H - mark) / 2 - H * 0.04) }])
     .png({ compressionLevel: 9, palette: true })
-    .toFile(join(out, '..', 'splash', name))
+    .toFile(join(root, 'splash', name))
   links.push(
-    `    <link rel="apple-touch-startup-image" media="(device-width: ${w}px) and (device-height: ${h}px) and (-webkit-device-pixel-ratio: ${r}) and (orientation: portrait)" href="/splash/${name}" />`,
+    `    <link rel="apple-touch-startup-image" media="(device-width: ${w}px) and (device-height: ${h}px) and (-webkit-device-pixel-ratio: ${r}) and (orientation: portrait)" href="${base}splash/${name}" />`,
   )
   console.log('wrote', name)
 }
-console.log('\nindex.html <head> links:\n' + links.join('\n'))
+console.log(`\n${base}index.html <head> links:\n` + links.join('\n'))
+}

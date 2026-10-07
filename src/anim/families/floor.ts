@@ -4,11 +4,11 @@ import { AY, GROUND, HY, L, SEAT_Y, angleOf, bump, fk, ik, keyPhases, keyPoseFn,
 
 const X = 120
 /** Hip/shoulder height when lying on the floor. */
-const LY = GROUND - 9.5
+export const LY = GROUND - 9.5
 
 // ---- Supine (on the back, head to the left, face up) -------------------------------
 
-function supineBase(over: Partial<Pose> = {}): Pose {
+export function supineBase(over: Partial<Pose> = {}): Pose {
   return {
     root: [X, LY],
     torso: 180,
@@ -225,7 +225,7 @@ export function supineDb(kind: 'press' | 'pullover' | 'skull'): Motion {
 
 // ---- Prone (face down, head to the right) -----------------------------------------
 
-function proneBase(over: Partial<Pose> = {}): Pose {
+export function proneBase(over: Partial<Pose> = {}): Pose {
   return {
     root: [X, LY],
     torso: 0,
@@ -281,13 +281,13 @@ export function cobra(): Motion {
 
 // ---- Quadruped (hands and knees, facing right) -------------------------------------
 
-const QR: Vec = [X, GROUND - 4 - L.thigh]
-const QTORSO = -10.4
-const QS = polar(QR, QTORSO, L.torso)
-const QH: Vec = [QS[0], HY]
-const QANKLE: Vec = [X - 37, GROUND - 7]
+export const QR: Vec = [X, GROUND - 4 - L.thigh]
+export const QTORSO = -10.4
+export const QS = polar(QR, QTORSO, L.torso)
+export const QH: Vec = [QS[0], HY]
+export const QANKLE: Vec = [X - 37, GROUND - 7]
 
-function quadBase(over: Partial<Pose> = {}): Pose {
+export function quadBase(over: Partial<Pose> = {}): Pose {
   return {
     root: QR,
     torso: QTORSO,
@@ -403,7 +403,7 @@ export function russianTwist(o: { db?: boolean } = {}): Motion {
 
 // ---- Top view (lying face down, seen from above) ----------------------------------
 
-function topBase(over: Partial<Pose> = {}): Pose {
+export function topBase(over: Partial<Pose> = {}): Pose {
   return {
     root: [X, 122],
     torso: -90,

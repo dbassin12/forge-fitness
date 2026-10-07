@@ -50,6 +50,8 @@
   --animate-rise: rise 0.5s cubic-bezier(0.2, 0.9, 0.25, 1) both;
   --animate-zoom-out: zoom-out 0.9s cubic-bezier(0.2, 0.9, 0.25, 1) both;
   --animate-bob: bob 2.8s ease-in-out infinite;
+  --animate-sway: sway 5s ease-in-out infinite;
+  --animate-breath: breath 10s ease-in-out infinite;
 
   @keyframes pop {
     0% { transform: scale(0.85); opacity: 0; }
@@ -144,6 +146,18 @@
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-6px); }
   }
+  @keyframes sway {
+    0%, 100% { transform: rotate(-2.5deg) scale(1); }
+    50% { transform: rotate(2.5deg) scale(1.03); }
+  }
+  @keyframes flutter {
+    0%, 100% { transform: scaleX(1) translateY(0); }
+    50% { transform: scaleX(0.55) translateY(-2px); }
+  }
+  @keyframes breath {
+    0%, 100% { transform: scale(0.82); opacity: 0.7; }
+    40%, 50% { transform: scale(1.08); opacity: 1; }
+  }
 }
 
 /* Light theme: same tokens, different values (utilities read the variables at runtime). */
@@ -184,6 +198,69 @@
 [data-theme="light"][data-accent="violet"] { --color-ember: #7c3aed; --color-ember-2: #8b5cf6; }
 [data-theme="light"][data-accent="rose"] { --color-ember: #e11d48; --color-ember-2: #f43f5e; }
 [data-theme="light"][data-accent="gold"] { --color-ember: #b45309; --color-ember-2: #d97706; }
+
+/* ---- Bloom (Michal's yoga app, /bloom/): dusk plum at night, warm paper by day. ----------------
+   Same token names, so every screen restyles itself. The default accent is Lotus. */
+[data-app="bloom"] {
+  --color-bg: #141118;
+  --color-surface: #1c1821;
+  --color-surface-2: #25202b;
+  --color-surface-3: #2f2936;
+  --color-line: #3a3342;
+  --color-ink: #f6f1f5;
+  --color-muted: #b4a9b8;
+  --color-faint: #9a8f9f;
+  --color-ember: #f2a0c0;
+  --color-ember-2: #f7c1d6;
+  --color-amber: #f0b37e;
+  --color-teal: #7fd1c1;
+  --color-sky: #7cc4f2;
+  --color-violet: #c3b2f5;
+  --color-lime: #b5dc8a;
+  --color-good: #8fd6a4;
+  --color-bad: #f29b9b;
+  --color-on-accent: #2a1422;
+  --color-viz-1: #e98bb1;
+  --color-viz-deemph: #6f6577;
+  --color-viz-grid: #2a2430;
+  --color-viz-axis: #463e4f;
+  --font-display: ui-serif, "New York", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --radius-card: 1.5rem;
+}
+[data-app="bloom"][data-theme="light"] {
+  --color-bg: #faf6f2;
+  --color-surface: #ffffff;
+  --color-surface-2: #f5efe9;
+  --color-surface-3: #ece4dc;
+  --color-line: #e6ddd3;
+  --color-ink: #2b2330;
+  --color-muted: #675d6c;
+  --color-faint: #6f6574;
+  --color-ember: #b03a68;
+  --color-ember-2: #c9567f;
+  --color-amber: #a85b28;
+  --color-teal: #24796b;
+  --color-sky: #2a77b8;
+  --color-violet: #6d4fc4;
+  --color-lime: #4f7a1f;
+  --color-good: #2f8a4f;
+  --color-bad: #c23a3a;
+  --color-on-accent: #ffffff;
+  --color-viz-1: #b03a68;
+  --color-viz-deemph: #9c929f;
+  --color-viz-grid: #f1ebe5;
+  --color-viz-axis: #d6ccc2;
+}
+[data-app="bloom"][data-accent="sage"] { --color-ember: #9fd3b2; --color-ember-2: #c2e5cf; }
+[data-app="bloom"][data-accent="lavender"] { --color-ember: #c3b2f5; --color-ember-2: #dcd1fa; }
+[data-app="bloom"][data-accent="lagoon"] { --color-ember: #7fd0e0; --color-ember-2: #b2e4ee; }
+[data-app="bloom"][data-accent="clay"] { --color-ember: #f2aa86; --color-ember-2: #f7c9b1; }
+[data-app="bloom"][data-accent="honey"] { --color-ember: #f0c776; --color-ember-2: #f6dca6; }
+[data-app="bloom"][data-theme="light"][data-accent="sage"] { --color-ember: #3f7556; --color-ember-2: #55906d; }
+[data-app="bloom"][data-theme="light"][data-accent="lavender"] { --color-ember: #6d4fc4; --color-ember-2: #8468d6; }
+[data-app="bloom"][data-theme="light"][data-accent="lagoon"] { --color-ember: #1d6f83; --color-ember-2: #2b8aa0; }
+[data-app="bloom"][data-theme="light"][data-accent="clay"] { --color-ember: #a8502c; --color-ember-2: #c26a43; }
+[data-app="bloom"][data-theme="light"][data-accent="honey"] { --color-ember: #8a6110; --color-ember-2: #a87a1f; }
 
 :root {
   color-scheme: dark;
