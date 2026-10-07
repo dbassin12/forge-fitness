@@ -101,15 +101,20 @@ export async function checkAchievements(): Promise<Achievement[]> {
   return unlockAchievements(await computeStats(profile, progress))
 }
 
-/** Persist any newly earned achievements (with their XP) and return them for celebration. */
+/**
+ * Persist any newly earned achievements (with their XP) and return them for celebration. One
+ * transaction, so two checks racing (end of a workout + the reward watcher) can't pay twice.
+ */
 export async function unlockAchievements(stats: Stats): Promise<Achievement[]> {
-  const unlocked = new Set((await db.achievements.toArray()).map((x) => x.id))
-  const fresh = newlyUnlocked(stats, unlocked)
-  for (const a of fresh) {
-    await db.achievements.put({ id: a.id, unlockedAt: Date.now() })
-    await addXp('achievement', XP.achievement)
-  }
-  return fresh
+  return db.transaction('rw', db.achievements, db.xpEvents, async () => {
+    const unlocked = new Set((await db.achievements.toArray()).map((x) => x.id))
+    const fresh = newlyUnlocked(stats, unlocked)
+    for (const a of fresh) {
+      await db.achievements.put({ id: a.id, unlockedAt: Date.now() })
+      await db.xpEvents.add({ id: uid('xp'), date: todayISO(), kind: 'achievement', xp: XP.achievement, at: Date.now() })
+    }
+    return fresh
+  })
 }
 
 export function useUnlocked(): Map<string, number> | undefined {

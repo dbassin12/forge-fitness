@@ -16,7 +16,7 @@ import { weekReview } from '@/engines/review'
 import { tipOfTheDay } from '@/engines/tips'
 import { addDays, daysBetween, formatShortDate, isoWeekday, parseISODate, startOfWeek, todayISO, WEEKDAY_SHORT } from '@/lib/dates'
 import { planDates, useLevel } from '@/state/gamification'
-import { addWater, OZ_ML, targetsFor, totalsOf, useDay, useNutritionSettings } from '@/state/nutrition'
+import { addWater, loadNutritionSettings, OZ_ML, targetsFor, totalsOf, useDay, useNutritionSettings } from '@/state/nutrition'
 import { swapsFor, usePlan } from '@/state/plan'
 import { useQuests } from '@/state/quests'
 import { useStarter } from '@/state/starter'
@@ -60,14 +60,21 @@ export default function TodayPage() {
 
   // Home Screen shortcut "Log a glass of water" opens /today?water=1.
   useEffect(() => {
-    if (params.get('water') !== '1' || !plan || waterDone.current) return
+    if (params.get('water') !== '1') {
+      waterDone.current = false
+      return
+    }
+    if (!plan || waterDone.current) return
     waterDone.current = true
     setParams({}, { replace: true })
-    void addWater(today, settings.glassOz, plan.profile).then(() => {
+    void (async () => {
+      // Read the saved glass size directly: the settings hook shows defaults until it loads.
+      const { glassOz } = await loadNutritionSettings()
+      await addWater(today, glassOz, plan.profile)
       sfx.bloop()
-      useCelebrate.getState().toast({ tone: 'info', title: `+${settings.glassOz} oz of water`, text: 'Logged from your Home Screen shortcut', emoji: '💧' })
-    })
-  }, [params, plan, settings.glassOz, setParams, today])
+      useCelebrate.getState().toast({ tone: 'info', title: `+${glassOz} oz of water`, text: 'Logged from your Home Screen shortcut', emoji: '💧' })
+    })()
+  }, [params, plan, setParams, today])
   const workouts = useLiveQuery(() => db.workouts.orderBy('date').toArray(), [])
   const reviewDismissed = useLiveQuery(async () => (await kvGet<string>('review.dismissed')) ?? '', [])
   const remindersOn = useLiveQuery(async () => !!(await kvGet<{ enabled?: boolean }>('reminders'))?.enabled || !!(await kvGet('reminders.calendar')), [])

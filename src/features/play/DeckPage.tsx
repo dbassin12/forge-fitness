@@ -70,6 +70,8 @@ export default function DeckPage() {
   const [now, setNow] = useState(Date.now())
   const [finished, setFinished] = useState<{ seconds: number; isBest: boolean; xp: number } | null>(null)
   const done = useRef<PlayingCard[]>([])
+  /** Set while the finished deck is being saved, so extra taps can't save it twice. */
+  const ending = useRef(false)
   const dp = useMemo(() => (plan ? deckPlan(plan.progress, planContext(plan.inputs)) : null), [plan])
 
   useEffect(() => {
@@ -102,6 +104,7 @@ export default function DeckPage() {
   const start = () => {
     unlockAudio()
     speech.unlock()
+    ending.current = false
     done.current = []
     setDeck(buildDeck(size, Date.now()))
     setI(0)
@@ -112,11 +115,13 @@ export default function DeckPage() {
   }
 
   const end = async (cards: PlayingCard[]) => {
+    if (ending.current) return
     if (!cards.length) {
       speech.cancel()
       setDeck(null)
       return
     }
+    ending.current = true
     const seconds = Math.round((Date.now() - startedAt) / 1000)
     const totals = deckTotals(cards, dp, mode)
     const full = cards.length >= 52
@@ -142,7 +147,7 @@ export default function DeckPage() {
   }
 
   const next = (skip = false) => {
-    if (!deck) return
+    if (!deck || ending.current) return
     const card = deck[i]
     if (!skip) {
       done.current = [...done.current, card]

@@ -156,7 +156,7 @@ export function FeelPanel() {
           label="Vibration"
           description="Buzz on taps and wins (Android phones)"
         />
-        <Toggle checked={prefs.celebrations} onChange={(x) => prefs.update({ celebrations: x })} label="Confetti & celebrations" description="Party when you level up or hit a goal" />
+        <Toggle checked={prefs.celebrations} onChange={(x) => prefs.update({ celebrations: x })} label="Confetti & celebrations" description="Full-screen parties for level-ups and records. Off: small notes instead" />
       </div>
       <div className="mt-3 text-sm font-medium text-muted">Animations</div>
       <Segmented<MotionPref>

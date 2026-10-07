@@ -133,7 +133,7 @@ export function MoveRunner({ move, title, onDone, onCancel }: { move: PlayMove; 
   const C = 2 * Math.PI * 46
 
   return createPortal(
-    <div className="fixed inset-0 z-[65] flex flex-col bg-bg animate-fade-in" role="dialog" aria-modal="true" aria-label={ex.name}>
+    <div className="fixed inset-0 z-[65] flex flex-col overflow-y-auto overscroll-contain bg-bg animate-fade-in" role="dialog" aria-modal="true" aria-label={ex.name}>
       <div className="flex items-center gap-2 px-4" style={{ paddingTop: 'calc(var(--safe-top) + 8px)' }}>
         <button type="button" aria-label="Stop" onClick={onCancel} className="-ml-2 grid h-10 w-10 place-items-center rounded-full text-muted hover:bg-surface-2">
           <X size={22} />

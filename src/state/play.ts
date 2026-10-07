@@ -17,9 +17,11 @@ export async function logPlay(args: {
   profile: Profile
   exercises: { exerciseId: string; sets: SetLog[] }[]
   xp: number
+  /** Time actually spent moving, when idle time between moves shouldn't count. */
+  activeMs?: number
 }): Promise<void> {
   const date = todayISO()
-  const finishedAt = Date.now()
+  const finishedAt = args.activeMs !== undefined ? args.startedAt + Math.max(30_000, args.activeMs) : Date.now()
   const minutes = Math.max(0.5, (finishedAt - args.startedAt) / 60000)
   await db.workouts.add({
     id: uid('w'),

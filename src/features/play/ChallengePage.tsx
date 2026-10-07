@@ -39,7 +39,13 @@ export default function ChallengePage() {
   const [stage, setStage] = useState<Stage>('intro')
   const [t, setT] = useState(0)
   const [taps, setTaps] = useState(0)
-  const [value, setValue] = useState(0)
+  /** Hold result in seconds. */
+  const [held, setHeld] = useState(0)
+  /** Rep count fixed by hand on the result screen (null = use the taps). */
+  const [adjusted, setAdjusted] = useState<number | null>(null)
+  /** Personal best when this attempt started (the live record changes once it's saved). */
+  const [bestBefore, setBestBefore] = useState<number | undefined>(undefined)
+  const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState<{ isBest: boolean; xp: number } | null>(null)
   const startedAt = useRef(0)
   const gameStart = useRef(Date.now())
@@ -58,7 +64,7 @@ export default function ChallengePage() {
       if (def.kind === 'hold') {
         const s = Math.floor(now)
         if (s > 0 && s % 15 === 0 && once(`q${s}`)) say(s % 60 === 0 ? `${s / 60} minute${s === 60 ? '' : 's'}!` : `${s} seconds`)
-        if (best && now > best && once('record')) {
+        if (bestBefore && now > bestBefore && once('record')) {
           sfx.levelUp()
           haptic('celebrate')
           say(coachLine('record'), true)
@@ -78,7 +84,7 @@ export default function ChallengePage() {
       }
     }, 100)
     return () => window.clearInterval(id)
-  }, [stage, def, best])
+  }, [stage, def, bestBefore])
 
   useEffect(() => () => speech.cancel(), [])
 
@@ -106,14 +112,17 @@ export default function ChallengePage() {
     flags.current.clear()
     setTaps(0)
     setT(0)
+    setHeld(0)
+    setAdjusted(null)
     setSaved(null)
+    setBestBefore(best)
     gameStart.current = Date.now()
     setStage('lead')
   }
 
   const stopHold = () => {
     const v = Math.round(t)
-    setValue(v)
+    setHeld(v)
     chime()
     haptic('success')
     setStage('result')
@@ -125,8 +134,12 @@ export default function ChallengePage() {
     haptic('light')
   }
 
+  const result = def.kind === 'hold' ? held : (adjusted ?? taps)
+
   const save = async () => {
-    const v = def.kind === 'hold' ? value : value || taps
+    if (saving || saved) return
+    setSaving(true)
+    const v = result
     const { isBest } = await saveChallenge(def.id, { date: todayISO(), value: v, exerciseId: ex.id })
     const xp = challengeXp(def, v, isBest)
     await logPlay({
@@ -138,9 +151,10 @@ export default function ChallengePage() {
       xp,
     })
     setSaved({ isBest, xp })
+    setSaving(false)
     if (isBest && v > 0) {
       burst('big')
-      useCelebrate.getState().push({ kind: 'pb', emoji: def.emoji, title: `${def.name}: ${formatValue(def.kind, v)}`, text: best ? `Your old best was ${formatValue(def.kind, best)}.` : 'Your first record. Now go beat it!' })
+      useCelebrate.getState().push({ kind: 'pb', emoji: def.emoji, title: `${def.name}: ${formatValue(def.kind, v)}`, text: bestBefore ? `Your old best was ${formatValue(def.kind, bestBefore)}.` : 'Your first record. Now go beat it!' })
     } else {
       sfx.success()
       burst('small')
@@ -202,19 +216,19 @@ export default function ChallengePage() {
 
   // ---- Running ----
   if (stage === 'go') {
-    return <Running def={def} t={t} taps={taps} best={best} onTap={tap} onStop={stopHold} exName={ex.name} />
+    return <Running def={def} t={t} taps={taps} best={bestBefore} onTap={tap} onStop={stopHold} exName={ex.name} />
   }
 
   // ---- Result ----
-  const v = def.kind === 'hold' ? value : value || taps
-  const beat = best === undefined ? v > 0 : v > best
+  const v = result
+  const beat = bestBefore === undefined ? v > 0 : v > bestBefore
   return (
     <div className="flex min-h-dvh flex-col px-4 safe-top">
       <div className="mt-10 text-center">
         <div className="text-6xl animate-bounce-in">{beat ? '🏆' : def.emoji}</div>
-        <h1 className="mt-3 font-display text-3xl font-bold">{beat ? (best === undefined ? 'First record set!' : 'New record!') : 'Nice effort!'}</h1>
+        <h1 className="mt-3 font-display text-3xl font-bold">{beat ? (bestBefore === undefined ? 'First record set!' : 'New record!') : 'Nice effort!'}</h1>
         <div className="mt-2 font-display text-6xl font-black tabular text-gradient">{formatValue(def.kind, v)}</div>
-        {best !== undefined ? <p className="mt-1 text-muted">Best before: {formatValue(def.kind, best)}</p> : null}
+        {bestBefore !== undefined ? <p className="mt-1 text-muted">Best before: {formatValue(def.kind, bestBefore)}</p> : null}
       </div>
       {def.kind === 'amrap' && !saved ? (
         <Card className="mt-6 flex items-center justify-between gap-3">
@@ -222,7 +236,7 @@ export default function ChallengePage() {
             <div className="font-medium">Reps counted</div>
             <div className="text-xs text-muted">Fix it if you missed some taps</div>
           </div>
-          <Stepper value={v} onChange={setValue} min={0} max={300} step={1} unit="reps" label="Reps" />
+          <Stepper value={v} onChange={setAdjusted} min={0} max={300} step={1} unit="reps" label="Reps" />
         </Card>
       ) : null}
       {saved ? <div className="mt-6 text-center text-lg font-semibold text-violet animate-pop">+{saved.xp} XP</div> : null}
@@ -238,7 +252,7 @@ export default function ChallengePage() {
           </>
         ) : (
           <>
-            <Button block size="lg" onClick={() => void save()}>
+            <Button block size="lg" disabled={saving} onClick={() => void save()}>
               Save result
             </Button>
             <Button block variant="ghost" onClick={() => setStage('intro')}>

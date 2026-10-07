@@ -33,7 +33,11 @@ export default function WheelPage() {
   const [running, setRunning] = useState(false)
   const [done, setDone] = useState<{ slice: WheelSlice; value: number }[]>([])
   const [saving, setSaving] = useState(false)
-  const startedAt = useRef(Date.now())
+  const savingRef = useRef(false)
+  /** When the first move started, and how long the moves themselves took (idle time between spins doesn't count). */
+  const firstStart = useRef<number | null>(null)
+  const runStart = useRef(0)
+  const activeMs = useRef(0)
 
   if (!plan || !slices.length) return <div className="grid h-dvh place-items-center text-muted animate-pulse-soft">Loading…</div>
   const n = slices.length
@@ -88,10 +92,12 @@ export default function WheelPage() {
   }
 
   const finish = async () => {
+    if (savingRef.current) return
     if (!done.length) {
       navigate('/play')
       return
     }
+    savingRef.current = true
     setSaving(true)
     const byEx = new Map<string, { exerciseId: string; sets: { reps?: number; seconds?: number }[] }>()
     for (const d of done) {
@@ -100,7 +106,7 @@ export default function WheelPage() {
       byEx.set(d.slice.exerciseId, e)
     }
     const xp = wheelXp(done.length)
-    await logPlay({ key: 'wheel', title: 'Spin the wheel', startedAt: startedAt.current, profile: plan.profile, exercises: [...byEx.values()], xp })
+    await logPlay({ key: 'wheel', title: 'Spin the wheel', startedAt: firstStart.current ?? Date.now(), activeMs: activeMs.current, profile: plan.profile, exercises: [...byEx.values()], xp })
     useCelebrate.getState().toast({ tone: 'info', title: 'Wheel session saved', text: `${done.length} spin${done.length === 1 ? '' : 's'} done`, xp, emoji: '🎡' })
     navigate('/play', { replace: true })
   }
@@ -155,7 +161,15 @@ export default function WheelPage() {
           </div>
           <div className="mt-3 grid grid-cols-[auto_1fr] gap-2">
             <Button variant="secondary" className="w-12 px-0" aria-label="Spin again" icon={<RotateCw size={18} />} onClick={spin} />
-            <Button className="min-w-0" icon={<Play size={18} fill="currentColor" />} onClick={() => setRunning(true)}>
+            <Button
+              className="min-w-0"
+              icon={<Play size={18} fill="currentColor" />}
+              onClick={() => {
+                runStart.current = Date.now()
+                firstStart.current ??= runStart.current
+                setRunning(true)
+              }}
+            >
               Do it · +{nextXp} XP
             </Button>
           </div>
@@ -192,8 +206,12 @@ export default function WheelPage() {
         <MoveRunner
           move={result}
           title={`${result.emoji} Spin ${done.length + 1}`}
-          onCancel={() => setRunning(false)}
+          onCancel={() => {
+            activeMs.current += Date.now() - runStart.current
+            setRunning(false)
+          }}
           onDone={(value) => {
+            activeMs.current += Date.now() - runStart.current
             setDone((d) => [...d, { slice: result, value }])
             setRunning(false)
             setResult(null)

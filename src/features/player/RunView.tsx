@@ -341,7 +341,7 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
   const target = step.seconds === undefined ? (step.reps ?? 0) : 0
   const showCount = count !== null ? count : target
   return (
-    <div className="flex h-dvh flex-col overflow-hidden">
+    <div className="flex h-dvh flex-col overflow-y-auto overscroll-contain">
       {header}
       <div className="relative mx-4 mt-3 min-h-[150px] flex-1 overflow-hidden rounded-3xl border border-line bg-surface">
         <Mannequin motion={motion} clock={motionClock} palette={palette} pulse={hl.primary} className="h-full w-full" title={`${ex.name} demonstration`} />
@@ -444,7 +444,7 @@ function RestScreen({
   // Box-ish breathing: 4 s in, 4 s out, synced to the breathe animation.
   const inhale = Math.floor(t / 4) % 2 === 0
   return (
-    <div className="flex h-dvh flex-col overflow-hidden">
+    <div className="flex h-dvh flex-col overflow-y-auto overscroll-contain">
       {header}
       <div className="mt-3 flex flex-col items-center">
         <div className="text-sm font-semibold uppercase tracking-[0.2em] text-teal">{step.label}</div>

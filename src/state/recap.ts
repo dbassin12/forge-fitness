@@ -1,4 +1,4 @@
-import { useLiveQuery } from 'dexie-react-hooks'
+import { useEffect, useRef, useState } from 'react'
 import { db, kvGet } from '@/db/db'
 import type { ISODate } from '@/domain/types'
 import { getExercise } from '@/data/exercises'
@@ -71,8 +71,14 @@ export async function loadRecap(plan: PlanState, weekOf: ISODate): Promise<Recap
       for (const s of e.sets) if (s.reps) repsBy.set(e.exerciseId, (repsBy.get(e.exerciseId) ?? 0) + s.reps * sides)
     }
   const top = [...repsBy.entries()].sort((a, b) => b[1] - a[1])[0]
-  const from = parseISODate(weekOf).getTime()
-  const to = parseISODate(addDays(weekOf, 7)).getTime()
+  // Local midnight to midnight (parseISODate gives noon, which would split Mondays).
+  const midnight = (iso: ISODate) => {
+    const d = parseISODate(iso)
+    d.setHours(0, 0, 0, 0)
+    return d.getTime()
+  }
+  const from = midnight(weekOf)
+  const to = midnight(addDays(weekOf, 7))
   const total = allXp.reduce((s, e) => s + e.xp, 0)
   return {
     weekOf,
@@ -93,6 +99,22 @@ export async function loadRecap(plan: PlanState, weekOf: ISODate): Promise<Recap
   }
 }
 
+/**
+ * Last week's recap, computed once: it's a snapshot of a finished week, so changing the plan from
+ * the "Next week" slide mustn't rewrite it while it's on screen.
+ */
 export function useRecap(plan: PlanState | null, weekOf: ISODate): RecapData | undefined {
-  return useLiveQuery(() => (plan ? loadRecap(plan, weekOf) : undefined), [plan, weekOf])
+  const [data, setData] = useState<{ weekOf: ISODate; recap: RecapData } | undefined>(undefined)
+  const ready = !!plan
+  const planRef = useRef(plan)
+  planRef.current = plan
+  useEffect(() => {
+    if (!ready || !planRef.current) return
+    let live = true
+    void loadRecap(planRef.current, weekOf).then((recap) => live && setData({ weekOf, recap }))
+    return () => {
+      live = false
+    }
+  }, [ready, weekOf])
+  return data?.weekOf === weekOf ? data.recap : undefined
 }

@@ -286,6 +286,7 @@ export default function RecapPage() {
   const [paused, setPaused] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const held = useRef(false)
+  const holdTimer = useRef<number | undefined>(undefined)
   const list = data ? slides(data) : []
   const total = list.length + 1
   const last = i === total - 1
@@ -337,18 +338,23 @@ export default function RecapPage() {
       className={cx('no-callout fixed inset-0 z-40 overflow-hidden bg-gradient-to-b text-white transition-colors duration-500', slide ? slide.bg : 'from-[#1e293b] via-[#0f172a] to-black')}
       onPointerDown={() => {
         held.current = false
-        window.setTimeout(() => {
+        window.clearTimeout(holdTimer.current)
+        holdTimer.current = window.setTimeout(() => {
           held.current = true
         }, 250)
         setPaused(true)
       }}
       onPointerUp={(e) => {
+        window.clearTimeout(holdTimer.current)
         setPaused(false)
         if (held.current || last) return
         const x = e.clientX / window.innerWidth
         go(x < 0.3 ? i - 1 : i + 1)
       }}
-      onPointerCancel={() => setPaused(false)}
+      onPointerCancel={() => {
+        window.clearTimeout(holdTimer.current)
+        setPaused(false)
+      }}
       role="dialog"
       aria-label="Weekly recap"
     >
