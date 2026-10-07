@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, kvGet, kvSet } from '@/db/db'
 import type { ISODate, Profile } from '@/domain/types'
 import { dailyTargets } from '@/engines/nutrition/targets'
-import { PERFECT_DAY_XP, pickQuests, QUESTS, questProgress, type QuestDef, type QuestFacts, type QuestId, type QuestProgress } from '@/engines/quests'
+import { PERFECT_DAY_XP, pickQuests, questDef, questProgress, type QuestDef, type QuestFacts, type QuestId, type QuestProgress } from '@/engines/quests'
 import { daysBetween, isoWeekday, todayISO } from '@/lib/dates'
 import { uid } from '@/lib/id'
 import { OZ_ML, produceServings, totalsOf } from './nutrition'
@@ -25,7 +25,7 @@ const dayKey = (date: ISODate) => `quests:${date}`
 export const QUEST_STATS_KEY = 'quests.stats'
 
 /** Count something the quests care about that isn't a workout or a log (e.g. watching a tutorial). */
-export async function markActivity(kind: 'tutorial' | 'play', date: ISODate = todayISO()): Promise<void> {
+export async function markActivity(kind: 'tutorial' | 'play' | 'breathe', date: ISODate = todayISO()): Promise<void> {
   const key = `act:${date}`
   const cur = (await kvGet<Record<string, number>>(key)) ?? {}
   await kvSet(key, { ...cur, [kind]: (cur[kind] ?? 0) + 1 })
@@ -44,6 +44,7 @@ export async function loadQuestFacts(profile: Profile, date: ISODate): Promise<Q
   const t = dailyTargets(profile, { workoutMinutes: Math.round(minutes) })
   const weekday = isoWeekday(date)
   const plays = workouts.filter((w) => w.sessionKey.startsWith('play:')).length
+  const breaths = workouts.filter((w) => w.sessionKey.startsWith('breathe:')).length
   return {
     trainingDay: profile.trainingDays.includes(weekday),
     planDone: workouts.some((w) => w.kind === 'plan'),
@@ -63,6 +64,8 @@ export async function loadQuestFacts(profile: Profile, date: ISODate): Promise<Q
     lite: profile.trackingMode === 'lite',
     weekday,
     daysSinceWeighIn: lastWeight ? daysBetween(lastWeight.date, date) : null,
+    breaths: Math.max(breaths, act?.breathe ?? 0),
+    yoga: profile.program === 'yoga',
   }
 }
 
@@ -82,7 +85,7 @@ export async function evaluateQuests(profile: Profile, date: ISODate = todayISO(
       if (day.done[id] || !questProgress(id, facts).done) continue
       day.done = { ...day.done, [id]: now }
       completed.push(id)
-      await db.xpEvents.add({ id: uid('xp'), date, kind: 'quest', xp: QUESTS[id].xp, at: now })
+      await db.xpEvents.add({ id: uid('xp'), date, kind: 'quest', xp: questDef(id).xp, at: now })
     }
     let perfect = false
     if (!day.perfect && day.ids.every((id) => day.done[id])) {
@@ -121,7 +124,7 @@ export function useQuests(profile: Profile | null | undefined, date: ISODate = t
     const facts = await loadQuestFacts(profile, date)
     const day = (await kvGet<QuestDay>(dayKey(date))) ?? { date, ids: pickQuests(date, facts), done: {} }
     const items = day.ids.map((id) => {
-      const def = QUESTS[id]
+      const def = questDef(id, facts.yoga)
       const progress = questProgress(id, facts)
       return { def, title: def.title(facts), progress, claimed: !!day.done[id] }
     })

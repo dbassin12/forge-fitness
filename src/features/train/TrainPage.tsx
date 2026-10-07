@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { BookOpen, Check, ChevronRight, Clock, Coffee, Flame, Play, Zap } from 'lucide-react'
+import { BookOpen, Check, ChevronRight, Clock, Coffee, Flame, Flower2, Play, Zap } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
+import { isBloom, W } from '@/app/brand'
 import { usePalette } from '@/app/theme'
 import { EXERCISES, getExercise, motionFor } from '@/data/exercises'
 import { db } from '@/db/db'
@@ -13,9 +14,9 @@ import {
   LADDERS,
   mainExercises,
   planContext,
+  programName,
   resolveLadder,
-  splitFor,
-  splitName,
+  rotationFor,
   TEMPLATES,
   upcomingDays,
   type LadderId,
@@ -38,6 +39,11 @@ const SHORT: Record<TemplateId, string> = {
   lower_a: 'Lo',
   lower_b: 'Lo',
   cond_core: 'Cdio',
+  y_morning: '☀️',
+  y_strength: '🌿',
+  y_hips: '🦋',
+  y_back: '🌊',
+  y_unwind: '🌙',
 }
 
 export default function TrainPage() {
@@ -70,7 +76,7 @@ export default function TrainPage() {
   const levels = useMemo(() => {
     if (!plan) return []
     const ctx = planContext(plan.inputs)
-    const ladders = [...new Set(splitFor(plan.inputs.daysPerWeek, plan.inputs.sessionMinutes).flatMap((t) => TEMPLATES[t].slots.map((s) => s.ladder)))]
+    const ladders = [...new Set(rotationFor(plan.inputs).flatMap((t) => TEMPLATES[t].slots.map((s) => s.ladder)))]
     return ladders
       .filter((l): l is LadderId => l !== 'cond')
       .map((l) => {
@@ -84,17 +90,17 @@ export default function TrainPage() {
 
   const allowedIds = new Set(plan ? EXERCISES.filter((e) => isAllowed(e, planContext(plan.inputs))).map((e) => e.id) : [])
 
-  if (!plan || !next) return <PageHeader title="Train" />
+  if (!plan || !next) return <PageHeader title={W.train} />
   const p = plan.profile
   const items = mainExercises(next)
 
   return (
     <>
-      <PageHeader title="Train" subtitle={`${splitName(p.daysPerWeek, p.sessionMinutes)} · ${p.daysPerWeek}× ${p.sessionMinutes} min`} />
+      <PageHeader title={W.train} subtitle={`${programName(plan.inputs)} · ${p.daysPerWeek}× ${p.sessionMinutes} min`} />
       <div className="px-4">
         <Card className="relative overflow-hidden border-ember/40 bg-gradient-to-br from-ember/15 via-surface to-surface">
           <div className="text-xs font-semibold uppercase tracking-wider text-ember">
-            Up next · Workout {next.index + 1}
+            Up next · {W.Workout} {next.index + 1}
             {next.deload ? ' · lighter week' : ''}
           </div>
           <div className="mt-1 font-display text-2xl font-bold">{next.title}</div>
@@ -102,10 +108,14 @@ export default function TrainPage() {
             <span className="flex items-center gap-1">
               <Clock size={14} /> {next.minutes} min
             </span>
-            <span className="flex items-center gap-1">
-              <Flame size={14} /> ~{next.estKcal} kcal
+            {isBloom ? null : (
+              <span className="flex items-center gap-1">
+                <Flame size={14} /> ~{next.estKcal} kcal
+              </span>
+            )}
+            <span>
+              {items.length} {W.exercises}
             </span>
-            <span>{items.length} exercises</span>
           </div>
           <ul className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4">
             {items.map((it) => {
@@ -121,7 +131,7 @@ export default function TrainPage() {
           </ul>
           <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
             <Button size="lg" icon={<Play size={20} />} onClick={() => navigate('/workout')}>
-              Start
+              {isBloom ? 'Begin' : 'Start'}
             </Button>
             <Button size="lg" variant="secondary" onClick={() => navigate('/train/session')}>
               Preview
@@ -133,7 +143,7 @@ export default function TrainPage() {
           <div className="flex items-center gap-2 font-semibold">
             <Zap size={18} className="text-amber" /> Short on time?
           </div>
-          <p className="mt-0.5 text-sm text-muted">Squeeze today's workout into fewer minutes — the most important moves stay.</p>
+          <p className="mt-0.5 text-sm text-muted">{isBloom ? "Fit today's practice into fewer minutes. The heart of it stays." : "Squeeze today's workout into fewer minutes — the most important moves stay."}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {[5, 10, 15]
               .filter((m) => m < p.sessionMinutes)
@@ -144,7 +154,7 @@ export default function TrainPage() {
               ))}
             <Chip onClick={() => navigate('/train/session?snack=3')}>
               <span className="inline-flex items-center gap-1">
-                <Coffee size={14} /> 3-min snack
+                {isBloom ? <Flower2 size={14} /> : <Coffee size={14} />} {isBloom ? '3-min mini flow' : '3-min snack'}
               </span>
             </Chip>
           </div>
@@ -185,9 +195,11 @@ export default function TrainPage() {
             )
           })}
         </Card>
-        <p className="mt-2 px-1 text-xs text-faint">Missed a day? No problem — the next workout simply moves to your next training day.</p>
+        <p className="mt-2 px-1 text-xs text-faint">
+          {isBloom ? 'Missed a day? That’s fine. The next practice simply moves to your next practice day.' : 'Missed a day? No problem — the next workout simply moves to your next training day.'}
+        </p>
 
-        <SectionTitle action={<span className="text-xs text-muted">Hit the top of your reps to climb</span>}>Your levels</SectionTitle>
+        <SectionTitle action={<span className="text-xs text-muted">{isBloom ? 'Holds grow, then poses deepen' : 'Hit the top of your reps to climb'}</span>}>{isBloom ? 'Your path' : 'Your levels'}</SectionTitle>
         <Card className="py-1">
           <ul className="divide-y divide-line/60">
             {levels.map(({ ladder, cur, next: nx, total }) => {
@@ -223,7 +235,7 @@ export default function TrainPage() {
                           )
                         })}
                       </div>
-                      {nx ? <div className="mt-1.5 truncate text-xs text-muted">Next: {getExercise(nx.exerciseId)?.name}</div> : <div className="mt-1.5 text-xs text-good">Top level, now we add challenges</div>}
+                      {nx ? <div className="mt-1.5 truncate text-xs text-muted">Next: {getExercise(nx.exerciseId)?.name}</div> : <div className="mt-1.5 text-xs text-good">{isBloom ? 'The deepest variation. Enjoy it.' : 'Top level, now we add challenges'}</div>}
                     </div>
                     <ChevronRight className="shrink-0 text-faint" size={18} />
                   </Link>
@@ -240,7 +252,7 @@ export default function TrainPage() {
               <BookOpen size={22} />
             </div>
             <div className="flex-1">
-              <div className="font-semibold">Exercise library</div>
+              <div className="font-semibold">{isBloom ? 'Pose library' : 'Exercise library'}</div>
               <div className="text-sm text-muted">Animated guides with voiced tutorials</div>
             </div>
             <ChevronRight className="text-faint" />

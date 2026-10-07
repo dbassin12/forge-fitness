@@ -9,8 +9,8 @@ export const STALE_MS = 6 * 60 * 60_000
 export const MAX_FAILURES = 10
 const ACK_DAYS = 14
 
-export function buildPayload(rule: ReminderRule, occ: Occurrence): PushPayload {
-  const t = defaultText(rule)
+export function buildPayload(rule: ReminderRule, occ: Occurrence, app: DeviceRecord['app'] = 'forge'): PushPayload {
+  const t = defaultText(rule, app)
   return { ...t, tag: `${rule.type}-${occ.date}`, type: rule.type, date: occ.date, ...(rule.meal ? { meal: rule.meal } : {}) }
 }
 
@@ -63,7 +63,7 @@ export async function runTick(now: number, source: string, deps: TickDeps = { re
     for (const occ of dueOccurrences(d.rules, d.tz, now, d.lastSent, d.acks)) {
       const rule = d.rules.find((r) => r.id === occ.ruleId)
       if (!rule) continue
-      const res = await deps.send(d, buildPayload(rule, occ), vapid)
+      const res = await deps.send(d, buildPayload(rule, occ, d.app), vapid)
       if (res === 'gone') {
         u.removed.add(d.id)
         break
@@ -84,9 +84,16 @@ export async function runTick(now: number, source: string, deps: TickDeps = { re
   if (source === 'vercel-cron' && githubAt && now - githubAt > STALE_MS && now - (reg.lastHealthAlert ?? 0) > 20 * 60 * 60_000) {
     for (const d of reg.devices) {
       if (u.removed.has(d.id)) continue
+      const bloom = d.app === 'bloom'
       await deps.send(
         d,
-        { title: '⏰ Reminders may be late', body: 'The GitHub scheduler stopped. Open Forge → More → Reminders for the one-tap fix.', url: '/#/more/reminders', tag: 'scheduler-health', type: 'health' },
+        {
+          title: '⏰ Reminders may be late',
+          body: `The GitHub scheduler stopped. Open ${bloom ? 'Bloom' : 'Forge'} → Settings → Reminders for the one-tap fix.`,
+          url: bloom ? '/bloom/#/more/reminders' : '/#/more/reminders',
+          tag: 'scheduler-health',
+          type: 'health',
+        },
         vapid,
       )
     }

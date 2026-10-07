@@ -1,3 +1,4 @@
+import { isBloom } from '@/app/brand'
 import { getExercise } from '@/data/exercises'
 import type { PlannedBlock, PlannedSession } from '@/engines/plan'
 
@@ -15,7 +16,7 @@ export function blockSummary(b: PlannedBlock): string {
       return `${r} ${r === 1 ? 'round' : 'rounds'} · ${work}s on / ${b.itemRestSec ?? 0}s off`
     }
     case 'flow':
-      return `${b.items.length} moves · follow along${r > 1 ? ` · ${r} times through` : ''}`
+      return `${b.items.length} ${isBloom ? 'poses' : 'moves'} · follow along${r > 1 ? ` · ${r} times through` : ''}`
   }
 }
 

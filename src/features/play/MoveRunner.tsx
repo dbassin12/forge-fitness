@@ -6,7 +6,7 @@ import { usePalette } from '@/app/theme'
 import { getExercise, highlightFor, motionFor } from '@/data/exercises'
 import { haptic } from '@/device/haptics'
 import { sfx } from '@/device/sfx'
-import { repSeconds } from '@/engines/plan'
+import { repSeconds, repWord } from '@/engines/plan'
 import type { PlayMove } from '@/engines/play'
 import { Button } from '@/ui/Button'
 import { cx } from '@/ui/cx'
@@ -146,7 +146,7 @@ export function MoveRunner({ move, title, onDone, onCancel }: { move: PlayMove; 
       </div>
       <div className="px-4 pt-3 text-center">
         <h1 className="font-display text-2xl font-bold">{ex.name}</h1>
-        <div className="text-muted">{move.measure === 'time' ? `${move.amount} seconds` : `${move.amount} reps${perSide ? ' each side' : ''}`}</div>
+        <div className="text-muted">{move.measure === 'time' ? `${move.amount} seconds` : `${move.amount} ${repWord(ex.id, move.amount)}${perSide ? ' each side' : ''}`}</div>
       </div>
       <div className="grid h-[min(220px,32vh)] shrink-0 place-items-center">
         {stage === 'lead' ? (
@@ -169,7 +169,7 @@ export function MoveRunner({ move, title, onDone, onCancel }: { move: PlayMove; 
               ) : (
                 <div className="font-display text-6xl font-bold tabular text-ink">{move.amount}</div>
               )}
-              <div className="text-xs font-medium uppercase tracking-wider text-muted">{move.measure === 'time' ? 'seconds' : count !== null ? 'reps' : 'your pace'}</div>
+              <div className="text-xs font-medium uppercase tracking-wider text-muted">{move.measure === 'time' ? 'seconds' : count !== null ? repWord(ex.id, 2) : 'your pace'}</div>
             </div>
           </div>
         )}

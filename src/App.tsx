@@ -27,6 +27,8 @@ const RecapPage = lazy(() => import('@/features/recap/RecapPage'))
 const WheelPage = lazy(() => import('@/features/play/WheelPage'))
 const DeckPage = lazy(() => import('@/features/play/DeckPage'))
 const ChallengePage = lazy(() => import('@/features/play/ChallengePage'))
+const BreathePage = lazy(() => import('@/features/breathe/BreathePage'))
+const BreathSession = lazy(() => import('@/features/breathe/BreathSession'))
 
 function Splash() {
   return <div className="grid h-[60vh] place-items-center text-muted animate-pulse-soft">Loading…</div>
@@ -75,6 +77,7 @@ const router = createHashRouter([
       { path: 'more', element: <Page><MorePage /></Page> },
       { path: 'more/reminders', element: <Page><RemindersPage /></Page> },
       { path: 'play', element: <Page><PlayPage /></Page> },
+      { path: 'breathe', element: <Page><BreathePage /></Page> },
       { path: 'guide', element: <Page><GuidePage /></Page> },
     ],
   },
@@ -116,6 +119,7 @@ const router = createHashRouter([
       { path: 'play/wheel', element: <RequireProfile><Page><WheelPage /></Page></RequireProfile> },
       { path: 'play/deck', element: <RequireProfile><Page><DeckPage /></Page></RequireProfile> },
       { path: 'play/challenge/:id', element: <RequireProfile><Page><ChallengePage /></Page></RequireProfile> },
+      { path: 'breathe/:id', element: <RequireProfile><Page><BreathSession /></Page></RequireProfile> },
       {
         path: 'workout',
         element: (

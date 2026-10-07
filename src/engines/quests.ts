@@ -5,7 +5,7 @@ import type { ISODate } from '@/domain/types'
  * Pure logic — the state layer gathers the facts and stores what was picked and done.
  */
 
-export type QuestId = 'workout' | 'snack' | 'play' | 'move20' | 'protein' | 'water' | 'meals3' | 'veggies' | 'breakfast' | 'tutorial' | 'weighin'
+export type QuestId = 'workout' | 'snack' | 'play' | 'move20' | 'protein' | 'water' | 'meals3' | 'veggies' | 'breakfast' | 'tutorial' | 'weighin' | 'breathe'
 export type QuestKind = 'move' | 'eat' | 'bonus'
 
 export interface QuestFacts {
@@ -31,6 +31,10 @@ export interface QuestFacts {
   weekday: number
   /** Days since the last weigh-in (null = never). */
   daysSinceWeighIn: number | null
+  /** Breathing or relaxation sessions today (Bloom). */
+  breaths?: number
+  /** Bloom's gentle yoga program: practice-flavoured quests, breathing, and no weigh-in nudges. */
+  yoga?: boolean
 }
 
 export interface QuestProgress {
@@ -86,6 +90,19 @@ export const QUESTS: Record<QuestId, QuestDef> = {
   breakfast: { id: 'breakfast', kind: 'bonus', xp: 10, emoji: '🍳', title: () => 'Log your breakfast', to: '/eat/add?meal=breakfast', progress: (f) => count(f.breakfastLogged ? 1 : 0, 1) },
   tutorial: { id: 'tutorial', kind: 'bonus', xp: 15, emoji: '🎬', title: () => 'Watch an exercise tutorial', to: '/train/library', progress: (f) => count(Math.min(1, f.tutorials), 1) },
   weighin: { id: 'weighin', kind: 'bonus', xp: 10, emoji: '⚖️', title: () => 'Weigh in', to: '/progress', progress: (f) => count(f.weighedIn ? 1 : 0, 1) },
+  breathe: { id: 'breathe', kind: 'move', xp: 20, emoji: '🌬️', title: () => 'Take a few minutes to breathe', to: '/breathe', progress: (f) => count(Math.min(1, f.breaths ?? 0), 1) },
+}
+
+/** Bloom says the same things more gently. */
+const BLOOM_QUESTS: Partial<Record<QuestId, Partial<QuestDef>>> = {
+  workout: { emoji: '🧘', title: () => 'Finish today’s practice' },
+  snack: { emoji: '🌸', title: () => 'Do a 3-minute mini flow' },
+  tutorial: { title: () => 'Watch a pose tutorial' },
+}
+
+/** A quest as the current app presents it. */
+export function questDef(id: QuestId, yoga = false): QuestDef {
+  return yoga && BLOOM_QUESTS[id] ? { ...QUESTS[id], ...BLOOM_QUESTS[id] } : QUESTS[id]
 }
 
 /** Bonus XP for finishing all three. */
@@ -110,6 +127,13 @@ function pick<T>(rand: () => number, from: T[]): T {
 /** The three quests for a day: move, eat, bonus. */
 export function pickQuests(date: ISODate, f: QuestFacts): QuestId[] {
   const rand = seeded(date)
+  if (f.yoga) {
+    // Bloom: practice or a mini flow, a nourishing habit, and something calming. No scales.
+    const move: QuestId = f.trainingDay ? 'workout' : pick<QuestId>(rand, ['snack', 'breathe'])
+    const eat: QuestId = pick<QuestId>(rand, f.lite ? ['water', 'veggies', 'protein'] : ['water', 'veggies', 'protein', 'meals3'])
+    const pool = (['breathe', 'tutorial', 'snack', 'breakfast', 'water', 'veggies'] as QuestId[]).filter((q) => q !== move && q !== eat && !(f.lite && q === 'breakfast'))
+    return [move, eat, pick(rand, pool)]
+  }
   const move: QuestId = f.trainingDay ? 'workout' : pick<QuestId>(rand, ['snack', 'play', 'move20'])
   const eat: QuestId = pick<QuestId>(rand, f.lite ? ['protein', 'water', 'veggies'] : ['protein', 'water', 'meals3', 'veggies'])
   const weighDay = f.weekday === 6 || (f.daysSinceWeighIn !== null && f.daysSinceWeighIn >= 7)

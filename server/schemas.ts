@@ -30,6 +30,8 @@ export const SyncSchema = z.object({
   tz: z.string().max(64).refine(isValidZone, 'unknown time zone'),
   rules: z.array(RuleSchema).max(30),
   context: z.object({ sessionMinutes: z.number().int().min(1).max(180).optional() }).optional(),
+  /** Which app this phone's reminders belong to (Bloom's links and words differ). */
+  app: z.enum(['forge', 'bloom']).optional(),
 })
 
 export const AckSchema = z.object({

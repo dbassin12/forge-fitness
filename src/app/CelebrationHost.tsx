@@ -5,6 +5,7 @@ import { haptic } from '@/device/haptics'
 import { sfx } from '@/device/sfx'
 import { Button } from '@/ui/Button'
 import { cx } from '@/ui/cx'
+import { APP, isBloom } from './brand'
 import { useCelebrate, type BadgeInfo, type Celebration, type Toast } from './celebrate'
 import { burst } from './confetti'
 import { Mascot } from '@/ui/Mascot'
@@ -74,7 +75,7 @@ function LevelUp({ c, onDone }: { c: Extract<Celebration, { kind: 'level' }>; on
         <div className="relative mt-3 flex w-full max-w-xs items-center gap-3 rounded-2xl border border-line bg-surface-2 p-3 text-left animate-fade-up [animation-delay:550ms]">
           <Mascot gear={newGear.id} mood="cheer" size={44} />
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted">New gear for Ember</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted">{isBloom ? `New for ${APP.mascot}` : 'New gear for Ember'}</div>
             <div className="font-semibold">{newGear.name}</div>
           </div>
           <Button

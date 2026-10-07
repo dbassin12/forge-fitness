@@ -1,3 +1,5 @@
+import { isBloom } from '@/app/brand'
+
 /** XP awards. Generous enough to feel good, simple enough to explain. */
 export const XP = {
   workout: 40,
@@ -43,7 +45,10 @@ export function levelForXp(xp: number): LevelInfo {
   return { level, into, span, progress: span ? into / span : 0 }
 }
 
-const TITLES = ['Spark', 'Ember', 'Kindling', 'Flame', 'Blaze', 'Forge', 'Iron', 'Steel', 'Titan', 'Legend']
+const FORGE_TITLES = ['Spark', 'Ember', 'Kindling', 'Flame', 'Blaze', 'Forge', 'Iron', 'Steel', 'Titan', 'Legend']
+/** Bloom grows from a seed to a garden. */
+const BLOOM_TITLES = ['Seed', 'Sprout', 'Seedling', 'Leaf', 'Bud', 'Petal', 'Blossom', 'Lotus', 'Grove', 'Garden']
+const TITLES = isBloom ? BLOOM_TITLES : FORGE_TITLES
 
 export function levelTitle(level: number): string {
   return TITLES[Math.min(TITLES.length - 1, Math.floor((level - 1) / 3))]

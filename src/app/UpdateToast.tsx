@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { APP } from './brand'
 import { usePwa } from './pwa'
 import { Button } from '@/ui/Button'
 import { cx } from '@/ui/cx'
@@ -22,7 +23,7 @@ export function UpdateToast({ placement = 'bottom' }: { placement?: 'top' | 'bot
       style={placement === 'top' ? { paddingTop: 'calc(var(--safe-top) + 10px)' } : { bottom: 'calc(var(--tabbar-h) + var(--safe-bottom) + 10px)' }}
     >
       <div className="pointer-events-auto animate-slide-up flex w-full max-w-md items-center gap-3 rounded-2xl border border-line bg-surface-2/95 px-4 py-2.5 shadow-2xl backdrop-blur-xl" role="status">
-        <p className="flex-1 text-sm">{needRefresh ? 'A new version of Forge is ready.' : 'Forge now works offline.'}</p>
+        <p className="flex-1 text-sm">{needRefresh ? `A new version of ${APP.name} is ready.` : `${APP.name} now works offline.`}</p>
         {needRefresh ? (
           <Button size="sm" onClick={update}>
             Update

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Check, ChevronDown, ClipboardCopy, ExternalLink, Loader2, MessageCircleQuestion } from 'lucide-react'
+import { APP, isBloom } from '@/app/brand'
 import { usePlan } from '@/state/plan'
 import { Button } from '@/ui/Button'
 import { Card } from '@/ui/Card'
@@ -7,12 +8,19 @@ import { PageHeader } from '@/ui/PageHeader'
 import { coachPrompt, copyText, sendToClaude } from '../claude/handoff'
 import { loadCoachContext } from './context'
 
-const SUGGESTIONS = [
-  'What should I eat tonight to hit my protein?',
-  'My knees ache. What can I do instead of lunges?',
-  'I only have 5 minutes. What should I do?',
-  'How do I keep progressing with 20 lb dumbbells?',
-]
+const SUGGESTIONS = isBloom
+  ? [
+      'My lower back feels stiff. Which gentle poses could help?',
+      'I only have 5 minutes. What should I do?',
+      'What’s a calming routine before bed?',
+      'What’s a simple, nourishing dinner for tonight?',
+    ]
+  : [
+      'What should I eat tonight to hit my protein?',
+      'My knees ache. What can I do instead of lunges?',
+      'I only have 5 minutes. What should I do?',
+      'How do I keep progressing with 20 lb dumbbells?',
+    ]
 
 /**
  * "Ask Claude": questions go to the Claude app (on the user's own Claude subscription) with a
@@ -49,13 +57,15 @@ export default function CoachPage() {
 
   return (
     <div className="min-h-dvh">
-      <PageHeader title="Ask Claude" subtitle="Your coach, on your Claude subscription" back />
+      <PageHeader title="Ask Claude" subtitle={`Your ${isBloom ? 'guide' : 'coach'}, on your Claude subscription`} back />
       <div className="px-4 pb-10">
         <Card className="mt-2 flex gap-3">
           <MessageCircleQuestion size={20} className="mt-0.5 shrink-0 text-ember" />
           <p className="text-sm text-muted">
-            Ask anything about training, food or sticking with it. Forge opens the Claude app with your question and a summary of your plan, today’s food and your recent workouts,
-            so the answer fits you. Nothing is sent until you press send in Claude.
+            {isBloom
+              ? 'Ask anything about poses, aches, sleep, food or making it a habit. Bloom opens the Claude app with your question and a summary of your practice, today’s food and your recent practices, so the answer fits you.'
+              : 'Ask anything about training, food or sticking with it. Forge opens the Claude app with your question and a summary of your plan, today’s food and your recent workouts, so the answer fits you.'}{' '}
+            Nothing is sent until you press send in Claude.
           </p>
         </Card>
 
@@ -81,7 +91,7 @@ export default function CoachPage() {
           rows={3}
           maxLength={1000}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="e.g. What’s a good 10-minute upper-body finisher?"
+          placeholder={isBloom ? 'e.g. A gentle 10-minute flow for tight hips?' : 'e.g. What’s a good 10-minute upper-body finisher?'}
           className="mt-1.5 w-full resize-none rounded-2xl border border-line bg-surface px-3.5 py-2.5 text-[15px] outline-none placeholder:text-faint focus:border-ember"
         />
 
@@ -113,7 +123,7 @@ export default function CoachPage() {
             )
           }}
         >
-          Copy my Forge summary
+          Copy my {APP.name} summary
         </Button>
         {status ? (
           <p className={`mt-3 flex items-start gap-1.5 text-sm ${status.ok ? 'text-good' : 'text-muted'}`} role="status">
@@ -132,7 +142,7 @@ export default function CoachPage() {
           <ChevronDown size={18} className={preview ? 'rotate-180 transition' : 'transition'} />
         </button>
         {preview && context ? <pre className="mt-2 whitespace-pre-wrap rounded-2xl border border-line bg-surface p-3 text-xs leading-relaxed text-muted">{context}</pre> : null}
-        <p className="mt-4 text-xs text-faint">Uses your own Claude app and subscription. Forge never sends your data anywhere itself.</p>
+        <p className="mt-4 text-xs text-faint">Uses your own Claude app and subscription. {APP.name} never sends your data anywhere itself.</p>
       </div>
     </div>
   )

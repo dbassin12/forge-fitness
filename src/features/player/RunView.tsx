@@ -3,8 +3,9 @@ import { Check, ChevronsRight, Lightbulb, Pause, Play, Plus, SkipBack, Volume2, 
 import { Mannequin } from '@/anim/Mannequin'
 import { usePalette } from '@/app/theme'
 import { getExercise, highlightFor, motionFor } from '@/data/exercises'
+import { isBloom } from '@/app/brand'
 import { TIPS } from '@/data/tips'
-import { repSeconds, type PlannedSession } from '@/engines/plan'
+import { repSeconds, repWord, type PlannedSession } from '@/engines/plan'
 import { Button } from '@/ui/Button'
 import { Stepper } from '@/ui/Stepper'
 import { cx } from '@/ui/cx'
@@ -54,6 +55,15 @@ function useClock() {
 
 const say = (text: string, interrupt = false) => void speech.speak(text, { priority: 'cue', interrupt })
 
+/** Gentle reminders for long yoga holds (Bloom). */
+const HOLD_BREATHS = [
+  'Breathe in slowly, and let the breath out even more slowly.',
+  'Soften your face and your jaw. Keep breathing.',
+  'With each breath out, let go a little more, only if it feels good.',
+  'Notice your breath. Let it be smooth and easy.',
+  'Relax your shoulders. Stay with your breath.',
+]
+
 function nameOf(w?: WorkStep) {
   return w ? (getExercise(w.item.exerciseId)?.name ?? '') : ''
 }
@@ -66,7 +76,7 @@ function announce(st: Step, steps: Step[], i: number) {
   const sameEx = prev?.kind === 'work' && n && prev.item.exerciseId === n.item.exerciseId
   switch (st.reason) {
     case 'ready':
-      say(`Get ready. First up: ${what}.`, true)
+      say(isBloom ? `Find your space. First: ${what}.` : `Get ready. First up: ${what}.`, true)
       break
     case 'side':
       say('Switch sides.', true)
@@ -75,7 +85,7 @@ function announce(st: Step, steps: Step[], i: number) {
       say(`Next: ${what}.`, true)
       break
     case 'set':
-      say(sameEx ? `Rest ${st.seconds} seconds. Then set ${n!.round} of ${n!.rounds}.` : `Rest ${st.seconds} seconds. Next: ${what}.`, true)
+      say(sameEx ? `Rest ${st.seconds} seconds. Then ${isBloom ? 'round' : 'set'} ${n!.round} of ${n!.rounds}.` : `Rest ${st.seconds} seconds. Next: ${what}.`, true)
       if (n && n.round === n.rounds && n.rounds > 1) say(coachLine('lastRound'))
       else if (st.seconds >= 30) say(coachLine('rest'))
       break
@@ -85,7 +95,7 @@ function announce(st: Step, steps: Step[], i: number) {
       break
     case 'block': {
       const needsDb = n ? getExercise(n.item.exerciseId)?.equipment.some((e) => e.startsWith('db')) : false
-      say(`Nice work. Next: ${what}.${needsDb ? ' Grab your dumbbells.' : ''}`, true)
+      say(`${isBloom ? 'Lovely.' : 'Nice work.'} Next: ${what}.${needsDb ? ' Grab your dumbbells.' : ''}`, true)
       break
     }
   }
@@ -199,16 +209,23 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
         if (left <= 0) {
           go()
           vibrate(40)
-          if (st.next) say(st.reason === 'side' ? 'Go.' : 'Go!', true)
+          if (st.next) say(isBloom ? 'Begin.' : st.reason === 'side' ? 'Go.' : 'Go!', true)
           advance()
           return
         }
       } else if (st.seconds !== undefined) {
         const left = st.seconds - now
         const ex = getExercise(st.item.exerciseId)
-        if (st.seconds >= 20 && now >= st.seconds / 3 && once('cue') && ex?.copy.cues.length) say(ex.copy.cues[st.setIndex % ex.copy.cues.length])
-        if (st.seconds >= 30 && left <= 10 && left > 9 && once('ten')) say(coachLine('tenLeft'))
-        else if (st.seconds >= 20 && now >= st.seconds / 2 && once('half') && !flags.current.has('ten')) say(coachLine('half'))
+        if (isBloom) {
+          // Yoga holds: one alignment cue, a breath reminder in long holds, and quiet otherwise.
+          if (st.seconds >= 20 && now >= Math.min(8, st.seconds / 4) && once('cue') && ex?.copy.cues.length) say(ex.copy.cues[st.setIndex % ex.copy.cues.length])
+          if (st.seconds >= 40 && now >= st.seconds * 0.6 && once('breath')) say(HOLD_BREATHS[(st.setIndex + cursor) % HOLD_BREATHS.length])
+          if (st.seconds >= 60 && left <= 10 && left > 9 && once('ten')) say(coachLine('tenLeft'))
+        } else {
+          if (st.seconds >= 20 && now >= st.seconds / 3 && once('cue') && ex?.copy.cues.length) say(ex.copy.cues[st.setIndex % ex.copy.cues.length])
+          if (st.seconds >= 30 && left <= 10 && left > 9 && once('ten')) say(coachLine('tenLeft'))
+          else if (st.seconds >= 20 && now >= st.seconds / 2 && once('half') && !flags.current.has('ten')) say(coachLine('half'))
+        }
         for (const n of [3, 2, 1]) if (left <= n && left > n - 1 && once(`b${n}`)) tick()
         if (left <= 0) {
           chime()
@@ -288,7 +305,7 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
   const header = (
     <div className="safe-top px-4 pt-2">
       <div className="flex items-center gap-2">
-        <button type="button" aria-label="End workout" onClick={onQuit} className="-ml-2 grid h-10 w-10 place-items-center rounded-full text-muted hover:bg-surface-2">
+        <button type="button" aria-label={isBloom ? 'End practice' : 'End workout'} onClick={onQuit} className="-ml-2 grid h-10 w-10 place-items-center rounded-full text-muted hover:bg-surface-2">
           <X size={22} />
         </button>
         <div className="min-w-0 flex-1 text-center">
@@ -314,7 +331,7 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
           {voiceOn ? <Volume2 size={20} /> : <VolumeX size={20} />}
         </button>
       </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={workIdx} aria-valuemax={workTotal} aria-label="Workout progress">
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={workIdx} aria-valuemax={workTotal} aria-label={isBloom ? 'Practice progress' : 'Workout progress'}>
         <div className="h-full rounded-full bg-gradient-to-r from-ember to-amber transition-[width] duration-500" style={{ width: `${(workIdx / Math.max(1, workTotal)) * 100}%` }} />
       </div>
     </div>
@@ -375,13 +392,13 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
             <div key={showCount} className="font-display text-5xl font-bold tabular leading-none animate-count-pop">
               {showCount}
             </div>
-            <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-muted">{paused ? 'paused' : count !== null ? `of ${target} reps` : 'your pace'}</div>
+            <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-muted">{paused ? 'paused' : count !== null ? (isBloom && repWord(ex.id, target) !== 'rounds' ? `of ${target}` : `of ${target} ${repWord(ex.id, target)}`) : 'your pace'}</div>
           </Ring>
         )}
       </div>
       {captionBar}
       <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 px-3 pt-2 min-[360px]:gap-3 min-[360px]:px-4" style={{ paddingBottom: 'calc(var(--safe-bottom) + 14px)' }}>
-        <button type="button" aria-label="Previous exercise" onClick={back} className="grid h-12 w-12 place-items-center rounded-full border border-line bg-surface-2 text-muted active:scale-90 min-[360px]:h-14 min-[360px]:w-14">
+        <button type="button" aria-label={isBloom ? 'Previous pose' : 'Previous exercise'} onClick={back} className="grid h-12 w-12 place-items-center rounded-full border border-line bg-surface-2 text-muted active:scale-90 min-[360px]:h-14 min-[360px]:w-14">
           <SkipBack size={22} />
         </button>
         <div className="grid min-w-0 grid-cols-[auto_1fr] gap-2">
@@ -476,7 +493,7 @@ function RestScreen({
             {paused ? 'Resume' : 'Pause'}
           </Button>
           <Button size="sm" onClick={skip} icon={<ChevronsRight size={16} />}>
-            {short ? 'Go' : 'Skip rest'}
+            {short ? (isBloom ? 'Begin' : 'Go') : 'Skip rest'}
           </Button>
         </div>
       </div>
@@ -494,7 +511,7 @@ function RestScreen({
               min={0}
               max={last.seconds !== undefined ? 600 : 100}
               step={last.seconds !== undefined ? 5 : 1}
-              unit={last.seconds !== undefined ? 's' : 'reps'}
+              unit={last.seconds !== undefined ? 's' : isBloom ? repWord(last.item.exerciseId, 2) : 'reps'}
               label={`${lastEx.name} result`}
             />
           </div>

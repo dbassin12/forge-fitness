@@ -1,8 +1,10 @@
 import type { SegmentGroup } from '@/anim/draw'
 import type { Motion } from '@/anim/types'
+import { APP, type AppId } from '@/app/brand'
 import { EXERCISE_DEFS } from './catalog'
 import { EXERCISE_COPY } from './copy'
 import type { Equip, Exercise, ExerciseCopy, ExerciseDef, Muscle, Pattern } from './types'
+import { SHARED_AVOID_IN_PREGNANCY, SHARED_WITH_BLOOM } from './yoga'
 
 export type { Equip, Exercise, ExerciseCopy, ExerciseDef, Muscle, Pattern }
 
@@ -19,6 +21,14 @@ export const PATTERN_LABEL: Record<Pattern, string> = {
   cond: 'Cardio',
   arms: 'Arms',
   mobility: 'Mobility',
+  flow: 'Flow',
+  standing: 'Standing pose',
+  balance: 'Balance',
+  hip: 'Hip opener',
+  fold: 'Forward fold',
+  backbend: 'Backbend',
+  twist: 'Twist',
+  restore: 'Rest & restore',
 }
 
 export const MUSCLE_LABEL: Record<Muscle, string> = {
@@ -87,9 +97,28 @@ function fallbackCopy(d: ExerciseDef): ExerciseCopy {
   }
 }
 
-export const EXERCISES: Exercise[] = EXERCISE_DEFS.map((d) => ({ ...d, copy: EXERCISE_COPY[d.id] ?? fallbackCopy(d) }))
+/** Which apps list an exercise: yoga poses are Bloom's, a few gentle moves are shared, the rest are Forge's. */
+function appsOf(d: ExerciseDef): AppId[] {
+  return d.apps ?? (SHARED_WITH_BLOOM.has(d.id) ? ['forge', 'bloom'] : ['forge'])
+}
 
-const BY_ID = new Map(EXERCISES.map((e) => [e.id, e]))
+/** Every exercise in both apps (for looking things up, e.g. old logs). */
+export const ALL_EXERCISES: Exercise[] = EXERCISE_DEFS.map((d) => ({
+  ...d,
+  apps: appsOf(d),
+  avoidIf: SHARED_AVOID_IN_PREGNANCY.has(d.id) ? [...(d.avoidIf ?? []), 'pregnancy'] : d.avoidIf,
+  copy: EXERCISE_COPY[d.id] ?? fallbackCopy(d),
+}))
+
+/** Does this app offer the exercise? */
+export function inApp(ex: Pick<ExerciseDef, 'apps'>, app: AppId = APP.id): boolean {
+  return (ex.apps ?? ['forge']).includes(app)
+}
+
+/** The exercises this app offers (Forge's catalog, or Bloom's poses and gentle moves). */
+export const EXERCISES: Exercise[] = ALL_EXERCISES.filter((e) => inApp(e))
+
+const BY_ID = new Map(ALL_EXERCISES.map((e) => [e.id, e]))
 
 export function getExercise(id: string): Exercise | undefined {
   return BY_ID.get(id)
@@ -118,6 +147,6 @@ export function highlightFor(ex: Exercise): { primary: SegmentGroup[]; secondary
 }
 
 export function youtubeUrl(ex: Exercise): string {
-  const q = ex.youtube ?? `${ex.name} proper form tutorial`
+  const q = ex.youtube ?? (ex.apps?.includes('bloom') && !ex.apps.includes('forge') ? `${ex.name} yoga for beginners` : `${ex.name} proper form tutorial`)
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`
 }

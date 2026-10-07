@@ -83,8 +83,9 @@ export function solvePose(pose: Pose, view: View): Skeleton {
     const across = dir(pose.torso + 90) // perpendicular to the spine
     shoulderN = add(shoulderJoint, scale(across, L.shoulderHalf))
     shoulderF = add(shoulderJoint, scale(across, -L.shoulderHalf))
-    hipN = add(hip, scale(across, L.hipHalf))
-    hipF = add(hip, scale(across, -L.hipHalf))
+    const hipAcross = pose.pelvis === undefined ? across : dir(pose.pelvis + 90)
+    hipN = add(hip, scale(hipAcross, L.hipHalf))
+    hipF = add(hip, scale(hipAcross, -L.hipHalf))
   }
 
   const armN = solveLimb(shoulderN, pose.armN, L.upperArm, L.forearm)
@@ -110,6 +111,7 @@ export function solvePose(pose: Pose, view: View): Skeleton {
     head,
     headAngle,
     torsoAngle: pose.torso,
+    pelvisAngle: pose.pelvis ?? pose.torso,
     elbowN: armN.joint,
     wristN: armN.end,
     handN,

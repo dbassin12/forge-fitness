@@ -1,4 +1,5 @@
 import { Check, Lock, Monitor, Moon, Sun } from 'lucide-react'
+import { APP, isBloom } from '@/app/brand'
 import { COACH_STYLES, usePrefs, type CoachStyle, type MotionPref } from '@/app/prefs'
 import { ACCENTS, useTheme, type ThemeMode } from '@/app/theme'
 import { haptic } from '@/device/haptics'
@@ -79,7 +80,7 @@ export function FeelPanel() {
       </div>
 
       <div className="mt-5 flex items-baseline justify-between">
-        <span className="text-sm font-medium text-muted">Ember’s gear</span>
+        <span className="text-sm font-medium text-muted">{APP.mascot}’s {isBloom ? 'treasures' : 'gear'}</span>
         <span className="text-xs text-faint">Earn more by leveling up</span>
       </div>
       <div className="no-scrollbar -mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-1">
@@ -110,8 +111,8 @@ export function FeelPanel() {
         })}
       </div>
 
-      <div className="mt-5 text-sm font-medium text-muted">Coach personality</div>
-      <p className="text-xs text-faint">How the voice coach talks to you during workouts.</p>
+      <div className="mt-5 text-sm font-medium text-muted">{isBloom ? 'Voice guide' : 'Coach personality'}</div>
+      <p className="text-xs text-faint">{isBloom ? 'How your voice guide talks to you during practice.' : 'How the voice coach talks to you during workouts.'}</p>
       <div className="mt-2 grid grid-cols-2 gap-2">
         {COACH_STYLES.map((c) => (
           <button

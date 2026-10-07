@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Star } from 'lucide-react'
+import { APP } from '@/app/brand'
 import type { CustomFood, MealSlot } from '@/db/db'
 import type { FoodItem } from '@/data/foods/types'
 import type { Recipe } from '@/data/recipes/types'
@@ -141,7 +142,7 @@ export function FoodSheet({
       {item && s && m ? (
         <div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted">{item.kind === 'off' ? 'From Open Food Facts' : item.kind === 'recipe' ? 'Recipe' : item.kind === 'custom' ? 'My food' : 'Forge food database'}</span>
+            <span className="text-sm text-muted">{item.kind === 'off' ? 'From Open Food Facts' : item.kind === 'recipe' ? 'Recipe' : item.kind === 'custom' ? 'My food' : `${APP.name} food database`}</span>
             <button type="button" onClick={onToggleFavorite} aria-pressed={favorite} aria-label="Favorite" className="grid h-9 w-9 place-items-center rounded-full hover:bg-surface-2">
               <Star size={20} className={favorite ? 'fill-amber text-amber' : 'text-faint'} />
             </button>

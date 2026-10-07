@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { AchievementTier } from '@/engines/gamification'
-import { usePrefs } from './prefs'
+import { usePrefs, type MascotGearId } from './prefs'
 import type { AccentInfo } from './theme'
 
 export interface BadgeInfo {
@@ -12,7 +12,7 @@ export interface BadgeInfo {
 }
 
 export type Celebration =
-  | { kind: 'level'; level: number; title: string; unlocks: AccentInfo[]; gear?: { id: 'headband' | 'shades' | 'cap' | 'medal' | 'crown'; name: string }[] }
+  | { kind: 'level'; level: number; title: string; unlocks: AccentInfo[]; gear?: { id: MascotGearId; name: string }[] }
   | { kind: 'badges'; badges: BadgeInfo[] }
   | { kind: 'pb'; title: string; text: string; emoji: string }
 

@@ -13,6 +13,7 @@ import { swapsFor, usePlan } from '@/state/plan'
 import { saveReminderSettings, syncPush, useReminderSettings } from '@/state/reminders'
 import { bridgeSet, type SwContext } from '@/sw-bridge'
 import { useCalendarExport } from '@/state/calendar'
+import { APP, storageKey } from './brand'
 import { usePrefs } from './prefs'
 
 /** In-app reminder toasts (used when push notifications are off). */
@@ -22,7 +23,7 @@ export const useInAppToast = create<{ toast: { title: string; body: string; url:
   clear: () => set({ toast: null }),
 }))
 
-const IN_APP_KEY = 'forge.inAppReminders'
+const IN_APP_KEY = storageKey('inAppReminders')
 
 /**
  * Keeps the background pieces in step with the app: the service worker's context snapshot (for
@@ -64,8 +65,9 @@ export function useBackgroundSync() {
       thisWeek: streak.thisWeek,
       weekTarget: streak.target,
       coach,
+      app: APP.id,
     }
-    void bridgeSet('context', ctx).catch(() => undefined)
+    void bridgeSet(APP.id, 'context', ctx).catch(() => undefined)
     localAcks.current = [
       ...(ctx.workoutDone ? [`workout:${today}`] : []),
       ...(day.waterMl >= t.waterMl ? [`water:${today}`] : []),
@@ -78,7 +80,7 @@ export function useBackgroundSync() {
     if (!plan || !settings) return
     const p = plan.profile
     if (settings.style !== 'custom') {
-      const fresh = presetRules(settings.style, { trainingDays: p.trainingDays, workoutTime: p.preferredTime })
+      const fresh = presetRules(settings.style, { trainingDays: p.trainingDays, workoutTime: p.preferredTime, app: APP.id })
       // Keep the user's on/off choices for rules that exist in both.
       const merged = fresh.map((r) => ({ ...r, enabled: settings.rules.find((x) => x.id === r.id)?.enabled ?? r.enabled }))
       if (JSON.stringify(merged) !== JSON.stringify(settings.rules)) {
@@ -122,7 +124,7 @@ export function useBackgroundSync() {
       if (due.length) {
         const occ = due[due.length - 1]
         const rule = settings.rules.find((r) => r.id === occ.ruleId)
-        if (rule) useInAppToast.getState().show(defaultText(rule))
+        if (rule) useInAppToast.getState().show(defaultText(rule, APP.id))
         for (const o of due) last[o.ruleId] = o.fireAt
       }
       localStorage.setItem(IN_APP_KEY, JSON.stringify(last))

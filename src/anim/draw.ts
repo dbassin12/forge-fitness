@@ -35,6 +35,9 @@ export interface Palette {
   ironRim: string
   floor: string
   shadow: string
+  /** Yoga mat color and strength (defaults: a muted blue mat). */
+  mat?: string
+  matOpacity?: number
 }
 
 export const DARK_PALETTE: Palette = {
@@ -65,6 +68,42 @@ export const LIGHT_PALETTE: Palette = {
   ironRim: '#1f2937',
   floor: '#cdd3db',
   shadow: '#000000',
+}
+
+/** Bloom: a soft plum-grey figure on a dusk background, lilac mat. */
+export const BLOOM_DARK_PALETTE: Palette = {
+  near: '#ece3ef',
+  far: '#8f8497',
+  torso: '#f3ecf5',
+  head: '#f3ecf5',
+  face: '#2e2634',
+  highlight: '#f2a0c0',
+  prop: '#352e3d',
+  propEdge: '#4d4456',
+  iron: '#5b6573',
+  ironRim: '#9aa4b2',
+  floor: '#3a3342',
+  shadow: '#000000',
+  mat: '#7a5f96',
+  matOpacity: 0.7,
+}
+
+/** Bloom by day: deep plum figure on warm paper, blush mat. */
+export const BLOOM_LIGHT_PALETTE: Palette = {
+  near: '#5a4a62',
+  far: '#b3a6ba',
+  torso: '#4a3d52',
+  head: '#4a3d52',
+  face: '#f6eff3',
+  highlight: '#b03a68',
+  prop: '#e9e0d6',
+  propEdge: '#cfc3b6',
+  iron: '#4b5563',
+  ironRim: '#1f2937',
+  floor: '#e2d8cd',
+  shadow: '#5a4a62',
+  mat: '#d8b4c8',
+  matOpacity: 0.85,
 }
 
 export interface DrawOptions {
@@ -174,7 +213,7 @@ export function propShapes(props: PropSpec[] | undefined, pal: Palette): Shape[]
       }
       case 'mat': {
         const w = p.width ?? 150
-        out.push({ id: `${id}-mat`, kind: 'rect', x: p.x - w / 2, y: GROUND - 2.5, w, h: 3, rx: 1.5, fill: '#33507a', opacity: 0.55 })
+        out.push({ id: `${id}-mat`, kind: 'rect', x: p.x - w / 2, y: GROUND - 2.5, w, h: 3, rx: 1.5, fill: pal.mat ?? '#33507a', opacity: pal.matOpacity ?? 0.55 })
         break
       }
       case 'bar':
@@ -217,6 +256,8 @@ function sideTorsoPath(s: Skeleton): string {
 /** Front-view torso: shoulders wider than the waist, hips in between. */
 function frontTorsoPoints(s: Skeleton): string {
   const across = dir(s.torsoAngle + 90)
+  // The hip edge follows the pelvis when it tilts less than the ribcage (side bends).
+  const hipAcross = dir(s.pelvisAngle + 90)
   const pts: Vec[] = []
   const prof: Array<[number, number]> = [
     [0, 11],
@@ -226,11 +267,11 @@ function frontTorsoPoints(s: Skeleton): string {
   ]
   for (const [t, w] of prof) {
     const p = lerpV(s.hip, s.shoulder, t)
-    pts.push(add(p, scale(across, w)))
+    pts.push(add(p, scale(t === 0 ? hipAcross : across, w)))
   }
   for (const [t, w] of [...prof].reverse()) {
     const p = lerpV(s.hip, s.shoulder, t)
-    pts.push(add(p, scale(across, -w)))
+    pts.push(add(p, scale(t === 0 ? hipAcross : across, -w)))
   }
   return pts.map((p) => `${f(p[0])},${f(p[1])}`).join(' ')
 }

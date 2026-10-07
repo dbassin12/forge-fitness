@@ -2,6 +2,8 @@ import type { ISODate } from '@/domain/types'
 import { addDays } from '@/lib/dates'
 
 export const MINUTE_STEPS = [5, 10, 15, 20, 30, 45, 60]
+/** Bloom's practices top out at 45 minutes. */
+const YOGA_MINUTE_STEPS = [5, 10, 15, 20, 30, 45]
 
 export interface ReviewInput {
   weekOf: ISODate
@@ -15,6 +17,8 @@ export interface ReviewInput {
   weights: { date: ISODate; kg: number }[]
   /** Completion ratio (done / planned) of the previous week. */
   lastWeekCompletion?: number
+  /** Bloom: talk about practices, and keep suggestions within 45 minutes. */
+  yoga?: boolean
 }
 
 export interface PlanChange {
@@ -58,18 +62,34 @@ export function weekReview(i: ReviewInput): Review {
     avgProtein: avg(food.map((f) => f.protein)),
     proteinDays: food.filter((f) => f.protein >= i.proteinTarget * 0.95).length,
     weightDeltaKg: weights.length >= 2 ? weights[weights.length - 1].kg - weights[0].kg : undefined,
-    headline: completion >= 1 ? 'Every workout done — outstanding week!' : completion >= 0.66 ? 'Solid week. Keep the rhythm going.' : completion > 0 ? 'Some good work in a busy week.' : 'A quiet week. Next week is a fresh start.',
+    headline: i.yoga
+      ? completion >= 1
+        ? 'Every practice done. What a lovely week!'
+        : completion >= 0.66
+          ? 'A steady week. Keep the rhythm going.'
+          : completion > 0
+            ? 'Some lovely moments in a busy week.'
+            : 'A quiet week. Next week is a fresh start.'
+      : completion >= 1
+        ? 'Every workout done — outstanding week!'
+        : completion >= 0.66
+          ? 'Solid week. Keep the rhythm going.'
+          : completion > 0
+            ? 'Some good work in a busy week.'
+            : 'A quiet week. Next week is a fresh start.',
   }
-  const minIdx = MINUTE_STEPS.indexOf(i.sessionMinutes)
+  const steps = i.yoga ? YOGA_MINUTE_STEPS : MINUTE_STEPS
+  const unit = i.yoga ? 'practices' : 'workouts'
+  const minIdx = steps.indexOf(i.sessionMinutes)
   if (completion >= 1 && (i.lastWeekCompletion ?? 0) >= 1) {
     const options: PlanChange[] = []
-    if (i.daysPerWeek < 6) options.push({ label: `Train ${i.daysPerWeek + 1} days a week`, daysPerWeek: i.daysPerWeek + 1 })
-    if (minIdx >= 0 && minIdx < MINUTE_STEPS.length - 1) options.push({ label: `${MINUTE_STEPS[minIdx + 1]}-minute workouts`, sessionMinutes: MINUTE_STEPS[minIdx + 1] })
+    if (i.daysPerWeek < 6) options.push({ label: `${i.yoga ? 'Practice' : 'Train'} ${i.daysPerWeek + 1} days a week`, daysPerWeek: i.daysPerWeek + 1 })
+    if (minIdx >= 0 && minIdx < steps.length - 1) options.push({ label: `${steps[minIdx + 1]}-minute ${unit}`, sessionMinutes: steps[minIdx + 1] })
     if (options.length) r.suggestion = { text: "Two perfect weeks in a row. Ready for a little more? (Totally optional — consistency is what's working.)", options }
   } else if (completion < 0.5 && (i.lastWeekCompletion ?? 1) < 0.5) {
     const options: PlanChange[] = []
     if (i.daysPerWeek > 2) options.push({ label: `${i.daysPerWeek - 1} days a week`, daysPerWeek: i.daysPerWeek - 1 })
-    if (minIdx > 1) options.push({ label: `${MINUTE_STEPS[minIdx - 1]}-minute workouts`, sessionMinutes: MINUTE_STEPS[minIdx - 1] })
+    if (minIdx > 1) options.push({ label: `${steps[minIdx - 1]}-minute ${unit}`, sessionMinutes: steps[minIdx - 1] })
     if (options.length) r.suggestion = { text: 'Life got busy two weeks running. A smaller plan you actually do beats a big one you skip — want to adjust?', options }
   }
   return r

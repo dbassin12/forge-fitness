@@ -5,6 +5,26 @@ dumbbells), animated and voiced exercise guides, calorie and protein tracking, a
 that nudge you to train, eat well and drink water. It installs from the browser like a native
 app, works offline, and keeps your data on your phone.
 
+## Bloom: Michal's gentle yoga app
+
+Bloom is a second app in this repo, made for Michal: gentle yoga instead of intense workouts.
+It shares Forge's engine but has its own name, look (dusk plum and warm paper, a serif face),
+mascot (Lila the lotus), Home Screen icon and data (a separate database on the phone).
+
+- **Practices built around her week.** Pick intentions (calmer, sleep, flexibility, gentle
+  strength, balance, back, energy), minutes (5–45) and days; Bloom rotates themes like Morning
+  Flow, Hips & Hamstrings and Evening Unwind, fitted to the minutes she picked.
+- **More than 50 animated, voiced poses and stretches**, from mountain breath and tree pose to
+  pigeon and legs up the wall. Holds lengthen a little each week, then poses deepen. Easier options, props (chair,
+  wall) and a pregnancy-safe mode that skips belly-down poses, deep twists and core work on the back.
+- **A Breathe tab:** paced breathing (calm, box, 4-7-8 for sleep and more), voice-guided body
+  scan and bedtime wind-down, and 3-minute mini flows (wake-up, desk stretch, wind-down).
+- **Calm voice guides** (Zen, Calm, Sunny), gentler quests and badges, no calorie talk unless
+  she switches nutrition to full tracking.
+
+It lives at **`/bloom/`**: `https://forge-fitness-liard.vercel.app/bloom/` once this branch is
+deployed. Install it the same way as Forge (below), starting from that address.
+
 ## What's inside
 
 - **A plan built around your time.** A 2-minute setup (goal, body stats, days per week,
@@ -159,11 +179,17 @@ Phone (PWA, offline-first)                     Vercel project
 
 ```sh
 npm install
-npm run dev        # http://localhost:5173 (API routes need `vercel dev`)
+npm run dev        # Forge: http://localhost:5173 · Bloom: http://localhost:5173/bloom/ (API routes need `vercel dev`)
 npm run check      # typecheck + lint + unit/API tests
 npm run build      # production build (dist/)
 npm run e2e        # Playwright end-to-end tests at phone size (builds and serves dist/)
 npm run anim:sheet # render animation contact sheets to anim-sheets/
 ```
 
-The Animation Lab at `/#/lab` shows every exercise animation with a scrubber.
+The Animation Lab at `/#/lab` shows every exercise animation with a scrubber (and at
+`/bloom/#/lab`, every yoga pose).
+
+To try either app on a phone on the same Wi-Fi, run `npm run dev -- --host` and open the
+`Network` address it prints (add `bloom/` for Bloom). Over plain `http` the app runs fully, but
+installing to the Home Screen, offline mode and notifications need `https`, so use the Vercel
+address for those.

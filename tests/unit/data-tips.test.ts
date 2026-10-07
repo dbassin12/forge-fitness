@@ -21,3 +21,26 @@ describe('tips', () => {
     })
   }
 })
+
+import { BLOOM_TIPS } from '@/data/tips/bloom'
+
+describe('Bloom tips', () => {
+  it('cover every category with unique ids', () => {
+    expect(new Set(BLOOM_TIPS.map((t) => t.id)).size).toBe(BLOOM_TIPS.length)
+    const cats = new Map<string, number>()
+    for (const t of BLOOM_TIPS) cats.set(t.category, (cats.get(t.category) ?? 0) + 1)
+    for (const c of ['training', 'form', 'nutrition', 'hydration', 'sleep', 'recovery', 'mindset', 'habits', 'time', 'safety']) {
+      expect(cats.get(c) ?? 0, `category ${c}`).toBeGreaterThanOrEqual(5)
+    }
+    expect(BLOOM_TIPS.filter((t) => t.contexts.includes('rest-between-sets')).length).toBeGreaterThanOrEqual(5)
+  })
+  for (const t of BLOOM_TIPS) {
+    it(`${t.id} reads well`, () => {
+      expect(t.text.length).toBeGreaterThanOrEqual(30)
+      expect(t.text.length).toBeLessThanOrEqual(220)
+      if (t.title) expect(t.title.split(/\s+/).length).toBeLessThanOrEqual(6)
+      expect(t.text).not.toMatch(/[\u{1F300}-\u{1FAFF}]/u)
+    })
+  }
+})
+

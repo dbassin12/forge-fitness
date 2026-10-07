@@ -1,3 +1,5 @@
+import { isBloom } from '@/app/brand'
+import { BLOOM_TIPS } from './bloom'
 import type { Tip } from './types'
 
 /**
@@ -647,7 +649,7 @@ const SAFETY: Tip[] = [
     text: "Skip all-out max attempts at home. Controlled sets of 8 to 15 reps with good form are safer and still build plenty of strength." },
 ]
 
-export const TIPS: Tip[] = [
+export const FORGE_TIPS: Tip[] = [
   ...TRAINING,
   ...FORM,
   ...NUTRITION,
@@ -659,3 +661,7 @@ export const TIPS: Tip[] = [
   ...TIME,
   ...SAFETY,
 ]
+
+/** The tips this app shows (Bloom has its own gentler set). */
+export const TIPS: Tip[] = isBloom ? BLOOM_TIPS : FORGE_TIPS
+export { BLOOM_TIPS }

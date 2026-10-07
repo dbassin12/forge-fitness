@@ -1,13 +1,15 @@
+import { APP, type AppId } from '@/app/brand'
 import { db } from '@/db/db'
 
-export const BACKUP_APP = 'forge'
+/** Backups are tagged with the app that made them (a Forge backup can't be restored into Bloom). */
+export const BACKUP_APP: AppId = APP.id
 export const BACKUP_VERSION = 1
 
 const TABLES = ['kv', 'workouts', 'foodLogs', 'customFoods', 'water', 'weights', 'measurements', 'photos', 'achievements', 'xpEvents', 'chat'] as const
 type TableName = (typeof TABLES)[number]
 
 export interface Backup {
-  app: typeof BACKUP_APP
+  app: AppId
   version: number
   exportedAt: string
   tables: Partial<Record<TableName, unknown[]>>
@@ -45,9 +47,9 @@ export async function exportBackup(includePhotos: boolean): Promise<Blob> {
 export function parseBackup(text: string): Backup {
   const data = JSON.parse(text) as Partial<Backup>
   if (data.app !== BACKUP_APP || typeof data.version !== 'number' || !data.tables || typeof data.tables !== 'object') {
-    throw new Error("This doesn't look like a Forge backup file.")
+    throw new Error(`This doesn't look like a ${APP.name} backup file.`)
   }
-  if (data.version > BACKUP_VERSION) throw new Error('This backup comes from a newer version of Forge. Update the app first.')
+  if (data.version > BACKUP_VERSION) throw new Error(`This backup comes from a newer version of ${APP.name}. Update the app first.`)
   return data as Backup
 }
 

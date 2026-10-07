@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
+import { APP, isBloom } from '@/app/brand'
 import { usePalette } from '@/app/theme'
 import { getExercise, motionFor } from '@/data/exercises'
+import { ACHIEVEMENTS } from '@/engines/gamification'
 import { LADDERS } from '@/engines/plan'
 import { Card, SectionTitle } from '@/ui/Card'
 import { Mascot } from '@/ui/Mascot'
@@ -19,7 +21,7 @@ interface Section {
   cta?: { label: string; to: string }
 }
 
-const SECTIONS: Section[] = [
+const FORGE_SECTIONS: Section[] = [
   {
     id: 'plan',
     emoji: '🗓️',
@@ -123,7 +125,7 @@ const SECTIONS: Section[] = [
   },
 ]
 
-const FAQ = [
+const FORGE_FAQ = [
   { q: 'I only have a few minutes. What do I do?', a: 'Use “Short on time?” on Today for a 5 or 10-minute version of your workout, or a 3-minute snack. Spin the wheel in Play for a single move.' },
   { q: 'Something hurts.', a: 'Stop that exercise. Tap the swap icon next to it in the workout preview for an alternative, and add the ache in Settings → Aches & limits so Forge avoids it. Sharp or lasting pain is a reason to see a professional.' },
   { q: 'I found my heavier dumbbell.', a: 'Settings → Equipment, switch it on. Goblet squats and one-arm rows will use it.' },
@@ -132,11 +134,126 @@ const FAQ = [
   { q: 'Where is my data?', a: 'Only on this phone. Export a backup now and then from Settings → Backup & data, and restore it on a new phone.' },
 ]
 
+const BLOOM_SECTIONS: Section[] = [
+  {
+    id: 'plan',
+    emoji: '🗓️',
+    title: 'Your practices',
+    points: [
+      'Bloom builds your week from what you’d like from yoga, your practice days and how many minutes you have.',
+      'Each day has a theme, like Morning Flow, Hips & Hamstrings or Evening Unwind, fitted to your minutes.',
+      'Practices form a queue. Miss a day and the next practice simply waits for you; nothing is “failed”.',
+    ],
+    cta: { label: 'See this week', to: '/train' },
+  },
+  {
+    id: 'learn',
+    emoji: '🎬',
+    title: 'Learn any pose',
+    points: [
+      'Every pose has an animated, voiced tutorial: how to set up, how to move in, how to breathe, what to watch out for, and gentler or deeper versions.',
+      'Where you should feel it glows softly in your accent color.',
+    ],
+    cta: { label: 'Open the pose library', to: '/train/library' },
+  },
+  {
+    id: 'player',
+    emoji: '▶️',
+    title: 'Practicing',
+    points: [
+      'Your voice guide talks you into each pose and keeps time, so you can stay with your breath. Pick Zen, Calm or Sunny.',
+      'Long holds get a gentle reminder to breathe. Tap Done to move on whenever you’re ready, or the arrows to skip or go back.',
+      'At the end, say how it felt. Too gentle or too much, and the next practice adapts.',
+    ],
+  },
+  {
+    id: 'levels',
+    emoji: '🪷',
+    title: 'Poses that grow with you',
+    points: [
+      'Each family of poses goes from gentlest to deepest. First your holds lengthen a little, then the pose deepens.',
+      'Felt like too much? You step back. A chair or a wall is always welcome.',
+    ],
+    cta: { label: 'Your path', to: '/train' },
+  },
+  {
+    id: 'breathe',
+    emoji: '🌬️',
+    title: 'Breathe',
+    points: [
+      'Paced breathing with a glowing circle to follow: calm breath, box breathing, 4-7-8 for sleep and more.',
+      'A voice-guided body scan and bedtime wind-down, plus 3-minute mini flows for mornings, desk breaks and evenings.',
+    ],
+    cta: { label: 'Open Breathe', to: '/breathe' },
+  },
+  {
+    id: 'quests',
+    emoji: '✅',
+    title: 'Daily quests',
+    points: [
+      'Three small intentions every day: a practice or mini flow, a nourishing habit, and something calming.',
+      'They complete themselves when you do the thing. Finish all three for a perfect-day bonus.',
+    ],
+    cta: { label: 'Today’s quests', to: '/today' },
+  },
+  {
+    id: 'rewards',
+    emoji: '⭐',
+    title: 'XP, levels and badges',
+    points: [
+      'Practices, breathing, quests and logging all earn XP. Grow from Seed to Garden and unlock new colors.',
+      `Collect ${ACHIEVEMENTS.length} badges, from your first flow to an hour of calm.`,
+      'Streaks count weeks you reach your practice goal. Four good weeks earn a freeze that covers a missed week.',
+    ],
+    cta: { label: 'Your badges', to: '/progress' },
+  },
+  {
+    id: 'eat',
+    emoji: '🥗',
+    title: 'Nourish',
+    points: [
+      'Log with search, recents, a barcode scan, or let Claude estimate a meal from a photo.',
+      'Plan a week of simple meals, with a grocery list.',
+      'Light touch tracks just protein, veggies and water. Switch to full tracking in Settings if you’d like calories too.',
+    ],
+    cta: { label: 'Open Nourish', to: '/eat' },
+  },
+  {
+    id: 'reminders',
+    emoji: '🔔',
+    title: 'Reminders',
+    points: [
+      'Phone reminders (easiest): Settings → Reminders → “Add to my calendar”. Your phone’s calendar reminds you at your practice, meal and water times, even when Bloom is closed. No setup at all.',
+      'Smart notifications (optional): personalized and they skip themselves once you’ve practiced, but they need the server set up with an access code.',
+    ],
+    cta: { label: 'Reminders', to: '/more/reminders' },
+  },
+  {
+    id: 'claude',
+    emoji: '🤖',
+    title: 'Ask Claude',
+    points: ['Ask about poses, aches, sleep or food in your own Claude app, with a summary of your practice so the answer fits you. Nothing is sent until you press send in Claude.'],
+    cta: { label: 'Ask Claude', to: '/coach' },
+  },
+]
+
+const BLOOM_FAQ = [
+  { q: 'I only have a few minutes. What do I do?', a: 'Use “Short on time?” on Today for a 5 or 10-minute version of your practice or a 3-minute mini flow, or take one calm minute in Breathe.' },
+  { q: 'Something hurts or pinches.', a: 'Come out of the pose slowly. Tap the swap icon next to it in the practice preview for another pose, and add the area in Settings → Be gentle with, so Bloom softens or skips poses that could bother it. Sharp or lasting pain is a reason to see a professional.' },
+  { q: 'I’m pregnant.', a: 'Turn on Settings → Be gentle with → I’m pregnant. Bloom then skips belly-down poses, deep twists and core work on your back. Please check with your doctor or midwife first.' },
+  { q: 'Can I change my days or practice length?', a: 'Yes: Settings → Schedule. Your progress stays as it is.' },
+  { q: 'The voice guide is silent.', a: 'On iPhone check the silent switch and volume. In Settings → Voice & sounds make sure the voice guide is on, and pick a voice. Captions always show either way.' },
+  { q: 'Where is my data?', a: 'Only on this phone, kept separate from Forge. Export a backup now and then from Settings → Backup & data, and restore it on a new phone.' },
+]
+
+const SECTIONS = isBloom ? BLOOM_SECTIONS : FORGE_SECTIONS
+const FAQ = isBloom ? BLOOM_FAQ : FORGE_FAQ
+
 export default function GuidePage() {
   const palette = usePalette()
   const { hash } = useLocation()
   const [open, setOpen] = useState<number | null>(null)
-  const ladder = LADDERS.h_push.exercises.slice(0, 4).map((id) => getExercise(id)!)
+  const ladder = (isBloom ? LADDERS.y_balance : LADDERS.h_push).exercises.slice(0, 4).map((id) => getExercise(id)!)
 
   useEffect(() => {
     if (!hash) return
@@ -145,12 +262,12 @@ export default function GuidePage() {
 
   return (
     <>
-      <PageHeader title="How Forge works" subtitle="Two minutes to get the most out of it" back />
+      <PageHeader title={`How ${APP.name} works`} subtitle="Two minutes to get the most out of it" back />
       <div className="px-4">
         <div className="mb-3 flex items-center gap-3 rounded-[var(--radius-card)] border border-ember/30 bg-gradient-to-r from-ember/15 via-surface to-surface p-3">
           <Mascot mood="happy" size={56} />
           <p className="text-[15px]">
-            <b>Hi, I’m Ember!</b> <span className="text-muted">Here’s everything Forge can do, in two minutes. Tap a topic to jump to it.</span>
+            <b>Hi, I’m {APP.mascot}!</b> <span className="text-muted">Here’s everything {APP.name} can do, in two minutes. Tap a topic to jump to it.</span>
           </p>
         </div>
         <nav aria-label="Topics" className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1">

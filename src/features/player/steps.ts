@@ -1,5 +1,6 @@
+import { isBloom } from '@/app/brand'
 import { getExercise, motionFor } from '@/data/exercises'
-import { BLOCK_GAP_SEC, BOTH_SIDES_PER_CYCLE, SWITCH_SEC, type BlockKind, type PlannedItem, type PlannedSession } from '@/engines/plan'
+import { BLOCK_GAP_SEC, BOTH_SIDES_PER_CYCLE, repWord, SWITCH_SEC, type BlockKind, type PlannedItem, type PlannedSession } from '@/engines/plan'
 
 export interface WorkStep {
   kind: 'work'
@@ -87,7 +88,7 @@ export function buildSteps(s: PlannedSession): Step[] {
     if (seconds > 0) out.push({ kind: 'rest', id: `r${out.length}`, seconds, reason, label })
   }
   s.blocks.forEach((b, bi) => {
-    if (bi > 0) pushRest(BLOCK_GAP_SEC, 'block', `Next: ${b.title}`)
+    if (bi > 0) pushRest(s.gapSec ?? BLOCK_GAP_SEC, 'block', `Next: ${b.title}`)
     for (let round = 1; round <= b.rounds; round++) {
       b.items.forEach((it, ii) => {
         const ws = workSteps(bi, b.kind, b.title, round, b.rounds, ii, it)
@@ -103,7 +104,7 @@ export function buildSteps(s: PlannedSession): Step[] {
           if (!lastItem) pushRest(b.itemRestSec ?? 0, 'switch', 'Breathe')
           else if (!lastRound) pushRest(b.restSec, 'round', 'Rest')
         } else if (b.format === 'flow') {
-          if (!lastItem) pushRest(Math.min(SWITCH_SEC, 8), 'switch', 'Next move')
+          if (!lastItem) pushRest(Math.min(SWITCH_SEC, 8), 'switch', isBloom ? 'Next pose' : 'Next move')
           else if (!lastRound) pushRest(b.restSec, 'round', 'Again')
         } else {
           if (!lastItem) pushRest(SWITCH_SEC, 'switch', 'Switch')
@@ -135,5 +136,5 @@ export function prevWork(steps: Step[], i: number): number {
 export function describeWork(w: WorkStep): string {
   if (w.seconds !== undefined) return `${w.seconds} seconds${w.side ? (w.side === 1 ? ', first side' : ', second side') : ''}`
   const r = w.reps ?? 0
-  return `${r} ${r === 1 ? 'rep' : 'reps'}${w.cyclesPerRep === 2 ? ' each side' : w.side ? (w.side === 1 ? ', first side' : ', second side') : w.item.perSide ? ' each side' : ''}`
+  return `${r} ${repWord(w.item.exerciseId, r)}${w.cyclesPerRep === 2 ? ' each side' : w.side ? (w.side === 1 ? ', first side' : ', second side') : w.item.perSide ? ' each side' : ''}`
 }

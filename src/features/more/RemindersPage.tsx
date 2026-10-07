@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, BellRing, CalendarCheck, CalendarPlus, CheckCircle2, ExternalLink, Loader2, Send } from 'lucide-react'
-import { REMINDER_LABEL, nextOccurrence, presetRules, ruleTimes, type ReminderRule } from '@shared/reminders'
+import { nextOccurrence, presetRules, reminderLabel, ruleTimes, type ReminderRule, type ReminderType } from '@shared/reminders'
 import { eventCount } from '@shared/calendar'
+import { APP, isBloom, W } from '@/app/brand'
 import { isIOS } from '@/app/pwa'
 import { haptic } from '@/device/haptics'
 import { isoWeekday, todayISO, WEEKDAY_SHORT } from '@/lib/dates'
@@ -28,6 +29,8 @@ import { PageHeader } from '@/ui/PageHeader'
 import { Segmented } from '@/ui/Segmented'
 import { Toggle } from '@/ui/Toggle'
 import { InstallGuide } from '../onboarding/InstallGuide'
+
+const label = (type: ReminderType) => reminderLabel(type, APP.id)
 import { PasscodeForm } from '../settings/PasscodeForm'
 
 function ago(ms: number): string {
@@ -68,7 +71,7 @@ export default function RemindersPage() {
   const save = (s: ReminderSettings) => void saveReminderSettings(s)
   const setStyle = (style: ReminderStyleChoice) => {
     if (style === 'custom') return save({ ...settings, style })
-    save({ ...settings, style, rules: presetRules(style, { trainingDays: p.trainingDays, workoutTime: p.preferredTime }) })
+    save({ ...settings, style, rules: presetRules(style, { trainingDays: p.trainingDays, workoutTime: p.preferredTime, app: APP.id }) })
   }
   const updateRule = (id: string, patch: Partial<ReminderRule>) => save({ ...settings, style: 'custom', rules: settings.rules.map((r) => (r.id === id ? { ...r, ...patch } : r)) })
 
@@ -80,7 +83,7 @@ export default function RemindersPage() {
       setMsg(r.ok ? { ok: true, text: 'Reminders are on. Send a test to make sure they arrive.' } : { ok: false, text: r.error ?? 'Something went wrong.' })
     } else {
       await disablePush(settings)
-      setMsg({ ok: true, text: 'Push reminders are off. You will still get in-app reminders while Forge is open.' })
+      setMsg({ ok: true, text: `Push reminders are off. You will still get in-app reminders while ${APP.name} is open.` })
     }
     setBusy(false)
     void fetchPushConfig().then(setCfg)
@@ -117,7 +120,7 @@ export default function RemindersPage() {
     <>
       <PageHeader title="Reminders" subtitle="Nudges that fit your day" back="/more" />
       <div className="px-4">
-        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="How Forge reminds you">
+        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={`How ${APP.name} reminds you`}>
           {(
             [
               { id: 'calendar', emoji: '📅', title: 'Phone reminders', text: 'No setup. Your phone’s calendar alerts you.', badge: 'Easiest' },
@@ -150,10 +153,10 @@ export default function RemindersPage() {
                 </div>
                 <p className="mt-0.5 text-sm text-muted">
                   {upToDate
-                    ? 'Your phone will alert you at the times below, even when Forge is closed.'
+                    ? `Your phone will alert you at the times below, even when ${APP.name} is closed.`
                     : exported
-                      ? 'Add them again so your calendar matches. Delete the old Forge events if you see doubles.'
-                      : 'Your phone’s calendar alerts you at the times below, even when Forge is closed. No account, no access code.'}
+                      ? `Add them again so your calendar matches. Delete the old ${APP.name} events if you see doubles.`
+                      : `Your phone’s calendar alerts you at the times below, even when ${APP.name} is closed. No account, no access code.`}
                 </p>
               </div>
             </div>
@@ -185,7 +188,7 @@ export default function RemindersPage() {
             </ol>
             {google ? (
               <a href={google} target="_blank" rel="noreferrer" className="mt-3 flex items-center gap-1.5 text-sm font-medium text-sky">
-                <ExternalLink size={15} /> Using Google Calendar? Add the workout reminder in one tap
+                <ExternalLink size={15} /> Using Google Calendar? Add the {W.workout} reminder in one tap
               </a>
             ) : null}
           </Card>
@@ -208,9 +211,9 @@ export default function RemindersPage() {
                   <div className="text-sm text-muted">
                     {settings.enabled
                       ? next
-                        ? `On · next: ${REMINDER_LABEL[next.type]} ${next.date === todayISO() ? 'today' : WEEKDAY_SHORT[isoWeekday(next.date) - 1]} at ${next.time}`
+                        ? `On · next: ${label(next.type)} ${next.date === todayISO() ? 'today' : WEEKDAY_SHORT[isoWeekday(next.date) - 1]} at ${next.time}`
                         : 'On'
-                      : 'They know what you’ve done today and skip the ones you don’t need. They need the Forge server set up (access code).'}
+                      : `They know what you’ve done today and skip the ones you don’t need. They need the ${APP.name} server set up (access code).`}
                   </div>
                 </div>
                 {busy ? <Loader2 className="mt-1 animate-spin text-muted" size={20} /> : null}
@@ -244,7 +247,7 @@ export default function RemindersPage() {
                   {msg.text}
                 </p>
               ) : null}
-              {!support.ok && support.reason === 'denied' ? <p className="mt-3 text-sm text-bad">Notifications are blocked. Allow them for Forge in your phone's settings, then come back.</p> : null}
+              {!support.ok && support.reason === 'denied' ? <p className="mt-3 text-sm text-bad">Notifications are blocked. Allow them for {APP.name} in your phone's settings, then come back.</p> : null}
               {passcode !== null ? (
                 <button type="button" className="mt-3 text-xs text-faint underline" onClick={() => void setPasscode(null)}>
                   Change access code
@@ -301,13 +304,21 @@ export default function RemindersPage() {
           ]}
         />
         <p className="mt-2 px-1 text-xs text-muted">
-          {settings.style === 'gentle' ? 'About 2 a day: workout time, a streak saver, weigh-in and the weekly review.' : settings.style === 'coach' ? 'About 8 a day: adds water, meal logging, movement snacks and an evening check-in.' : 'Your own mix — edit any reminder below.'}
+          {settings.style === 'gentle'
+            ? isBloom
+              ? 'About 2 a day: practice time, a gentle nudge and the weekly review.'
+              : 'About 2 a day: workout time, a streak saver, weigh-in and the weekly review.'
+            : settings.style === 'coach'
+              ? isBloom
+                ? 'About 8 a day: adds water, meal logging, stretch breaks and a wind-down.'
+                : 'About 8 a day: adds water, meal logging, movement snacks and an evening check-in.'
+              : 'Your own mix — edit any reminder below.'}
         </p>
         <Card className="mt-3 py-1">
           <ul className="divide-y divide-line/60">
             {settings.rules.map((r) => (
               <li key={r.id} className="py-2">
-                <Toggle checked={r.enabled} onChange={(v) => updateRule(r.id, { enabled: v })} label={r.type === 'meal' && r.meal ? `Log ${r.meal}` : REMINDER_LABEL[r.type]} description={describeRule(r)} />
+                <Toggle checked={r.enabled} onChange={(v) => updateRule(r.id, { enabled: v })} label={r.type === 'meal' && r.meal ? `Log ${r.meal}` : label(r.type)} description={describeRule(r)} />
                 {r.enabled && settings.style === 'custom' ? (
                   r.every ? (
                     <div className="flex flex-wrap items-center gap-2 pb-2 text-sm">
@@ -328,7 +339,7 @@ export default function RemindersPage() {
                         <input
                           key={k}
                           type="time"
-                          aria-label={`${REMINDER_LABEL[r.type]} time ${k + 1}`}
+                          aria-label={`${label(r.type)} time ${k + 1}`}
                           value={t}
                           onChange={(e) => e.target.value && updateRule(r.id, { times: (r.times ?? []).map((x, j) => (j === k ? e.target.value : x)) })}
                           className="h-9 rounded-xl border border-line bg-surface px-2 text-sm"
@@ -343,7 +354,9 @@ export default function RemindersPage() {
         </Card>
 
         <p className="mt-3 px-1 text-xs text-faint">
-          {mode === 'calendar' ? 'Your calendar keeps the reminders even if you delete Forge. Remove them in your calendar app anytime.' : 'While Forge is open you also get gentle in-app reminders, even with push off.'}
+          {mode === 'calendar'
+            ? `Your calendar keeps the reminders even if you delete ${APP.name}. Remove them in your calendar app anytime.`
+            : `While ${APP.name} is open you also get gentle in-app reminders, even with push off.`}
         </p>
         <div className="h-4" />
       </div>

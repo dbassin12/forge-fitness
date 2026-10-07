@@ -7,6 +7,7 @@ import { bearPlank, birdDog, bridge, catCow, childsPose, cobra, crunch, deadBug,
 import { bentRow, chairDip, invertedRow, lateralRaise, standingDb } from './families/upper'
 import { burpee, jumpingJack, runInPlace, shadowBox, skaters } from './families/cardio'
 import { armCircles, calfStretch, chestOpener, dogToCobra, figureFour, hamstringStretch, hipCircles, hipFlexorStretch, inchworm, legSwings, worldsGreatest } from './families/stretch'
+import * as yoga from './families/yoga'
 
 export interface DemoMotion {
   id: string
@@ -108,4 +109,45 @@ export const DEMO_MOTIONS: DemoMotion[] = [
   { id: 'wgs', name: "World's greatest stretch", motion: worldsGreatest() },
   { id: 'inchworm', name: 'Inchworm', motion: inchworm() },
   { id: 'dog-cobra', name: 'Down dog ↔ cobra', motion: dogToCobra() },
+  // ---- Yoga (Bloom) ----
+  { id: 'y-mountain', name: 'Mountain breath', motion: yoga.mountainBreath() },
+  { id: 'y-half-sun', name: 'Half sun salutation', motion: yoga.halfSunSalutation() },
+  { id: 'y-sun-gentle', name: 'Sun salutation (gentle)', motion: yoga.sunSalutation({ gentle: true }) },
+  { id: 'y-sun', name: 'Sun salutation', motion: yoga.sunSalutation() },
+  { id: 'y-chair', name: 'Chair pose', motion: yoga.chairPose() },
+  { id: 'y-warrior1', name: 'Warrior I', motion: yoga.warrior1() },
+  { id: 'y-warrior2', name: 'Warrior II', motion: yoga.warrior2() },
+  { id: 'y-triangle', name: 'Triangle', motion: yoga.triangle() },
+  { id: 'y-goddess', name: 'Goddess', motion: yoga.goddess() },
+  { id: 'y-tree-kick', name: 'Tree (kickstand)', motion: yoga.treePose('kickstand') },
+  { id: 'y-tree-calf', name: 'Tree (calf)', motion: yoga.treePose('calf') },
+  { id: 'y-tree-thigh', name: 'Tree (thigh)', motion: yoga.treePose('thigh') },
+  { id: 'y-warrior3-chair', name: 'Warrior III (chair)', motion: yoga.warrior3({ chair: true }) },
+  { id: 'y-warrior3', name: 'Warrior III', motion: yoga.warrior3() },
+  { id: 'y-side-bend', name: 'Standing side bend', motion: yoga.standingSideBend() },
+  { id: 'y-fold', name: 'Standing forward fold', motion: yoga.standingFold() },
+  { id: 'y-low-lunge', name: 'Low lunge', motion: yoga.lowLunge() },
+  { id: 'y-lizard', name: 'Lizard lunge', motion: yoga.lizardLunge() },
+  { id: 'y-half-splits', name: 'Half splits', motion: yoga.halfSplits() },
+  { id: 'y-pigeon', name: 'Pigeon', motion: yoga.pigeon() },
+  { id: 'y-pigeon-fold', name: 'Sleeping pigeon', motion: yoga.pigeon({ fold: true }) },
+  { id: 'y-down-dog', name: 'Downward dog', motion: yoga.downDog() },
+  { id: 'y-puppy', name: 'Puppy pose', motion: yoga.puppyPose() },
+  { id: 'y-sphinx', name: 'Sphinx', motion: yoga.sphinx() },
+  { id: 'y-locust', name: 'Locust', motion: yoga.locust() },
+  { id: 'y-bridge', name: 'Bridge (hold)', motion: yoga.bridgeHold() },
+  { id: 'y-happy-baby', name: 'Happy baby', motion: yoga.happyBaby() },
+  { id: 'y-knees-chest', name: 'Knees to chest', motion: yoga.kneesToChest() },
+  { id: 'y-legs-wall', name: 'Legs up the wall', motion: yoga.legsUpWall() },
+  { id: 'y-savasana', name: 'Savasana', motion: yoga.savasana() },
+  { id: 'y-toe-taps', name: 'Toe taps', motion: yoga.toeTaps() },
+  { id: 'y-twist', name: 'Supine twist', motion: yoga.supineTwist() },
+  { id: 'y-recl-butterfly', name: 'Reclined butterfly', motion: yoga.reclinedButterfly() },
+  { id: 'y-easy-seat', name: 'Easy seat', motion: yoga.easySeat() },
+  { id: 'y-neck', name: 'Neck release', motion: yoga.neckRelease() },
+  { id: 'y-seated-side', name: 'Seated side bend', motion: yoga.seatedSideBend() },
+  { id: 'y-butterfly', name: 'Butterfly', motion: yoga.butterfly() },
+  { id: 'y-seated-fold', name: 'Seated forward fold', motion: yoga.seatedForwardFold() },
+  { id: 'y-boat', name: 'Boat', motion: yoga.boat() },
+  { id: 'y-boat-easy', name: 'Boat (feet down)', motion: yoga.boat({ easy: true }) },
 ]

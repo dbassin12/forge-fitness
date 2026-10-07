@@ -82,6 +82,13 @@ describe('ladders', () => {
       cond: ['cond'],
       biceps: ['arms'],
       triceps: ['arms'],
+      y_flow: ['flow'],
+      y_standing: ['standing'],
+      y_balance: ['balance'],
+      y_hip: ['hip', 'mobility'],
+      y_fold: ['fold'],
+      y_back: ['backbend', 'mobility'],
+      y_core: ['core'],
     }
     for (const id of LADDER_IDS) {
       const L = LADDERS[id]
@@ -133,7 +140,8 @@ describe('ladders', () => {
 describe('templates and splits', () => {
   it('use known ladders', () => {
     for (const t of Object.values(TEMPLATES)) {
-      expect(t.slots.length).toBeGreaterThanOrEqual(4)
+      // Yoga themes list only the ladders they progress on; their full sequences live in yoga.ts.
+      expect(t.slots.length).toBeGreaterThanOrEqual(t.focus === 'yoga' ? 1 : 4)
       for (const s of t.slots) expect(LADDER_IDS).toContain(s.ladder)
       expect(t.slots.some((s) => s.priority === 1)).toBe(true)
     }

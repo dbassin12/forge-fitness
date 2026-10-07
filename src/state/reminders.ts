@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { kvGet, kvSet } from '@/db/db'
 import type { Profile } from '@/domain/types'
+import { APP, isBloom } from '@/app/brand'
 import { isIOS, isStandalone } from '@/app/pwa'
 import { uid } from '@/lib/id'
 import { presetRules, type ReminderRule } from '@shared/reminder-rules'
@@ -21,7 +22,7 @@ const KEY = 'reminders'
 
 export function defaultReminderSettings(profile: Profile): ReminderSettings {
   const style = profile.reminderStyle === 'coach' ? 'coach' : 'gentle'
-  return { enabled: false, style, rules: presetRules(style, { trainingDays: profile.trainingDays, workoutTime: profile.preferredTime }), deviceId: uid('dev').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) }
+  return { enabled: false, style, rules: presetRules(style, { trainingDays: profile.trainingDays, workoutTime: profile.preferredTime, app: APP.id }), deviceId: uid('dev').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) }
 }
 
 export function useReminderSettings(profile: Profile | null | undefined): ReminderSettings | undefined {
@@ -68,10 +69,10 @@ export async function fetchPushConfig(): Promise<PushConfig> {
   try {
     const res = await fetch('/api/push/config', { cache: 'no-store' })
     const body = (await res.json().catch(() => null)) as PushConfig | null
-    if (!body) return { ok: false, error: "The reminder server isn't available here yet. It starts working once Forge is deployed on Vercel." }
+    if (!body) return { ok: false, error: "The reminder server isn't available here yet. It starts working once the app is deployed on Vercel." }
     return res.ok ? body : { ...body, ok: false, error: body.error ?? `Server error (${res.status})` }
   } catch {
-    return { ok: false, error: "Can't reach the Forge server. Check your connection." }
+    return { ok: false, error: `Can't reach the ${APP.name} server. Check your connection.` }
   }
 }
 
@@ -86,7 +87,7 @@ async function post(path: string, body: unknown): Promise<{ ok: boolean; status:
     const json = (await res.json().catch(() => ({}))) as { error?: string }
     return { ok: res.ok, status: res.status, error: json.error }
   } catch {
-    return { ok: false, status: 0, error: "Can't reach the Forge server." }
+    return { ok: false, status: 0, error: `Can't reach the ${APP.name} server.` }
   }
 }
 
@@ -117,7 +118,7 @@ export async function syncPush(s: ReminderSettings, profile: Profile, force = fa
   const sub = await reg.pushManager.getSubscription()
   if (!sub) return { ok: false, error: 'Notifications were switched off for this app. Turn reminders on again.' }
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-  const payload = { deviceId: s.deviceId, subscription: sub.toJSON(), tz, rules: s.rules, context: { sessionMinutes: profile.sessionMinutes } }
+  const payload = { deviceId: s.deviceId, subscription: sub.toJSON(), tz, rules: s.rules, context: { sessionMinutes: profile.sessionMinutes }, ...(isBloom ? { app: 'bloom' } : {}) }
   const h = hash(payload)
   // Only talk to the server when something changed, plus a weekly heartbeat.
   if (!force && s.lastSyncedHash === h && Date.now() - (s.lastSyncAt ?? 0) < 7 * 86_400_000) return { ok: true }
@@ -128,7 +129,7 @@ export async function syncPush(s: ReminderSettings, profile: Profile, force = fa
 
 export async function enablePush(s: ReminderSettings, profile: Profile): Promise<{ ok: boolean; error?: string }> {
   const support = pushSupport()
-  if (!support.ok) return { ok: false, error: support.reason === 'ios-install' ? 'Add Forge to your Home Screen first.' : support.reason === 'denied' ? 'Notifications are blocked in your settings.' : 'This browser cannot receive push notifications.' }
+  if (!support.ok) return { ok: false, error: support.reason === 'ios-install' ? `Add ${APP.name} to your Home Screen first.` : support.reason === 'denied' ? 'Notifications are blocked in your settings.' : 'This browser cannot receive push notifications.' }
   const perm = await Notification.requestPermission()
   if (perm !== 'granted') return { ok: false, error: 'Notifications were not allowed.' }
   const cfg = await fetchPushConfig()

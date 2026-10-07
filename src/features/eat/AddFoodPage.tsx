@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { APP } from '@/app/brand'
 import { haptic } from '@/device/haptics'
 import { sfx } from '@/device/sfx'
 import { useSearchParams } from 'react-router'
@@ -421,7 +422,7 @@ function CustomFoodSheet({ open, barcode, onClose, onSave }: { open: boolean; ba
   })
   return (
     <Sheet open={open} onClose={onClose} title={barcode ? 'New product' : 'Create a food'}>
-      {barcode ? <p className="-mt-1 mb-3 text-sm text-muted">We couldn't find barcode {barcode}. Copy the numbers from the label once and Forge will remember it.</p> : null}
+      {barcode ? <p className="-mt-1 mb-3 text-sm text-muted">We couldn't find barcode {barcode}. Copy the numbers from the label once and {APP.name} will remember it.</p> : null}
       <div className="space-y-3">
         <input className={inputCls} placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
         <input className={inputCls} placeholder="Serving (e.g. 1 bar, 30 g)" value={serving} onChange={(e) => setServing(e.target.value)} />

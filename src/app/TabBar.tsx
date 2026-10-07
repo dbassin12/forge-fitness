@@ -1,15 +1,27 @@
 import { NavLink } from 'react-router'
-import { Dumbbell, Flame, Gamepad2, TrendingUp, UtensilsCrossed } from 'lucide-react'
+import { Apple, Dumbbell, Flame, Flower2, Gamepad2, Sprout, Sun, TrendingUp, UtensilsCrossed, Wind } from 'lucide-react'
+import { isBloom } from '@/app/brand'
 import { haptic } from '@/device/haptics'
 import { cx } from '@/ui/cx'
 
-const tabs = [
+const FORGE_TABS = [
   { to: '/today', label: 'Today', Icon: Flame },
   { to: '/train', label: 'Train', Icon: Dumbbell },
   { to: '/play', label: 'Play', Icon: Gamepad2 },
   { to: '/eat', label: 'Eat', Icon: UtensilsCrossed },
   { to: '/progress', label: 'Progress', Icon: TrendingUp },
-] as const
+]
+
+/** Bloom swaps the games for breathing and calls food "Nourish". */
+const BLOOM_TABS = [
+  { to: '/today', label: 'Today', Icon: Sun },
+  { to: '/train', label: 'Practice', Icon: Flower2 },
+  { to: '/breathe', label: 'Breathe', Icon: Wind },
+  { to: '/eat', label: 'Nourish', Icon: Apple },
+  { to: '/progress', label: 'Growth', Icon: Sprout },
+]
+
+const tabs = isBloom ? BLOOM_TABS : FORGE_TABS
 
 export function TabBar() {
   return (

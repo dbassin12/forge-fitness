@@ -1,12 +1,16 @@
+import { isBloom } from '@/app/brand'
 import { EXERCISES, getExercise, type Exercise } from '@/data/exercises'
 import type { Experience, ISODate } from '@/domain/types'
 import { addDays, isoWeekday } from '@/lib/dates'
-import { availability, contextNotes, isAllowed, type PlanContext } from './equipment'
+import { contextNotes, isAllowed, type PlanContext } from './equipment'
+import { blockWeek, planContext, resolveLadder } from './resolve'
 import { LADDERS, type Region } from './ladders'
 import { makeTarget, prescribe, targetValue } from './prescribe'
 import { repSeconds, SIDE_SWITCH_SEC, sessionKcal, sessionSeconds, SWITCH_SEC, workSeconds } from './duration'
-import { splitFor, TEMPLATES } from './templates'
+import { rotationFor, TEMPLATES } from './templates'
+import { generateYogaSession, generateYogaSnack, type MiniFlowKind } from './yoga'
 import type {
+  YogaTemplateId,
   Focus,
   LadderId,
   PlanInputs,
@@ -18,6 +22,8 @@ import type {
   TemplateId,
 } from './types'
 
+const YOGA_IDS: Record<YogaTemplateId, true> = { y_morning: true, y_strength: true, y_hips: true, y_back: true, y_unwind: true }
+
 /** Every generated session lands within this many seconds of its time budget. */
 export const FIT_TOLERANCE_SEC = 60
 
@@ -25,54 +31,10 @@ const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x
 const round5 = (x: number) => Math.round(x / 5) * 5
 const round15 = (x: number) => Math.round(x / 15) * 15
 
-export function planContext(inputs: Pick<PlanInputs, 'equipment' | 'aches' | 'quietMode'>): PlanContext {
-  return { av: availability(inputs.equipment), aches: inputs.aches, quietMode: inputs.quietMode }
-}
-
-export interface ResolveOptions {
-  /** Rotation index for ladders with variety (cardio, curls). */
-  variant?: number
-  exclude?: ReadonlySet<string>
-}
-
-/**
- * The exercise to do for a ladder at a rung: the hardest allowed rung at or below it (safer),
- * otherwise the easiest allowed rung above it.
- */
-export function resolveLadder(
-  ladder: LadderId,
-  rung: number,
-  ctx: PlanContext,
-  opts: ResolveOptions = {},
-): { exerciseId: string; rung: number } | undefined {
-  const list = LADDERS[ladder].exercises
-  const ok = (i: number) => {
-    const ex = getExercise(list[i])
-    return !!ex && isAllowed(ex, ctx) && !opts.exclude?.has(ex.id)
-  }
-  const r = clamp(Math.round(rung), 0, list.length - 1)
-  const window = LADDERS[ladder].variety ?? 0
-  if (window > 0) {
-    const pool: number[] = []
-    for (let i = r; i >= Math.max(0, r - window); i--) if (ok(i)) pool.push(i)
-    if (pool.length) {
-      const i = pool[Math.abs(opts.variant ?? 0) % pool.length]
-      return { exerciseId: list[i], rung: i }
-    }
-  }
-  for (let i = r; i >= 0; i--) if (ok(i)) return { exerciseId: list[i], rung: i }
-  for (let i = r + 1; i < list.length; i++) if (ok(i)) return { exerciseId: list[i], rung: i }
-  return undefined
-}
-
-/** 0-based week inside the 4-week training block; week index 3 is the lighter deload week. */
-export function blockWeek(index: number, daysPerWeek: number): number {
-  return Math.floor(index / Math.max(1, Math.round(daysPerWeek))) % 4
-}
-
 // ---- Warm-up and cool-down ------------------------------------------------------------------
 
 const WARMUP_POOL: Record<Focus, string[]> = {
+  yoga: [],
   full: ['arm-circles', 'hip-circles', 'bodyweight-squat', 'worlds-greatest-stretch', 'inchworm', 'glute-bridge', 'leg-swings'],
   upper: ['arm-circles', 'prone-w-pull', 'inchworm', 'reverse-snow-angel', 'down-dog-cobra', 'prone-ytw'],
   lower: ['hip-circles', 'bodyweight-squat', 'leg-swings', 'glute-bridge', 'worlds-greatest-stretch', 'good-morning'],
@@ -81,6 +43,7 @@ const WARMUP_POOL: Record<Focus, string[]> = {
 
 /** Kept disjoint from the warm-up pools so a session never repeats a move at both ends. */
 const COOLDOWN_POOL: Record<Focus, string[]> = {
+  yoga: [],
   full: ['hip-flexor-stretch', 'hamstring-stretch', 'chest-opener', 'childs-pose', 'figure-four-stretch', 'calf-stretch'],
   upper: ['chest-opener', 'childs-pose', 'cobra-stretch', 'cat-cow'],
   lower: ['hip-flexor-stretch', 'hamstring-stretch', 'figure-four-stretch', 'calf-stretch', 'childs-pose'],
@@ -246,6 +209,7 @@ interface Layout {
 
 /** Accessory ladders per session focus, tried in order. */
 const RESERVE: Record<Focus, LadderId[]> = {
+  yoga: [],
   full: ['core_flex', 'core_lat', 'bridge', 'triceps', 'biceps', 'v_pull'],
   upper: ['v_pull', 'core_lat', 'biceps', 'core_ext'],
   lower: ['core_flex', 'bridge', 'core_ext', 'lunge'],
@@ -470,11 +434,15 @@ export interface GenerateOptions {
 }
 
 export function templateFor(inputs: PlanInputs, index: number): TemplateId {
-  const rotation = splitFor(inputs.daysPerWeek, inputs.sessionMinutes)
+  const rotation = rotationFor(inputs)
   return rotation[((index % rotation.length) + rotation.length) % rotation.length]
 }
 
 export function generateSession(inputs: PlanInputs, progress: ProgressState, opts: GenerateOptions = {}): PlannedSession {
+  if (inputs.program === 'yoga') {
+    const templateId = opts.templateId && opts.templateId in YOGA_IDS ? (opts.templateId as YogaTemplateId) : undefined
+    return generateYogaSession(inputs, progress, { ...opts, templateId })
+  }
   const index = opts.index ?? progress.sessionsCompleted
   const templateId = opts.templateId ?? templateFor(inputs, index)
   const tpl = TEMPLATES[templateId]
@@ -703,8 +671,9 @@ const SNACK_PATTERNS = [
   ['squat', 'core', 'mobility', 'cond'],
 ] as const
 
-/** A 2–5 minute no-equipment-needed micro-workout for between meetings. */
-export function generateSnack(inputs: PlanInputs, minutes: number, variant = 0): PlannedSession {
+/** A 2–5 minute no-equipment-needed micro-workout for between meetings (a mini flow in Bloom). */
+export function generateSnack(inputs: PlanInputs, minutes: number, variant = 0, hour?: number, flow?: MiniFlowKind): PlannedSession {
+  if (inputs.program === 'yoga') return generateYogaSnack(inputs, minutes, variant, hour, flow)
   const ctx = planContext(inputs)
   const targetSec = clamp(Math.round(minutes), 1, 10) * 60
   const patterns = SNACK_PATTERNS[Math.abs(variant) % SNACK_PATTERNS.length]
@@ -747,8 +716,10 @@ export function alternativesFor(exerciseId: string, ctx: PlanContext, ladder?: L
   const ex = getExercise(exerciseId)
   if (!ex) return []
   const inLadder = new Set(ladder ? LADDERS[ladder].exercises : [])
+  // Yoga keeps restful poses as swap options; strength workouts leave stretches to the cool-down.
+  const restfulOk = ctx.program === 'yoga'
   return EXERCISES.filter(
-    (e) => e.id !== ex.id && isAllowed(e, ctx) && (inLadder.has(e.id) || e.pattern === ex.pattern) && !e.tags?.includes('cooldown'),
+    (e) => e.id !== ex.id && isAllowed(e, ctx) && (inLadder.has(e.id) || e.pattern === ex.pattern) && (restfulOk || !e.tags?.includes('cooldown')),
   )
     .sort(
       (a, b) =>
@@ -792,9 +763,16 @@ export function mainExercises(s: PlannedSession): PlannedItem[] {
   return s.blocks.filter((b) => b.kind === 'main').flatMap((b) => b.items)
 }
 
+/** The word for a count: "reps" in Forge; in Bloom flows go in "rounds" and other moves in "times". */
+export function repWord(exerciseId: string, n: number): string {
+  if (!isBloom) return n === 1 ? 'rep' : 'reps'
+  return getExercise(exerciseId)?.pattern === 'flow' ? (n === 1 ? 'round' : 'rounds') : n === 1 ? 'time' : 'times'
+}
+
 export function describeTarget(it: PlannedItem): string {
   const v = targetValue(it.target)
   const unit = it.target.kind === 'time' ? 's' : ''
   const side = it.perSide ? ' / side' : ''
-  return it.target.kind === 'time' ? `${v}${unit}${side}` : `${v} reps${side}`
+  if (it.target.kind === 'time') return `${v}${unit}${side}`
+  return isBloom ? `${v} ${repWord(it.exerciseId, v)}${side}` : `${v} reps${side}`
 }

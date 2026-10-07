@@ -4,6 +4,8 @@
  * estimates the answer is pasted back and read here. No API key and no server call.
  */
 
+import { APP, isBloom } from '@/app/brand'
+
 export type Confidence = 'high' | 'medium' | 'low'
 
 export interface FoodEstimateItem {
@@ -36,12 +38,22 @@ export const COACH_GUIDE = `You're my fitness and nutrition coach. I use Forge, 
 - No crash diets, and never below about 1,200 kcal a day.
 - Forge can swap any exercise (the Swap button in a session), shorten today's workout ("Short on time?"), log food by search, barcode or a Claude estimate, plan meals with a grocery list, and track progress. Point me to those when useful; you can't change my plan yourself.`
 
-export function coachPrompt(context: string, question: string): string {
-  return `${COACH_GUIDE}
+/** Bloom's version: a gentle yoga and wellbeing guide. */
+export const BLOOM_GUIDE = `You're my gentle yoga and wellbeing guide. I use Bloom, a yoga and gentle-movement app, and I've pasted my current data from it below. Keep answers short, warm and practical (about 150 words unless I ask for more) and use US units.
 
-<forge_data>
+- I practice at home in short, gentle sessions with only the props listed in my data. Suggest beginner-friendly poses with easier options and props (a chair, a wall, a cushion), never intense workouts.
+- Breath comes first: suggest simple breathing (longer exhales, box breathing) when it would help.
+- Respect anything I've asked to be gentle with. If I'm pregnant, avoid belly-down poses, deep twists, long stretches flat on my back and anything strenuous, and remind me to check with my doctor or midwife. If something sounds like an injury (sharp or worsening pain, numbness, dizziness), tell me to stop and see a professional.
+- No crash diets or calorie pressure: favour simple, nourishing food.
+- Bloom can swap any pose (the swap button in a practice preview), shorten today's practice ("Short on time?"), offer 3-minute mini flows and breathing sessions in the Breathe tab, log food, plan meals with a grocery list, and track progress. Point me to those when useful; you can't change my plan yourself.`
+
+export function coachPrompt(context: string, question: string): string {
+  const tag = `${APP.storagePrefix}_data`
+  return `${isBloom ? BLOOM_GUIDE : COACH_GUIDE}
+
+<${tag}>
 ${context.trim()}
-</forge_data>
+</${tag}>
 
 My question: ${question.trim()}`
 }
@@ -51,7 +63,7 @@ export const MEAL_JSON_SHAPE =
 
 export function mealPrompt(description: string, withPhoto: boolean): string {
   const what = [withPhoto ? "I've attached a photo of it." : '', description.trim() ? `What I ate: ${description.trim()}` : ''].filter(Boolean).join('\n')
-  return `Estimate the nutrition of my meal for my calorie tracker (Forge).
+  return `Estimate the nutrition of my meal for ${isBloom ? 'my food log (Bloom)' : 'my calorie tracker (Forge)'}.
 ${what}
 
 How to estimate:

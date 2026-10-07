@@ -1,5 +1,6 @@
 import type { SegmentGroup } from '@/anim/draw'
 import type { Motion } from '@/anim/types'
+import type { AppId } from '@/app/appId'
 import type { Ache } from '@/domain/types'
 
 export type Pattern =
@@ -15,6 +16,15 @@ export type Pattern =
   | 'cond'
   | 'arms'
   | 'mobility'
+  // Yoga (Bloom)
+  | 'flow'
+  | 'standing'
+  | 'balance'
+  | 'hip'
+  | 'fold'
+  | 'backbend'
+  | 'twist'
+  | 'restore'
 
 export type Muscle =
   | 'chest'
@@ -76,6 +86,8 @@ export interface ExerciseDef {
   highlight?: SegmentGroup[]
   /** Custom YouTube search phrase. */
   youtube?: string
+  /** Which apps list it (default: Forge only). */
+  apps?: AppId[]
 }
 
 export interface ExerciseCopy {

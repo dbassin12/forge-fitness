@@ -11,11 +11,20 @@ export interface ShareStats {
   minutes: number
   kcal: number
   sets: number
+  /** Different poses (Bloom shows these instead of sets and calories). */
+  poses?: number
   xp: number
   streakWeeks: number
   motion?: Motion
   palette: Palette
   accent: string
+  app?: 'forge' | 'bloom'
+}
+
+/** Each app's card colours and words. */
+const CARD = {
+  forge: { bg: ['#0b0d10', '#171b22'], box: '#1b1f26', ink: '#f3f5f8', muted: '#9aa4b2', faint: '#6b7584', xp: '#a78bfa', brand: '🔥 FORGE', done: 'Workout complete ✓', streak: '🔥', footer: 'made with Forge' },
+  bloom: { bg: ['#141118', '#25202b'], box: '#2a2430', ink: '#f6f1f5', muted: '#b4a9b8', faint: '#8a7f8f', xp: '#c3b2f5', brand: '🪷 BLOOM', done: 'Practice complete ✓', streak: '🌸', footer: 'made with Bloom' },
 }
 
 /** A still of the mannequin mid-rep, as an SVG string. */
@@ -49,6 +58,7 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 
 /** Draw a 1080×1350 "I did my workout" card (Instagram portrait size) and return it as a PNG. */
 export async function makeShareCard(o: ShareStats): Promise<Blob | null> {
+  const c = CARD[o.app ?? 'forge']
   const W = 1080
   const H = 1350
   const canvas = document.createElement('canvas')
@@ -59,8 +69,8 @@ export async function makeShareCard(o: ShareStats): Promise<Blob | null> {
   const font = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
 
   const bg = ctx.createLinearGradient(0, 0, 0, H)
-  bg.addColorStop(0, '#0b0d10')
-  bg.addColorStop(1, '#171b22')
+  bg.addColorStop(0, c.bg[0])
+  bg.addColorStop(1, c.bg[1])
   ctx.fillStyle = bg
   ctx.fillRect(0, 0, W, H)
   const glow = ctx.createRadialGradient(W * 0.85, 120, 20, W * 0.85, 120, 700)
@@ -71,8 +81,8 @@ export async function makeShareCard(o: ShareStats): Promise<Blob | null> {
 
   ctx.fillStyle = o.accent
   ctx.font = `800 44px ${font}`
-  ctx.fillText('🔥 FORGE', 72, 120)
-  ctx.fillStyle = '#9aa4b2'
+  ctx.fillText(c.brand, 72, 120)
+  ctx.fillStyle = c.muted
   ctx.font = `500 34px ${font}`
   ctx.fillText(o.dateLabel, 72, 172)
 
@@ -88,43 +98,50 @@ export async function makeShareCard(o: ShareStats): Promise<Blob | null> {
     }
   }
 
-  ctx.fillStyle = '#f3f5f8'
+  ctx.fillStyle = c.ink
   ctx.font = `800 76px ${font}`
   ctx.fillText(o.title.length > 22 ? `${o.title.slice(0, 21)}…` : o.title, 72, 950)
-  ctx.fillStyle = '#9aa4b2'
+  ctx.fillStyle = c.muted
   ctx.font = `500 36px ${font}`
-  ctx.fillText('Workout complete ✓', 72, 1004)
+  ctx.fillText(c.done, 72, 1004)
 
-  const stats = [
-    { v: `${o.minutes}`, k: 'minutes' },
-    { v: `${o.sets}`, k: 'sets' },
-    { v: `~${o.kcal}`, k: 'kcal' },
-    { v: `+${o.xp}`, k: 'XP' },
-  ]
-  const boxW = (W - 72 * 2 - 24 * 3) / 4
+  const stats =
+    o.app === 'bloom'
+      ? [
+          { v: `${o.minutes}`, k: 'minutes' },
+          { v: `${o.poses ?? o.sets}`, k: 'poses' },
+          { v: `+${o.xp}`, k: 'XP' },
+        ]
+      : [
+          { v: `${o.minutes}`, k: 'minutes' },
+          { v: `${o.sets}`, k: 'sets' },
+          { v: `~${o.kcal}`, k: 'kcal' },
+          { v: `+${o.xp}`, k: 'XP' },
+        ]
+  const boxW = (W - 72 * 2 - 24 * (stats.length - 1)) / stats.length
   stats.forEach((s, i) => {
     const x = 72 + i * (boxW + 24)
     const y = 1056
-    ctx.fillStyle = '#1b1f26'
+    ctx.fillStyle = c.box
     roundRect(ctx, x, y, boxW, 150, 28)
     ctx.fill()
-    ctx.fillStyle = i === 3 ? '#a78bfa' : '#f3f5f8'
+    ctx.fillStyle = i === stats.length - 1 ? c.xp : c.ink
     ctx.font = `800 56px ${font}`
     ctx.textAlign = 'center'
     ctx.fillText(s.v, x + boxW / 2, y + 82)
-    ctx.fillStyle = '#9aa4b2'
+    ctx.fillStyle = c.muted
     ctx.font = `600 28px ${font}`
     ctx.fillText(s.k.toUpperCase(), x + boxW / 2, y + 124)
     ctx.textAlign = 'left'
   })
 
-  ctx.fillStyle = '#f3f5f8'
+  ctx.fillStyle = c.ink
   ctx.font = `700 38px ${font}`
-  ctx.fillText(o.streakWeeks > 0 ? `🔥 ${o.streakWeeks}-week streak` : '🔥 Streak started', 72, 1282)
-  ctx.fillStyle = '#6b7584'
+  ctx.fillText(o.streakWeeks > 0 ? `${c.streak} ${o.streakWeeks}-week streak` : `${c.streak} Streak started`, 72, 1282)
+  ctx.fillStyle = c.faint
   ctx.font = `500 30px ${font}`
   ctx.textAlign = 'right'
-  ctx.fillText('made with Forge', W - 72, 1282)
+  ctx.fillText(c.footer, W - 72, 1282)
   ctx.textAlign = 'left'
 
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'))

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { ArrowLeft, TrendingUp } from 'lucide-react'
+import { isBloom } from '@/app/brand'
 import { db } from '@/db/db'
 import { XP } from '@/engines/gamification'
 import type { FitnessTest as TestResult } from '@/engines/plan/types'
@@ -11,9 +12,11 @@ import { usePlan } from '@/state/plan'
 import { saveProgress } from '@/state/store'
 import { Button } from '@/ui/Button'
 import { Card } from '@/ui/Card'
+import { BloomCheckIn } from '../onboarding/BloomCheckIn'
+import { FOLD_REACH } from '../onboarding/choices'
 import { FitnessTest } from '../onboarding/FitnessTest'
 
-/** The 4-weekly fitness check-in: same three tests, results compared with last time. */
+/** The 4-weekly check-in (Forge: the same three tests; Bloom: fold and balance), compared with last time. */
 export default function RetestPage() {
   const plan = usePlan()
   const navigate = useNavigate()
@@ -32,7 +35,7 @@ export default function RetestPage() {
       startedAt,
       finishedAt: Date.now(),
       sessionKey: 'fitness-test',
-      title: 'Fitness test',
+      title: isBloom ? 'Check-in' : 'Fitness test',
       kind: 'test',
       exercises: [],
       calories: 15,
@@ -69,19 +72,34 @@ export default function RetestPage() {
         <div className="mt-4">
           <TrendingUp size={40} className="text-ember" />
           <h1 className="mt-2 font-display text-3xl font-bold">Check-in saved</h1>
-          <p className="mt-1 text-muted">Your exercise levels were updated from these results.</p>
-          <Card className="mt-5 py-1">
-            {row('Push-ups', result.pushups, prev?.pushups)}
-            {row('Squats in 60 s', result.squats60, prev?.squats60)}
-            {row('Plank', result.plankSec, prev?.plankSec, ' s')}
-          </Card>
+          <p className="mt-1 text-muted">{isBloom ? 'Your poses were updated from these results.' : 'Your exercise levels were updated from these results.'}</p>
+          {isBloom ? (
+            <Card className="mt-5 py-1">
+              <div className="flex items-center justify-between py-2.5 text-sm">
+                <span>Forward fold reaches</span>
+                <span>
+                  <b>{result.foldReach !== undefined ? FOLD_REACH[result.foldReach] : '—'}</b>
+                  {result.foldReach !== undefined && prev?.foldReach !== undefined && prev.foldReach !== result.foldReach ? (
+                    <span className={result.foldReach > prev.foldReach ? 'ml-2 text-good' : 'ml-2 text-muted'}>was {FOLD_REACH[prev.foldReach].toLowerCase()}</span>
+                  ) : null}
+                </span>
+              </div>
+              {row('Balance on one foot', result.balanceSec, prev?.balanceSec, ' s')}
+            </Card>
+          ) : (
+            <Card className="mt-5 py-1">
+              {row('Push-ups', result.pushups, prev?.pushups)}
+              {row('Squats in 60 s', result.squats60, prev?.squats60)}
+              {row('Plank', result.plankSec, prev?.plankSec, ' s')}
+            </Card>
+          )}
           <Button block size="lg" className="mt-6" onClick={() => navigate('/progress', { replace: true })}>
             Done
           </Button>
         </div>
       ) : (
         <div className="mt-2">
-          <FitnessTest onDone={(r) => void save(r)} />
+          {isBloom ? <BloomCheckIn onDone={(r) => void save(r)} /> : <FitnessTest onDone={(r) => void save(r)} />}
         </div>
       )}
     </div>

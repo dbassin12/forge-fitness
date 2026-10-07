@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Dumbbell, ExternalLink, PlayCircle, Wind } from 'lucide-react'
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Dumbbell, ExternalLink, Flower2, PlayCircle, Wind } from 'lucide-react'
+import { isBloom } from '@/app/brand'
+import { repWord } from '@/engines/plan'
 import { useCelebrate } from '@/app/celebrate'
 import { MoveRunner } from '../play/MoveRunner'
 import { EQUIP_LABEL, EXERCISES, MUSCLE_LABEL, PATTERN_LABEL, getExercise, highlightFor, motionFor, youtubeUrl } from '@/data/exercises'
@@ -33,7 +35,7 @@ export default function ExerciseDetailPage() {
     return (
       <>
         <PageHeader title="Not found" back="/train/library" />
-        <p className="px-4 text-muted">That exercise doesn't exist.</p>
+        <p className="px-4 text-muted">{isBloom ? 'That pose doesn’t exist.' : "That exercise doesn't exist."}</p>
       </>
     )
   }
@@ -58,8 +60,8 @@ export default function ExerciseDetailPage() {
           <Tag tone="ember">
             Level {ex.level} <LevelDots level={ex.level} />
           </Tag>
-          {ex.equipment.length === 0 ? <Tag>Bodyweight</Tag> : ex.equipment.map((q) => <Tag key={q}>{EQUIP_LABEL[q]}</Tag>)}
-          <Tag tone="sky">{ex.measure === 'time' ? `${ex.range[0]}–${ex.range[1]} sec` : `${ex.range[0]}–${ex.range[1]} reps`}{ex.perSide ? ' / side' : ''}</Tag>
+          {ex.equipment.length === 0 ? <Tag>{isBloom ? 'No props needed' : 'Bodyweight'}</Tag> : ex.equipment.map((q) => <Tag key={q}>{EQUIP_LABEL[q]}</Tag>)}
+          <Tag tone="sky">{ex.measure === 'time' ? `${ex.range[0]}–${ex.range[1]} sec` : `${ex.range[0]}–${ex.range[1]} ${isBloom ? repWord(ex.id, ex.range[1]) : 'reps'}`}{ex.perSide ? ' / side' : ''}</Tag>
           {ex.impact === 'high' ? <Tag tone="bad">Jumping</Tag> : null}
         </div>
         <p className="mt-3 text-[15px] text-muted">{c.summary}</p>
@@ -80,18 +82,18 @@ export default function ExerciseDetailPage() {
             size="lg"
             variant="secondary"
             className="px-4"
-            icon={<Dumbbell size={20} />}
+            icon={isBloom ? <Flower2 size={20} /> : <Dumbbell size={20} />}
             onClick={() => {
               speech.unlock()
               unlockAudio()
               setTrying(true)
             }}
           >
-            Try a set
+            {isBloom ? 'Try it' : 'Try a set'}
           </Button>
         </div>
 
-        <SectionTitle>Muscles worked</SectionTitle>
+        <SectionTitle>{isBloom ? 'Where you’ll feel it' : 'Muscles worked'}</SectionTitle>
         <Card className="flex items-center gap-4">
           <BodyMap primary={ex.muscles.primary} secondary={ex.muscles.secondary} className="h-40 w-auto shrink-0" />
           <div className="text-sm">
@@ -122,7 +124,7 @@ export default function ExerciseDetailPage() {
           </div>
         </Card>
 
-        <SectionTitle>Coaching cues</SectionTitle>
+        <SectionTitle>{isBloom ? 'Cues' : 'Coaching cues'}</SectionTitle>
         <div className="flex flex-wrap gap-2">
           {c.cues.map((cue) => (
             <span key={cue} className="rounded-full border border-line bg-surface px-3 py-1.5 text-sm">
@@ -131,7 +133,7 @@ export default function ExerciseDetailPage() {
           ))}
         </div>
 
-        <SectionTitle>Common mistakes</SectionTitle>
+        <SectionTitle>{isBloom ? 'Watch out for' : 'Common mistakes'}</SectionTitle>
         <Card className="space-y-3">
           {c.mistakes.map((m, i) => (
             <div key={i}>
@@ -144,7 +146,7 @@ export default function ExerciseDetailPage() {
           ))}
         </Card>
 
-        <SectionTitle>Make it easier or harder</SectionTitle>
+        <SectionTitle>{isBloom ? 'Make it gentler or deeper' : 'Make it easier or harder'}</SectionTitle>
         <div className="grid gap-2">
           <Card className="flex gap-3">
             <ArrowDownRight className="shrink-0 text-teal" size={20} />

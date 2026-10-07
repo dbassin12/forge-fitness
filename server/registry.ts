@@ -1,5 +1,5 @@
 import { get, put } from '@vercel/blob'
-import type { ReminderRule } from '../shared/reminders.js'
+import type { ReminderApp, ReminderRule } from '../shared/reminders.js'
 
 export interface PushSub {
   endpoint: string
@@ -21,6 +21,8 @@ export interface DeviceRecord {
   lastSeenAt: number
   failures: number
   context?: { sessionMinutes?: number }
+  /** Forge (default) or Bloom. */
+  app?: ReminderApp
 }
 
 export interface Registry {

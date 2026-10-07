@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AlertTriangle, Check, ClipboardPaste, ExternalLink } from 'lucide-react'
+import { APP, storageKey } from '@/app/brand'
 import type { MealSlot } from '@/db/db'
 import type { NewEntry } from '@/state/nutrition'
 import { Button } from '@/ui/Button'
@@ -41,7 +42,7 @@ export function entryFromEstimate(item: FoodEstimateItem, name: string, mult: nu
 
 // Switching to the Claude app can unload Forge on a phone; remembering the pending estimate lets
 // the Add food page reopen this sheet at the paste step when the user comes back.
-const PENDING_KEY = 'forge.claudeMeal'
+const PENDING_KEY = storageKey('claudeMeal')
 const PENDING_MAX_MS = 45 * 60_000
 
 export function pendingClaudeMeal(now = Date.now()): { meal: MealSlot; date: string } | null {
@@ -153,7 +154,7 @@ export function ClaudeMealSheet({
       ) : stage.kind === 'paste' ? (
         <div>
           <ol className="list-decimal space-y-1.5 pl-5 text-sm text-muted">
-            {copied === false ? <li>Copying wasn’t allowed here. Go back and try again, or ask Claude for a meal estimate in Forge’s format.</li> : null}
+            {copied === false ? <li>Copying wasn’t allowed here. Go back and try again, or ask Claude for a meal estimate in {APP.name}’s format.</li> : null}
             <li>In Claude, {photo ? 'attach your meal photo, ' : ''}paste the request{copied ? ' (it’s copied)' : ''} and send it.</li>
             <li>Copy Claude’s reply. The copy button on its code box works best.</li>
             <li>Come back here and paste it below.</li>

@@ -20,6 +20,9 @@ import { uid } from '@/lib/id'
 
 const PUSHUP_FAMILY = new Set([...LADDERS.h_push.exercises, 'db-floor-press'].filter((id) => !id.startsWith('db-')))
 const PLANKS = new Set(['forearm-plank', 'knee-plank', 'high-plank'])
+const BALANCES = new Set(LADDERS.y_balance.exercises)
+/** Breathing and relaxation sessions are saved with this key prefix (see state/breathe). */
+const BREATHE = 'breathe:'
 
 export async function addXp(kind: string, xp: number, date: ISODate = todayISO()): Promise<void> {
   await db.xpEvents.add({ id: uid('xp'), date, kind, xp, at: Date.now() })
@@ -48,12 +51,17 @@ export function planDates(workouts: WorkoutLog[]): ISODate[] {
 export async function computeStats(profile: Profile, progress: ProgressState, today: ISODate = todayISO()): Promise<Stats> {
   const s: Stats = { ...EMPTY_STATS }
   const workouts = await db.workouts.toArray()
+  const poses = new Set<string>()
   for (const w of workouts) {
     if (w.kind === 'plan') s.workouts++
     if (w.kind === 'snack') s.snacks++
     if (w.sessionKey.startsWith('play:')) s.plays++
     if (w.sessionKey === 'play:deck:52') s.fullDecks++
-    s.minutes += Math.max(0, (w.finishedAt - w.startedAt) / 60000)
+    const minutes = Math.max(0, (w.finishedAt - w.startedAt) / 60000)
+    if (w.sessionKey.startsWith(BREATHE)) {
+      s.breaths++
+      s.mindfulMinutes += minutes
+    } else s.minutes += minutes
     const hour = new Date(w.finishedAt).getHours()
     if (hour < 7) s.earlyBird = true
     if (hour >= 21) s.nightOwl = true
@@ -65,10 +73,17 @@ export async function computeStats(profile: Profile, progress: ProgressState, to
         if (PUSHUP_FAMILY.has(ex.id)) s.pushupReps += set.reps ?? 0
         if (ex.pattern === 'squat' || ex.pattern === 'lunge') s.squatReps += (set.reps ?? 0) * sides
         if (PLANKS.has(ex.id)) s.bestPlankSec = Math.max(s.bestPlankSec, set.seconds ?? 0)
+        if (BALANCES.has(ex.id)) s.bestBalanceSec = Math.max(s.bestBalanceSec, set.seconds ?? 0)
       }
+      if (e.sets.length) poses.add(ex.id)
     }
   }
-  for (const t of progress.tests) s.bestPlankSec = Math.max(s.bestPlankSec, t.plankSec ?? 0)
+  s.poses = poses.size
+  s.mindfulMinutes = Math.round(s.mindfulMinutes)
+  for (const t of progress.tests) {
+    s.bestPlankSec = Math.max(s.bestPlankSec, t.plankSec ?? 0)
+    s.bestBalanceSec = Math.max(s.bestBalanceSec, t.balanceSec ?? 0)
+  }
   s.minutes = Math.round(s.minutes)
   s.prs = await db.xpEvents.where('kind').equals('pr').count()
   s.levelUps = await db.xpEvents.where('kind').equals('levelup').count()

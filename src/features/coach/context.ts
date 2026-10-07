@@ -2,7 +2,7 @@ import { db, type FoodLogEntry, type WeightEntry, type WorkoutLog } from '@/db/d
 import type { ISODate, Profile } from '@/domain/types'
 import { getExercise } from '@/data/exercises'
 import { weeklyStreak } from '@/engines/gamification'
-import { describeTarget, generateSession, LADDERS, LADDER_IDS, planInputsFromProfile, splitName, upcomingDays, type PlannedSession } from '@/engines/plan'
+import { describeTarget, generateSession, LADDERS, laddersFor, planInputsFromProfile, programName, upcomingDays, type PlannedSession } from '@/engines/plan'
 import type { ProgressState } from '@/engines/plan/types'
 import type { Targets } from '@/engines/nutrition/targets'
 import { addDays, isoWeekday, todayISO, WEEKDAY_SHORT } from '@/lib/dates'
@@ -30,8 +30,18 @@ export interface CoachData {
 
 const GOAL: Record<Profile['goal'], string> = { lose_fat: 'lose fat', build_muscle: 'build muscle', get_stronger: 'get stronger', general_fitness: 'feel fit and healthy' }
 const DIET: Record<Profile['diet'], string> = { none: 'no restrictions', vegetarian: 'vegetarian', vegan: 'vegan', pescatarian: 'pescatarian', kosher: 'kosher-style (no pork or shellfish, no meat with dairy)' }
-const ACHE: Record<Profile['aches'][number], string> = { knees: 'knees', lower_back: 'lower back', shoulders: 'shoulders', wrists: 'wrists' }
+const ACHE: Record<Profile['aches'][number], string> = { knees: 'knees', lower_back: 'lower back', shoulders: 'shoulders', wrists: 'wrists', neck: 'neck', hips: 'hips', pregnancy: 'pregnant' }
 const FEEL = { easy: 'too easy', right: 'just right', hard: 'too hard' } as const
+const FEEL_YOGA = { easy: 'too gentle', right: 'just right', hard: 'too much' } as const
+const INTENTION: Record<NonNullable<Profile['intentions']>[number], string> = {
+  calm: 'feel calmer',
+  sleep: 'sleep better',
+  flexibility: 'more flexibility',
+  strength: 'gentle strength',
+  balance: 'better balance',
+  back: 'ease the back',
+  energy: 'more energy',
+}
 
 const round = (n: number) => Math.round(n).toLocaleString('en-US')
 const dayName = (iso: ISODate) => WEEKDAY_SHORT[isoWeekday(iso) - 1]
@@ -42,6 +52,10 @@ function clock(d: Date): string {
 
 function equipmentLine(p: Profile): string {
   const e = p.equipment
+  if (p.program === 'yoga') {
+    const props = [e.mat && 'mat or rug', e.chair && 'chair', e.wall && 'wall'].filter(Boolean)
+    return `Props: ${props.length ? props.join(', ') : 'none (just the floor)'}.`
+  }
   const bells = e.dumbbells.map((d) => `${d.count} × ${d.weightLb} lb${d.found ? '' : ' (owned but not found yet)'}`)
   const extras = [e.chair && 'chair', e.table && 'sturdy table', e.wall && 'wall', e.stairs && 'stairs', e.mat && 'mat', e.pullupBar && 'pull-up bar'].filter(Boolean)
   return `Equipment: ${bells.length ? `dumbbells ${bells.join(', ')}` : 'no dumbbells'}${extras.length ? `; ${extras.join(', ')}` : ''}${e.pullupBar ? '' : '; no pull-up bar'}.`
@@ -70,22 +84,30 @@ export function formatCoachContext(d: CoachData): string {
   const u = p.units
   const date = todayISO(d.now)
   const age = d.now.getFullYear() - p.birthYear
+  const yoga = p.program === 'yoga'
+  const feel = yoga ? FEEL_YOGA : FEEL
+  const sessions = yoga ? 'practice' : 'workout'
   const lines: string[] = []
   lines.push(`Now: ${d.now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}, ${clock(d.now)} (their local time).`)
   lines.push(
     `Profile: ${p.name || 'no name given'}, ${p.sex === 'unspecified' ? 'sex not given' : p.sex}, ${age} years, ${formatHeight(p.heightCm, u)}, ${formatWeight(p.weightKg, u)}` +
-      `${p.goalWeightKg ? `, goal weight ${formatWeight(p.goalWeightKg, u)}` : ''}. Goal: ${GOAL[p.goal]}. Experience: ${p.experience}. Daily activity outside workouts: ${p.lifestyle}. Units: ${u === 'imperial' ? 'US (lb, oz)' : 'metric'}.`,
+      `${p.goalWeightKg ? `, goal weight ${formatWeight(p.goalWeightKg, u)}` : ''}. ` +
+      (yoga ? `Program: gentle yoga. Intentions: ${p.intentions?.length ? p.intentions.map((i) => INTENTION[i]).join(', ') : 'none picked'}.` : `Goal: ${GOAL[p.goal]}.`) +
+      ` Experience: ${p.experience}. Daily activity outside ${sessions}s: ${p.lifestyle}. Units: ${u === 'imperial' ? 'US (lb, oz)' : 'metric'}.`,
   )
+  const days = `${p.daysPerWeek} days a week (${[...p.trainingDays].sort().map((n) => WEEKDAY_SHORT[n - 1]).join(', ')}) around ${p.preferredTime}`
   lines.push(
-    `Training: ${p.daysPerWeek} days a week (${[...p.trainingDays].sort().map((n) => WEEKDAY_SHORT[n - 1]).join(', ')}) around ${p.preferredTime}, ${p.sessionMinutes}-minute sessions, split: ${splitName(p.daysPerWeek, p.sessionMinutes)}. ` +
-      `${p.quietMode ? 'Quiet mode is on (no jumping). ' : ''}Sessions completed so far: ${d.progress.sessionsCompleted}.`,
+    yoga
+      ? `Practice: ${days}, ${p.sessionMinutes}-minute gentle yoga practices, themes: ${programName(planInputsFromProfile(p))}. Practices completed so far: ${d.progress.sessionsCompleted}.`
+      : `Training: ${days}, ${p.sessionMinutes}-minute sessions, split: ${programName(planInputsFromProfile(p))}. ` +
+          `${p.quietMode ? 'Quiet mode is on (no jumping). ' : ''}Sessions completed so far: ${d.progress.sessionsCompleted}.`,
   )
   lines.push(equipmentLine(p))
   lines.push(
-    `Aches: ${p.aches.length ? p.aches.map((a) => ACHE[a]).join(', ') : 'none'}. Diet: ${DIET[p.diet]}${p.avoidFoods.length ? `; avoids ${p.avoidFoods.join(', ')}` : ''}. Food tracking: ${p.trackingMode === 'lite' ? 'Lite mode (protein, veggies and water only)' : 'full'}.`,
+    `${yoga ? 'Be gentle with' : 'Aches'}: ${p.aches.length ? p.aches.map((a) => ACHE[a]).join(', ') : 'none'}. Diet: ${DIET[p.diet]}${p.avoidFoods.length ? `; avoids ${p.avoidFoods.join(', ')}` : ''}. Food tracking: ${p.trackingMode === 'lite' ? 'Lite mode (protein, veggies and water only)' : 'full'}.`,
   )
 
-  const levels = LADDER_IDS.flatMap((id) => {
+  const levels = laddersFor(p.program ?? 'strength').flatMap((id) => {
     const l = LADDERS[id]
     const rung = d.progress.ladders[id]?.rung
     if (rung === undefined) return []
@@ -95,9 +117,9 @@ export function formatCoachContext(d: CoachData): string {
   if (levels.length) lines.push(`Current levels: ${levels.join('; ')}.`)
 
   const doneToday = d.workouts.filter((w) => w.date === date)
-  if (doneToday.length) lines.push(`Done today: ${doneToday.map((w) => `${w.title} (${Math.round((w.finishedAt - w.startedAt) / 60000)} min${w.feedback ? `, felt ${FEEL[w.feedback]}` : ''})`).join(', ')}.`)
-  const when = d.nextDate === date ? 'today' : d.nextDate ? `${dayName(d.nextDate)} ${d.nextDate}` : 'next training day'
-  lines.push(`Next planned session (${when}): ${sessionLine(d.next)}.`)
+  if (doneToday.length) lines.push(`Done today: ${doneToday.map((w) => `${w.title} (${Math.round((w.finishedAt - w.startedAt) / 60000)} min${w.feedback ? `, felt ${feel[w.feedback]}` : ''})`).join(', ')}.`)
+  const when = d.nextDate === date ? 'today' : d.nextDate ? `${dayName(d.nextDate)} ${d.nextDate}` : `next ${yoga ? 'practice' : 'training'} day`
+  lines.push(`Next planned ${yoga ? 'practice' : 'session'} (${when}): ${sessionLine(d.next)}.`)
 
   const t = d.targets
   const eaten = totalsOf(d.today.logs)
@@ -113,7 +135,7 @@ export function formatCoachContext(d: CoachData): string {
 
   const past = d.workouts.filter((w) => w.date < date).sort((a, b) => a.date.localeCompare(b.date))
   lines.push(
-    `Last 7 days: ${past.length ? `${past.length} workout${past.length > 1 ? 's' : ''} — ${past.map((w) => `${dayName(w.date)} ${w.title} (${Math.round((w.finishedAt - w.startedAt) / 60000)} min${w.feedback ? `, ${FEEL[w.feedback]}` : ''})`).join('; ')}` : 'no workouts'}.`,
+    `Last 7 days: ${past.length ? `${past.length} ${sessions}${past.length > 1 ? 's' : ''} — ${past.map((w) => `${dayName(w.date)} ${w.title} (${Math.round((w.finishedAt - w.startedAt) / 60000)} min${w.feedback ? `, ${feel[w.feedback]}` : ''})`).join('; ')}` : `no ${sessions}s`}.`,
   )
   if (d.food.length) {
     const avg = (k: 'kcal' | 'protein') => d.food.reduce((s, f) => s + f[k], 0) / d.food.length
@@ -127,7 +149,7 @@ export function formatCoachContext(d: CoachData): string {
     lines.push(`Weigh-ins (last 30 days): ${formatWeight(last.kg, u)} on ${last.date}${w.length > 1 ? `; ${formatWeight(first.kg, u)} on ${first.date}` : ''}.`)
   }
   const streak = weeklyStreak(d.planDates, p.daysPerWeek, date)
-  lines.push(`Weekly goal: ${streak.thisWeek} of ${streak.target} planned workouts done this week; streak ${streak.weeks} week${streak.weeks === 1 ? '' : 's'}.`)
+  lines.push(`Weekly goal: ${streak.thisWeek} of ${streak.target} planned ${sessions}s done this week; streak ${streak.weeks} week${streak.weeks === 1 ? '' : 's'}.`)
   return lines.join('\n').slice(0, 7800)
 }
 
