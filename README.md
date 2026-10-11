@@ -45,9 +45,9 @@ deployed. Install it the same way as Forge (below), starting from that address.
   waits until it's done. A move is explained in full the first two times it comes up, then the
   coach gives a quick reminder instead (or explains every time, or never: your choice). **How to**
   during a set pauses and brings the steps back.
-- **A natural coach voice.** Everything the coach says is pre-recorded with a neural voice:
-  **Heart** (female) or **Michael** (male). It plays offline once heard, and the phone's own voice
-  is still there as an option. See [Natural voice](#natural-voice).
+- **A natural coach voice.** Everything the coach says is pre-recorded with a neural voice,
+  **Heart**, instead of the phone's robotic text-to-speech. It plays offline once heard, and the
+  phone's own voice is still there as an option. See [Natural voice](#natural-voice).
 - **Skip exercises you don't like.** Leave any exercise out from its page, the swap sheet, the
   workout preview, mid-workout, or **Settings → Exercises I skip**. Workouts, warm-ups, snacks
   and games then use the closest alternative instead.
@@ -222,8 +222,9 @@ pip install https://github.com/explosion/spacy-models/releases/download/en_core_
 npm run voice      # exports the catalog, then records only what's missing
 ```
 
-A full recording takes about an hour per voice on a laptop CPU. Only missing sentences are
-recorded, so a copy change takes seconds.
+A full recording takes one to two hours per voice on a laptop CPU. Only missing sentences are
+recorded, so a copy change takes seconds. To offer another voice, add it to `VOICE_PACKS` in
+`src/voice/packs.ts` (any Kokoro voice, e.g. `am_michael`) and run `npm run voice`.
 
 To try either app on a phone on the same Wi-Fi, run `npm run dev -- --host` and open the
 `Network` address it prints (add `bloom/` for Bloom). Over plain `http` the app runs fully, but

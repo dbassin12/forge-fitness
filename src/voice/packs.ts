@@ -16,13 +16,11 @@ export interface VoicePack {
   kokoro: string
 }
 
-/** Forge's natural voices. (Bloom's lines aren't recorded, so it keeps the phone's voices.) */
-export const VOICE_PACKS: VoicePack[] = isBloom
-  ? []
-  : [
-      { id: 'heart', name: 'Heart', blurb: 'Warm and clear (female)', kokoro: 'af_heart' },
-      { id: 'michael', name: 'Michael', blurb: 'Calm and steady (male)', kokoro: 'am_michael' },
-    ]
+/**
+ * Forge's natural voices; the first is the default. To add one, list it here (any Kokoro voice) and
+ * run `npm run voice`. (Bloom's lines aren't recorded, so it keeps the phone's voices.)
+ */
+export const VOICE_PACKS: VoicePack[] = isBloom ? [] : [{ id: 'heart', name: 'Heart', blurb: 'Warm and clear (female)', kokoro: 'af_heart' }]
 
 /** What the voice settings preview says (recorded in every pack). */
 export const VOICE_PREVIEW = 'Let’s go! Ten push-ups. Keep your body in one straight line.'

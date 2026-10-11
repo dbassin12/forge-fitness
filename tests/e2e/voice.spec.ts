@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { expectNoErrors, onboard, trackErrors } from './helpers'
 
-test('the coach speaks with a natural voice, and you can pick another', async ({ page }) => {
+test('the coach speaks with a natural voice, and the phone’s voice is still there', async ({ page }) => {
   const errors = trackErrors(page)
   const clips: string[] = []
   page.on('request', (r) => {
@@ -20,21 +20,20 @@ test('the coach speaks with a natural voice, and you can pick another', async ({
   await page.getByRole('button', { name: 'Discard workout' }).click()
   await page.waitForURL(/today/)
 
-  // Settings: Heart by default; Michael and the phone's voice are a tap away, and it sticks.
+  // Settings: the natural voice by default; the phone's voice is a tap away, and the choice sticks.
   await page.goto('/#/more')
   await expect(page.getByRole('button', { name: /Voice & sounds/ })).toContainText('Heart (natural voice)')
   await page.getByRole('button', { name: /Voice & sounds/ }).click()
   const voices = page.getByRole('radiogroup', { name: 'Voice' })
   await expect(voices.getByRole('radio', { name: /Heart/ })).toHaveAttribute('aria-checked', 'true')
-  await voices.getByRole('radio', { name: /Michael/ }).click()
-  await expect(voices.getByRole('radio', { name: /Michael/ })).toHaveAttribute('aria-checked', 'true')
-  await expect.poll(() => clips.includes('michael'), { timeout: 10_000 }).toBe(true)
   await voices.getByRole('radio', { name: /Phone voice/ }).click()
+  await expect(voices.getByRole('radio', { name: /Phone voice/ })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByRole('combobox', { name: 'Phone voice' })).toBeVisible()
   await expect(page.getByText(/download an “Enhanced” or “Premium” voice/)).toBeVisible()
-  await voices.getByRole('radio', { name: /Michael/ }).click()
   await page.reload()
   await page.getByRole('button', { name: /Voice & sounds/ }).click()
-  await expect(page.getByRole('radio', { name: /Michael/ })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByRole('radio', { name: /Phone voice/ })).toHaveAttribute('aria-checked', 'true')
+  await page.getByRole('radio', { name: /Heart/ }).click()
+  await expect(page.getByRole('combobox', { name: 'Phone voice' })).toHaveCount(0)
   await expectNoErrors(errors)
 })

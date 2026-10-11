@@ -31,12 +31,12 @@
 - **The recordings.** Every sentence Forge says is listed by `src/voice/catalog.ts` (2,747 sentences). Each was recorded with **Kokoro-82M** (Apache-2.0) as a 32 kbps MP3 in `public/voice/<pack>/<id>.mp3`.
   - The id is `clipId()`, a hash of the normalized sentence (`src/voice/voiceKey.ts`).
   - Each folder has a `manifest.json` that maps id → length in ms.
-- **Voices** (`src/voice/packs.ts`): **Heart** (`af_heart`, the default) and **Michael** (`am_michael`). The phone voice is still an option.
+- **Voices** (`src/voice/packs.ts`): **Heart** (`af_heart`), the default, plus the phone's own voices. A male voice, **Michael** (`am_michael`), was still recording when this was written. To add it, list it in `VOICE_PACKS`, run `npm run voice`, then commit `public/voice/michael/`.
 - **Playback.** `src/voice/clipPlayer.ts` plays each line's sentences back to back through Web Audio. "12 push-ups" is said as a count followed by a phrase. `speech.ts` tries the clips first and falls back to the phone voice for any line that isn't recorded or can't play.
 - **Downloads and offline.** The workout intro screen prefetches what that workout needs. The service worker keeps clips with CacheFirst (`voice` cache) and refreshes manifests NetworkFirst. `voice/**` is not in the precache.
 - **Bloom is unchanged.** Its lines aren't recorded, so `VOICE_PACKS` is empty there and it keeps the phone's voices.
 - **Re-recording.** `npm run voice` exports the catalog (`voice:lines`), then runs `scripts/voice/record.py`, which only records missing sentences. It needs Python 3.10–3.12, `kokoro>=0.9.4`, `soundfile`, spaCy `en_core_web_sm` and ffmpeg. `--verify` re-records unreadable files.
-- **Quality check.** A Whisper `base.en` transcription of a sample came back with ~1% word error rate.
+- **Quality check.** All 2,747 Heart clips decode in Chromium's Web Audio, and their lengths match the manifest to within 2 ms. A Whisper `base.en` transcription of 250 random clips came back with a 1.1% word error rate. Rechecked with `small.en`, the flagged lines were natural connected speech (e.g. "wall sit" run together), not garbled audio.
 - **Other speech changes.**
   - Spoken per-side targets now say "each side".
   - Play lines are built from recorded sentences (`spokenMove()`).
@@ -44,6 +44,7 @@
   - Interrupted lines now settle their promises.
 
 ### Tests
+- **Results.** `npm run check` passes: typecheck, lint and 1,349 unit tests. `npm run e2e` passes all 24 phone-size tests.
 - **New unit tests:**
   - `tests/unit/exclusions.test.ts`
   - `tests/unit/howto.test.ts`
@@ -67,13 +68,13 @@
 
 ## Known Issues / Gotchas
 - **iPhone silent switch.** With "Play over my music" on, sounds and the natural voice use the "ambient" audio session, which follows the silent switch. Turning that setting off makes the coach speak through silent mode, but it pauses your music.
-- **Repo size.** The recordings add about 30 MB per voice. A different take of an existing voice needs a new pack id, because clip file names stay the same and the service worker would keep serving the old audio.
+- **Repo size.** Heart's recordings are 29 MB (2,747 small MP3s), and each further voice adds about as much. A different take of an existing voice needs a new pack id, because clip file names stay the same and the service worker would keep serving the old audio.
 - **Rare numbers.** These fall back to the phone voice unless they can be built from a count plus a phrase: "N seconds" above 120 that isn't a multiple of 5, and counts above 100.
 
 ## Next Steps
 - [ ] Try it on the iPhone once PR #5 is merged:
   - [ ] A workout: the how-to before each new move, "How to" mid-set, and skipping a move.
-  - [ ] Settings → Voice & sounds: hear Heart and Michael.
+  - [ ] Settings → Voice & sounds: compare Heart with the phone's voice.
   - [ ] Settings → Exercises I skip.
 - [ ] Optional: record a Bloom voice. Make the catalog app-aware (run it with the brand mocked as Bloom, as `tests/unit/bloom-mode.test.ts` does), add a calm pack, and enable `VOICE_PACKS` for Bloom.
 
