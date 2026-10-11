@@ -33,7 +33,12 @@ test('the coach speaks with a natural voice, and the phone’s voice is still th
   await page.reload()
   await page.getByRole('button', { name: /Voice & sounds/ }).click()
   await expect(page.getByRole('radio', { name: /Phone voice/ })).toHaveAttribute('aria-checked', 'true')
-  await page.getByRole('radio', { name: /Heart/ }).click()
+  // There's a male voice too: picking it plays a sample in that voice.
+  await page.getByRole('radio', { name: /Michael/ }).click()
+  await expect(page.getByRole('radio', { name: /Michael/ })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByRole('combobox', { name: 'Phone voice' })).toHaveCount(0)
+  await expect.poll(() => clips.includes('michael'), { timeout: 15_000 }).toBe(true)
+  await page.getByRole('radio', { name: /Heart/ }).click()
+  await expect(page.getByRole('radio', { name: /Heart/ })).toHaveAttribute('aria-checked', 'true')
   await expectNoErrors(errors)
 })

@@ -1,6 +1,6 @@
 # System Status
 *Last updated: 2026-10-11 (UTC)*
-*Session summary: Three Forge improvements David asked for. You can now skip exercises you don't like. The coach explains each new exercise before it starts. The voice is a natural, pre-recorded one instead of the phone's robotic text-to-speech. Everything is on `claude/sharp-ramanujan-y020x1`, open as draft PR #5.*
+*Session summary: Three Forge improvements David asked for. You can now skip exercises you don't like. The coach explains each new exercise before it starts. The voice is a natural, pre-recorded one instead of the phone's robotic text-to-speech. These went out in PR #5 (merged, live). Then two follow-ups on `claude/sharp-ramanujan-y020x1`, open as draft PR #6: the app checks for a new version whenever you come back to it, with a "Check for updates" button in Settings, and there's a second natural voice, Michael (male).*
 
 ## What Changed This Session
 
@@ -33,7 +33,7 @@
 - **The recordings.** Every sentence Forge says is listed by `src/voice/catalog.ts` (2,747 sentences). Each was recorded with **Kokoro-82M** (Apache-2.0) as a 32 kbps MP3 in `public/voice/<pack>/<id>.mp3`.
   - The id is `clipId()`, a hash of the normalized sentence (`src/voice/voiceKey.ts`).
   - Each folder has a `manifest.json` that maps id → length in ms.
-- **Voices** (`src/voice/packs.ts`): **Heart** (`af_heart`), the default, plus the phone's own voices. A male voice wasn't included: Kokoro's male voices are rated well below Heart, and each voice adds about 29 MB. To add one (e.g. `am_michael`), list it in `VOICE_PACKS`, run `npm run voice` (one to two hours), then commit its `public/voice/<id>/` folder.
+- **Voices** (`src/voice/packs.ts`): **Heart** (`af_heart`, female), the default, and **Michael** (`am_michael`, male, added in PR #6), plus the phone's own voices. Each voice adds about 30 MB to the repo; a phone only downloads the one it uses. To add another, list it in `VOICE_PACKS`, run `npm run voice` (one to two hours), then commit its `public/voice/<id>/` folder.
 - **Playback.** `src/voice/clipPlayer.ts` plays each line's sentences back to back through Web Audio. "12 push-ups" is said as a count followed by a phrase. `speech.ts` tries the clips first and falls back to the phone voice for any line that isn't recorded or can't play.
 - **Downloads and offline.** The workout intro screen prefetches what that workout needs. The service worker keeps clips with CacheFirst (`voice` cache) and refreshes manifests NetworkFirst. `voice/**` is not in the precache.
 - **Bloom is unchanged.** Its lines aren't recorded, so `VOICE_PACKS` is empty there and it keeps the phone's voices.
@@ -45,8 +45,13 @@
   - A line that fails instantly keeps its caption up for its estimated length.
   - Interrupted lines now settle their promises.
 
+### 4. Updating from the phone (PR #6)
+- **Checks on return.** `src/app/pwa.ts` looks for a new version at launch, hourly, and whenever the app comes back to the foreground (at most every 5 minutes). A phone usually resumes a Home Screen app instead of relaunching it, so before this the "new version" bar could wait until the app was force-closed.
+- **Settings › Check for updates** (`UpdateRow` in `src/features/more/MorePage.tsx`). It shows the version you're on (`__APP_BUILD__`: build date and commit, set in `vite.config.ts`). If there's a newer version, it downloads it and reloads into it; otherwise it says you're up to date or offline.
+- **Never stuck on "Updating".** After telling the new version to take over, the app reloads anyway after 3 seconds. The takeover event never fires on a page the old version didn't control (e.g. the first visit after installing).
+
 ### Tests
-- **Results.** `npm run check` passes: typecheck, lint and 1,349 unit tests. `npm run e2e` passes all 24 phone-size tests.
+- **Results.** `npm run check` passes: typecheck, lint and 1,349 unit tests. `npm run e2e` passes all 26 phone-size tests.
 - **New unit tests:**
   - `tests/unit/exclusions.test.ts`
   - `tests/unit/howto.test.ts`
@@ -58,26 +63,28 @@
 ## Current State of Services
 | Service | Status | Address | Notes |
 |---|---|---|---|
-| Forge production (Vercel, `main`) | Live | https://forge-fitness-liard.vercel.app | Gets these changes when PR #5 merges |
+| Forge production (Vercel, `main`) | Live | https://forge-fitness-liard.vercel.app | Has PR #5 (skips, how-to, Heart voice). Gets PR #6 when it merges |
 | Bloom production | Live (PR #4 merged) | https://forge-fitness-liard.vercel.app/bloom/ | Unaffected by this work except shared fixes |
 | Vercel preview of the branch | Built by Vercel on each push | see the PR's Vercel check | Behind Vercel login |
 | Local dev / preview | Not running | `npm run dev` → http://localhost:5173 · `npm run build && npm run preview` → http://localhost:4173 | |
 | Reminder clock (GitHub Actions) | Runs every 15 min from `main` | POSTs `/api/tick` | Unchanged |
 
 ## Active Projects
-- **dbassin12/forge-fitness:** branch `claude/sharp-ramanujan-y020x1`, draft PR https://github.com/dbassin12/forge-fitness/pull/5.
+- **dbassin12/forge-fitness:** PR https://github.com/dbassin12/forge-fitness/pull/5 is merged. Branch `claude/sharp-ramanujan-y020x1` (restarted from `main` after the merge) is open as draft PR https://github.com/dbassin12/forge-fitness/pull/6.
 - **dbassin12/mitzvah-calendar:** not touched this session.
 
 ## Known Issues / Gotchas
 - **iPhone silent switch.** With "Play over my music" on, sounds and the natural voice use the "ambient" audio session, which follows the silent switch. Turning that setting off makes the coach speak through silent mode, but it pauses your music.
-- **Repo size.** Heart's recordings are 29 MB (2,747 small MP3s), and each further voice adds about as much. A different take of an existing voice needs a new pack id, because clip file names stay the same and the service worker would keep serving the old audio.
+- **Repo size.** Each voice is 2,747 small MP3s: 29 MB for Heart and 32 MB for Michael, who speaks a little slower. A different take of an existing voice needs a new pack id, because clip file names stay the same and the service worker would keep serving the old audio.
 - **Rare numbers.** These fall back to the phone voice unless they can be built from a count plus a phrase: "N seconds" above 120 that isn't a multiple of 5, and counts above 100.
 
 ## Next Steps
-- [ ] Try it on the iPhone once PR #5 is merged:
+- [ ] Try it on the iPhone (PR #5 is live):
   - [ ] A workout: the how-to before each new move, "How to" mid-set, and skipping a move.
-  - [ ] Settings → Voice & sounds: compare Heart with the phone's voice.
   - [ ] Settings → Exercises I skip.
+- [ ] Merge PR #6, then on the iPhone:
+  - [ ] Settings → Check for updates shows the new version (or reopen the app and tap Update on the bar).
+  - [ ] Settings → Voice & sounds: compare Heart, Michael and the phone's voice.
 - [ ] Optional: record a Bloom voice. Make the catalog app-aware (run it with the brand mocked as Bloom, as `tests/unit/bloom-mode.test.ts` does), add a calm pack, and enable `VOICE_PACKS` for Bloom.
 
 ## Don't Touch
