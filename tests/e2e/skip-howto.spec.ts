@@ -58,6 +58,7 @@ test('the player explains a new exercise first, and you can skip one mid-workout
   await page.getByRole('button', { name: 'How to' }).click()
   const sheet = page.getByRole('dialog', { name: first })
   await expect(sheet.getByRole('button', { name: 'Read it to me' })).toBeVisible()
+  await expect(sheet.getByRole('link', { name: /real people do it/ })).toHaveAttribute('href', /youtube\.com/)
   await sheet.getByRole('button', { name: /Not for me: skip this exercise/ }).click()
   await page.getByRole('dialog', { name: `Skip ${first}?` }).getByRole('button', { name: 'Skip it today' }).click()
   await expect(page.getByRole('heading', { level: 1, name: first })).toHaveCount(0)

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { Check, ChevronsRight, CircleHelp, Lightbulb, Pause, Play, PlayCircle, Plus, SkipBack, ThumbsDown, Volume2, VolumeX, Wind, X } from 'lucide-react'
+import { Check, ChevronsRight, CircleHelp, ExternalLink, Lightbulb, Pause, Play, PlayCircle, Plus, SkipBack, ThumbsDown, Volume2, VolumeX, Wind, X } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
 import { usePalette } from '@/app/theme'
-import { getExercise, highlightFor, motionFor, type Exercise } from '@/data/exercises'
+import { getExercise, highlightFor, motionFor, youtubeUrl, type Exercise } from '@/data/exercises'
 import { isBloom, W } from '@/app/brand'
 import { TIPS } from '@/data/tips'
 import { repSeconds, repWord, type PlannedSession } from '@/engines/plan'
@@ -777,7 +777,10 @@ function HowToSheet({ open, ex, onClose, onTutorial, onSkip }: { open: boolean; 
           Full tutorial
         </Button>
       </div>
-      <Button block size="lg" className="mt-2" icon={<Play size={18} />} onClick={close}>
+      <a href={youtubeUrl(ex)} target="_blank" rel="noreferrer" className="mt-1 flex items-center justify-center gap-2 py-2.5 text-sm text-muted hover:text-ink">
+        <ExternalLink size={15} /> See real people do it on YouTube
+      </a>
+      <Button block size="lg" icon={<Play size={18} />} onClick={close}>
         Back to it
       </Button>
       {onSkip ? (
