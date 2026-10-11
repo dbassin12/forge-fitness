@@ -3,9 +3,24 @@ import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'node:child_process'
 import { fileURLToPath, URL } from 'node:url'
 
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url))
+
+/** Build date and commit, shown in Settings so you can tell which version a phone is running. */
+function buildId(): string {
+  let sha = process.env.VERCEL_GIT_COMMIT_SHA ?? ''
+  if (!sha) {
+    try {
+      sha = execSync('git rev-parse HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+    } catch {
+      /* not a git checkout */
+    }
+  }
+  const day = new Date().toISOString().slice(0, 10)
+  return sha ? `${day} · ${sha.slice(0, 7)}` : day
+}
 
 /**
  * Bloom (Michal's yoga app) is a second page at /bloom/ with its own Home Screen identity. The PWA
@@ -36,6 +51,7 @@ function bloomManifest(): Plugin {
 }
 
 export default defineConfig({
+  define: { __APP_BUILD__: JSON.stringify(buildId()) },
   plugins: [
     react(),
     tailwindcss(),

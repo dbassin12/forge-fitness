@@ -17,6 +17,7 @@ import {
   Info,
   Moon,
   Play,
+  RefreshCw,
   Smartphone,
   Sparkles,
   Sun,
@@ -26,6 +27,7 @@ import {
   Volume2,
 } from 'lucide-react'
 import { APP, isBloom, W } from '@/app/brand'
+import { checkForUpdate, type UpdateCheck } from '@/app/pwa'
 import { COACH_STYLES, usePrefs } from '@/app/prefs'
 import { accentInfo, useTheme } from '@/app/theme'
 import type { Ache, DietStyle, Equipment, Experience, Goal, Intention, Profile } from '@/domain/types'
@@ -77,6 +79,31 @@ function Row({ icon, title, sub, onClick, to }: { icon: ReactNode; title: string
         </button>
       )}
     </li>
+  )
+}
+
+/** "Check for updates", with the version this phone is running. */
+function UpdateRow() {
+  const [state, setState] = useState<UpdateCheck | 'idle' | 'checking'>('idle')
+  const sub: Record<typeof state, string> = {
+    idle: `Version ${__APP_BUILD__}`,
+    checking: 'Checking…',
+    updating: 'Updating…',
+    latest: `You’re up to date · ${__APP_BUILD__}`,
+    offline: 'Couldn’t check. Are you online?',
+    unavailable: `Open ${APP.name} from your Home Screen to update`,
+  }
+  return (
+    <Row
+      icon={<RefreshCw size={18} className={state === 'checking' || state === 'updating' ? 'animate-spin' : undefined} />}
+      title="Check for updates"
+      sub={sub[state]}
+      onClick={async () => {
+        if (state === 'checking' || state === 'updating') return
+        setState('checking')
+        setState(await checkForUpdate())
+      }}
+    />
   )
 }
 
@@ -184,6 +211,7 @@ export default function MorePage() {
               onClick={() => setPanel('feel')}
             />
             <Row icon={<HardDrive size={18} />} title="Backup & data" sub="Export, restore, storage" onClick={() => setPanel('data')} />
+            <UpdateRow />
             <Row icon={<Sparkles size={18} />} title="Animation lab" sub={`Every ${W.exercise} animation, frame by frame`} to="/lab" />
           </ul>
         </Card>
