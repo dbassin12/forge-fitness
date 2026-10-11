@@ -142,8 +142,9 @@ function link(out: Step[]): Step[] {
 /**
  * The steps without the exercises skipped mid-workout: each exercise id maps to the step index
  * (in `steps`) it was skipped at, so sets done before then still count. When rests end up back to
- * back, the first one stays (the rest planned after the last set you did), re-pointed at what now
- * follows.
+ * back, one stays, re-pointed at what now follows: the longer one (a round's rest, not the quick
+ * switch inside it), never a side switch with no second side left, and always the opening "get
+ * ready".
  */
 export function withoutSkipped(steps: Step[], skips: Record<string, number> | undefined): Step[] {
   if (!skips || !Object.keys(skips).length) return steps
@@ -152,7 +153,11 @@ export function withoutSkipped(steps: Step[], skips: Record<string, number> | un
     if (st.kind === 'work') {
       const from = skips[st.item.exerciseId]
       if (from === undefined || i < from) out.push(st)
-    } else if (out[out.length - 1]?.kind !== 'rest') out.push({ ...st })
+      return
+    }
+    const prev = out[out.length - 1]
+    if (prev?.kind !== 'rest') out.push({ ...st })
+    else if (prev.reason !== 'ready' && (prev.reason === 'side' || st.seconds > prev.seconds)) out[out.length - 1] = { ...st }
   })
   return link(out)
 }

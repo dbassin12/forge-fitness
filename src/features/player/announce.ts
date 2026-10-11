@@ -19,7 +19,8 @@ export function restLines(st: RestStep, prev: Step | undefined, depth: HowToDept
     case 'ready':
       return [isBloom ? 'Find your space.' : 'Get ready.', ...intro('first')]
     case 'side':
-      return ['Switch sides.']
+      // (After a skip, a side switch can end up leading into a different exercise.)
+      return sameEx ? ['Switch sides.'] : intro('next')
     case 'switch':
       return intro('next')
     case 'set': {

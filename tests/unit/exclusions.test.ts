@@ -107,6 +107,15 @@ describe('skipped exercises', () => {
     for (const ex of Object.values(deckPlan(progress, ctx).suits)) expect(excluded).not.toContain(ex.id)
   })
 
+  it('give the card game another move of the same kind when its favorites are all skipped', () => {
+    const excluded = ['crunch', 'bicycle-crunch', 'dead-bug', 'reverse-crunch', 'bird-dog', 'jumping-jacks', 'high-knees', 'step-jacks', 'march-in-place']
+    const ctx = planContext({ ...base, excluded })
+    const suits = deckPlan(initialProgress(base), ctx).suits
+    for (const ex of Object.values(suits)) expect(isAllowed(ex, ctx), ex.id).toBe(true)
+    expect(suits.diamonds.pattern).toBe('core')
+    expect(suits.clubs.pattern).toBe('cond')
+  })
+
   it('progress like a swapped-in exercise when the plan falls back off the ladder', () => {
     const inputs = { ...base, excluded: LADDERS.h_push.exercises }
     const ctx = planContext(inputs)

@@ -166,6 +166,8 @@ class SpeechEngine {
     const pack = settings.enabled ? this.pack(item.opts) : undefined
     // The natural voice when this line is recorded; otherwise (or if it can't play) the phone's.
     const natural = pack ? await clips.play(pack, item.text, settings.volume, () => gen === this.generation) : false
+    // Cancelled while the recording loaded: don't fall back to saying it with the phone's voice.
+    if (gen !== this.generation) return item.resolve()
     if (natural) {
       /* said */
     } else if (!settings.enabled || !this.supported) {

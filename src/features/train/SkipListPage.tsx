@@ -6,7 +6,7 @@ import { APP, isBloom, W } from '@/app/brand'
 import { usePalette } from '@/app/theme'
 import { EXERCISES, MUSCLE_LABEL, PATTERN_LABEL, getExercise, motionFor } from '@/data/exercises'
 import { haptic } from '@/device/haptics'
-import { LADDERS, planContext, resolveSlot, rotationFor, TEMPLATES, type LadderId } from '@/engines/plan'
+import { LADDERS, planContext, resolveLadder, resolveSlot, rotationFor, TEMPLATES, type LadderId } from '@/engines/plan'
 import { usePlan } from '@/state/plan'
 import { setExerciseSkipped, useSkipped } from '@/state/store'
 import { Card } from '@/ui/Card'
@@ -38,7 +38,9 @@ export default function SkipListPage() {
     if (!plan) return []
     const ctx = planContext(plan.inputs)
     const ladders = [...new Set(rotationFor(plan.inputs).flatMap((t) => TEMPLATES[t].slots.map((s) => s.ladder)))] as LadderId[]
-    return ladders.filter((l) => !resolveSlot(l, plan.progress.ladders[l]?.rung ?? 0, ctx)).map((l) => LADDERS[l].name.toLowerCase())
+    // Bloom's practices leave out a pose group with nothing left; Forge falls back to similar moves.
+    const resolve = plan.inputs.program === 'yoga' ? resolveLadder : resolveSlot
+    return ladders.filter((l) => !resolve(l, plan.progress.ladders[l]?.rung ?? 0, ctx)).map((l) => LADDERS[l].name.toLowerCase())
   }, [plan])
 
   if (!skipped) return <PageHeader title={isBloom ? 'Poses I skip' : 'Exercises I skip'} back />

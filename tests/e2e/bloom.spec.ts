@@ -71,3 +71,18 @@ test('Bloom keeps its data apart from Forge and has a calm Breathe tab', async (
   await expect(page.getByText('Box breathing').first()).toBeVisible()
   await expectNoErrors(errors)
 })
+
+test('Bloom: skipping every pose of a mini flow leaves nothing to start, without crashing', async ({ page }) => {
+  const errors = trackErrors(page)
+  await onboardBloom(page)
+  await page.goto('/bloom/#/train/skipped')
+  await expect(page.getByRole('heading', { name: 'Poses I skip' })).toBeVisible()
+  for (const name of ['Neck and shoulder release', 'Seated side bend', 'Standing side stretch', 'Standing forward fold']) {
+    await page.getByRole('button', { name: `Skip ${name}`, exact: true }).click()
+    await expect(page.getByRole('button', { name: `Skip ${name}`, exact: true })).toHaveAttribute('aria-pressed', 'true')
+  }
+  await page.goto('/bloom/#/workout?snack=3&flow=desk')
+  await expect(page.getByText(/Every pose in this practice is one you skip/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Begin', exact: true })).toBeDisabled()
+  await expectNoErrors(errors)
+})

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowDown, ArrowUp, Clock, Flame, Play, RotateCcw, Share2, Sparkles, Star, Zap } from 'lucide-react'
 import { APP, isBloom, W } from '@/app/brand'
@@ -152,16 +152,15 @@ export default function WorkoutPlayer() {
     if (forever) void setExerciseSkipped(exerciseId, true)
     const { skips: nextSkips, cursor } = skipFrom(allSteps, run.skips, steps[run.cursor], exerciseId)
     if (cursor === null) {
-      setRun({ ...run, skips: nextSkips })
-      complete(run.values)
+      complete(run.values, { ...run, skips: nextSkips })
       return
     }
     persist({ ...run, skips: nextSkips, cursor })
   }
 
-  const complete = (values: StepValues) => {
-    if (!run) return
-    const r = persist({ ...run, values })
+  const complete = (values: StepValues, from: SavedRun | null = run) => {
+    if (!from) return
+    const r = persist({ ...from, values })
     activeSince.current = null
     speech.cancel()
     sfx.levelUp()
@@ -196,7 +195,7 @@ export default function WorkoutPlayer() {
     return <div className="grid h-dvh place-items-center text-muted animate-pulse-soft">Loading…</div>
   }
 
-  if (phase === 'run' && run && session) {
+  if (phase === 'run' && run && session && steps.length) {
     return (
       <>
         <RunView
@@ -380,8 +379,24 @@ export default function WorkoutPlayer() {
         <Toggle checked={voice.enabled} onChange={(x) => voice.update({ enabled: x })} label="Voice coach" />
         <Toggle checked={voice.countReps} onChange={(x) => voice.update({ countReps: x })} label={isBloom ? 'Count slow movements aloud' : 'Count my reps in tempo'} />
       </div>
+      {steps.length ? null : (
+        <Card className="mt-4 border-amber/40 bg-amber/5 text-sm">
+          Every {W.exercise} in this {W.workout} is one you skip, so there’s nothing to do here.{' '}
+          <Link to="/train/skipped" className="font-semibold text-ember">
+            Bring some back
+          </Link>
+          .
+        </Card>
+      )}
       <div className="mt-auto pt-6" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
-        <Button block size="lg" icon={<Play size={22} fill="currentColor" />} onClick={() => start(null)} className={cx('h-16 text-lg', resumable ? 'opacity-90' : 'animate-glow')}>
+        <Button
+          block
+          size="lg"
+          disabled={!steps.length}
+          icon={<Play size={22} fill="currentColor" />}
+          onClick={() => start(null)}
+          className={cx('h-16 text-lg', resumable ? 'opacity-90' : steps.length > 0 && 'animate-glow')}
+        >
           {resumable ? 'Start fresh' : isBloom ? 'Begin' : "Let's go"}
         </Button>
       </div>

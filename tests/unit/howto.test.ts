@@ -117,6 +117,44 @@ describe('skipping an exercise mid-workout', () => {
     expect(r!.cursor).toBeNull()
   })
 
+  it('never leaves a side switch leading into a different exercise', () => {
+    let checked = 0
+    for (const s of sessions()) {
+      const all = buildSteps(s)
+      all.forEach((st, i) => {
+        if (st.kind !== 'work' || st.side !== 2) return
+        const left = withoutSkipped(all, { [st.item.exerciseId]: i })
+        left.forEach((r, k) => {
+          if (r.kind !== 'rest' || r.reason !== 'side') return
+          const before = left[k - 1]
+          expect(before?.kind === 'work' && before.item.exerciseId === r.next?.item.exerciseId).toBe(true)
+        })
+        checked++
+      })
+    }
+    expect(checked).toBeGreaterThan(0)
+  })
+
+  it('keeps the round rest when the last exercise of a superset is skipped', () => {
+    for (const s of sessions()) {
+      const all = buildSteps(s)
+      s.blocks.forEach((b, bi) => {
+        if (b.format !== 'superset' || b.rounds < 2) return
+        const lastId = b.items[b.items.length - 1].exerciseId
+        const from = all.findIndex((st) => st.kind === 'work' && st.blockIdx === bi && st.item.exerciseId === lastId)
+        const left = withoutSkipped(all, { [lastId]: from })
+        // Between rounds of what's left there is still a full rest.
+        const firstId = b.items[0].exerciseId
+        const rounds = works(left).filter((w) => w.blockIdx === bi && w.item.exerciseId === firstId && w.round > 1 && w.side !== 2)
+        for (const w of rounds) {
+          const rest = left[left.indexOf(w) - 1] as RestStep
+          expect(rest.kind).toBe('rest')
+          expect(rest.seconds).toBe(b.restSec)
+        }
+      })
+    }
+  })
+
   it('is a no-op without skips', () => {
     const all = buildSteps(sessions()[3])
     expect(withoutSkipped(all, {})).toBe(all)

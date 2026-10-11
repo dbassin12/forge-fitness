@@ -1,5 +1,5 @@
 import type { ISODate } from '@/domain/types'
-import { getExercise, type Exercise } from '@/data/exercises'
+import { EXERCISES, getExercise, type Exercise } from '@/data/exercises'
 import { isAllowed, LADDERS, resolveSlot, type LadderId, type PlanContext, type ProgressState } from '@/engines/plan'
 
 /**
@@ -19,6 +19,11 @@ export function currentFor(ladder: LadderId, progress: ProgressState, ctx: PlanC
   const rung = progress.ladders[ladder]?.rung ?? LADDERS[ladder].start[0]
   const r = resolveSlot(ladder, rung, ctx)
   return getExercise(r?.exerciseId ?? fallback) ?? getExercise(fallback)!
+}
+
+/** The easiest allowed exercise of a movement pattern (when a preference list is all ruled out). */
+function anyAllowed(pattern: Exercise['pattern'], ctx: PlanContext): Exercise | undefined {
+  return EXERCISES.filter((e) => e.pattern === pattern && !e.tags?.includes('cooldown') && isAllowed(e, ctx)).sort((a, b) => a.level - b.level)[0]
 }
 
 /** First allowed exercise from a preference list. */
@@ -81,8 +86,9 @@ export interface DeckPlan {
 export function deckPlan(progress: ProgressState, ctx: PlanContext): DeckPlan {
   const cardio =
     firstAllowed(ctx.quietMode || ctx.aches.includes('knees') ? ['step-jacks', 'march-in-place', 'shadow-boxing'] : ['jumping-jacks', 'high-knees', 'step-jacks', 'march-in-place'], ctx) ??
+    anyAllowed('cond', ctx) ??
     getExercise('march-in-place')!
-  const core = firstAllowed(['crunch', 'bicycle-crunch', 'dead-bug', 'reverse-crunch', 'bird-dog'], ctx) ?? getExercise('dead-bug')!
+  const core = firstAllowed(['crunch', 'bicycle-crunch', 'dead-bug', 'reverse-crunch', 'bird-dog'], ctx) ?? anyAllowed('core', ctx) ?? getExercise('dead-bug')!
   return {
     suits: {
       spades: currentFor('squat', progress, ctx, 'bodyweight-squat'),

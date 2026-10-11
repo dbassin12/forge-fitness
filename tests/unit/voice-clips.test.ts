@@ -79,6 +79,32 @@ describe('speech engine with the natural voice', () => {
     }
   })
 
+  it('never falls back to the phone voice for a line cancelled while its recording loaded', async () => {
+    vi.useFakeTimers()
+    const spoken: string[] = []
+    const win = globalThis as unknown as { window?: unknown }
+    const had = 'window' in win
+    win.window = {
+      speechSynthesis: { speak: (u: { text: string }) => spoken.push(u.text), cancel: () => {}, getVoices: () => [] },
+      SpeechSynthesisUtterance: class {
+        constructor(public text: string) {}
+      },
+    }
+    ;(globalThis as unknown as { SpeechSynthesisUtterance: unknown }).SpeechSynthesisUtterance = (win.window as { SpeechSynthesisUtterance: unknown }).SpeechSynthesisUtterance
+    try {
+      vi.spyOn(clips, 'play').mockImplementation(() => new Promise((r) => setTimeout(() => r(false), 2500)))
+      void speech.speak('Rest for 60 seconds.')
+      await vi.advanceTimersByTimeAsync(100)
+      speech.cancel()
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(spoken).toEqual([])
+    } finally {
+      vi.useRealTimers()
+      if (!had) delete win.window
+      delete (globalThis as unknown as { SpeechSynthesisUtterance?: unknown }).SpeechSynthesisUtterance
+    }
+  })
+
   it('skips the pack for the phone voice, a per-line override, or when muted', async () => {
     vi.useFakeTimers()
     try {

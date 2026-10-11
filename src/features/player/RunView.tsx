@@ -451,8 +451,11 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
           type="button"
           aria-label={voiceOn ? 'Mute voice' : 'Turn voice on'}
           onClick={() => {
-            if (voiceOn) speech.cancel()
-            updateVoice({ enabled: !voiceOn })
+            if (!voiceOn) return updateVoice({ enabled: true })
+            hush()
+            updateVoice({ enabled: false })
+            // Mid-explanation: carry on from the same step, as captions.
+            if (hold.current && !paused) speakIntro(intro.current.at)
           }}
           className="-mr-2 grid h-10 w-10 place-items-center rounded-full text-muted hover:bg-surface-2"
         >
