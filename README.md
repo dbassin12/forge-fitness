@@ -49,8 +49,9 @@ deployed. Install it the same way as Forge (below), starting from that address.
   **Heart**, instead of the phone's robotic text-to-speech. It plays offline once heard, and the
   phone's own voice is still there as an option. See [Natural voice](#natural-voice).
 - **Skip exercises you don't like.** Leave any exercise out from its page, the swap sheet, the
-  workout preview, mid-workout, or **Settings → Exercises I skip**. Workouts, warm-ups, snacks
-  and games then use the closest alternative instead.
+  workout preview, mid-workout, the summary right after a workout ("Not a fan of any of
+  these?"), or **Settings → Exercises I skip**. Workouts, warm-ups, snacks and games then use the
+  closest alternative instead.
 - **Food and calories.** Personal calorie, protein, carb, fat, fiber and water targets;
   400 built-in foods, barcode scanning (Open Food Facts), online search, recents, favorites,
   quick add, custom foods, a weekly meal plan from 55 quick recipes with a grocery list, and a Lite

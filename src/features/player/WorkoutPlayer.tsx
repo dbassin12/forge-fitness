@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowDown, ArrowUp, Clock, Flame, Play, RotateCcw, Share2, Sparkles, Star, Zap } from 'lucide-react'
+import { ArrowDown, ArrowUp, Ban, Clock, Flame, Play, RotateCcw, Share2, Sparkles, Star, ThumbsDown, Zap } from 'lucide-react'
 import { APP, isBloom, W } from '@/app/brand'
 import { burst } from '@/app/confetti'
 import { COACH_STYLES, usePrefs } from '@/app/prefs'
@@ -31,7 +31,7 @@ import { cx } from '@/ui/cx'
 import { unlockAudio } from '@/voice/beeps'
 import { useVoiceSettings, type ExplainMode } from '@/voice/settings'
 import { markExplained, useExplained } from '@/state/howto'
-import { setExerciseSkipped } from '@/state/store'
+import { setExerciseSkipped, useSkipped } from '@/state/store'
 import { Segmented } from '@/ui/Segmented'
 import { speech } from '@/voice/speech'
 import { blockSummary, gearFor } from '../train/sessionMeta'
@@ -349,10 +349,20 @@ export default function WorkoutPlayer() {
               <span className="font-semibold">{b.title}</span>
               <span className="text-xs text-muted">{blockSummary(b)}</span>
             </div>
-            <div className="mt-0.5 truncate text-sm text-muted">{b.items.map((it) => getExercise(it.exerciseId)?.name).join(' · ')}</div>
+            <div className="mt-0.5 truncate text-sm text-muted">
+              {b.items.map((it, k) => (
+                <Fragment key={it.exerciseId}>
+                  {k ? ' · ' : ''}
+                  <Link to={`/exercise/${it.exerciseId}`} className="underline decoration-dotted underline-offset-4 hover:text-ink">
+                    {getExercise(it.exerciseId)?.name}
+                  </Link>
+                </Fragment>
+              ))}
+            </div>
           </div>
         ))}
       </Card>
+      <p className="mt-2 px-1 text-xs text-muted">Tap any {W.exercise} to see how it’s done before you start.</p>
       {gear.length ? <p className="mt-3 text-sm text-muted">Have ready: {gear.join(', ')}.</p> : null}
       <CoachPicker />
       <div className="mt-4">
@@ -595,6 +605,7 @@ function Summary({ result, onDone }: { result: FinishResult; onDone: () => void 
           </Card>
         </>
       ) : null}
+      <NotAFan ids={[...new Set(result.log.exercises.map((e) => e.exerciseId))]} />
       {sharing ? <p className="mt-3 text-center text-sm text-muted">{sharing}</p> : null}
       <div className="mt-auto grid grid-cols-[auto_1fr] gap-2 pt-6" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
         <Button size="lg" variant="secondary" icon={<Share2 size={20} />} onClick={() => void share()}>
@@ -605,5 +616,41 @@ function Summary({ result, onDone }: { result: FinishResult; onDone: () => void 
         </Button>
       </div>
     </div>
+  )
+}
+
+/** Right after a workout, while it's fresh: tap any move you didn't like to leave it out from now on. */
+function NotAFan({ ids }: { ids: string[] }) {
+  const skipped = useSkipped()
+  const moves = ids.map((id) => getExercise(id)).filter((e) => !!e)
+  if (!skipped || !moves.length) return null
+  return (
+    <>
+      <h2 className="mt-6 mb-1 px-1 text-[13px] font-semibold uppercase tracking-wider text-muted">Not a fan of any of these?</h2>
+      <p className="mb-2 px-1 text-sm text-muted">
+        Tap a {W.exercise} to leave it out of your next {W.workouts}. Tap again to keep it.
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {moves.map((ex) => {
+          const on = skipped.has(ex.id)
+          return (
+            <button
+              key={ex.id}
+              type="button"
+              aria-pressed={on}
+              aria-label={`Leave out ${ex.name}`}
+              onClick={() => {
+                haptic('light')
+                void setExerciseSkipped(ex.id, !on)
+              }}
+              className={cx('pressable flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm', on ? 'border-bad/50 bg-bad/10 text-bad' : 'border-line bg-surface')}
+            >
+              {on ? <Ban size={14} /> : <ThumbsDown size={14} className="text-muted" />}
+              <span className={on ? 'line-through' : undefined}>{ex.name}</span>
+            </button>
+          )
+        })}
+      </div>
+    </>
   )
 }

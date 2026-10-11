@@ -13,6 +13,7 @@
   - "Never include …" in the swap sheet.
   - A thumbs-down on warm-up and cool-down rows in the workout preview.
   - Mid-workout, for today or for good.
+  - On the summary right after a workout ("Not a fan of any of these?"), while the moves are fresh.
 - The library marks skipped moves. Helpers are `setExerciseSkipped` and `useSkipped` in `src/state/store.ts`.
 
 ### 2. A how-to before each exercise
@@ -25,6 +26,7 @@
   - Warm-up and cool-down moves get only their first ~45 words read out. The screen always lists every step.
 - **What's said.** `restLines()` in `src/features/player/announce.ts`.
 - **Mid-set "How to".** Pauses the set and opens the steps, "Read it to me", the full tutorial, and "Not for me: skip this exercise".
+- **Before starting.** Every move named on the workout intro screen links to its guide.
 - **Skipping mid-workout.** `withoutSkipped()` drops the exercise's remaining sets and keeps the ones already done. Back-to-back rests merge, keeping the first. The cursor moves to the transition into the next exercise. The run state keeps `skips`.
 
 ### 3. A natural voice

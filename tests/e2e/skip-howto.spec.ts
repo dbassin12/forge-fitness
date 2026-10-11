@@ -74,3 +74,39 @@ test('the player explains a new exercise first, and you can skip one mid-workout
   await expect(page.getByText('First up · how to do it')).toHaveCount(0)
   await expectNoErrors(errors)
 })
+
+test('after a workout you can leave out a move you didn’t like, and look moves up before starting', async ({ page }) => {
+  const errors = trackErrors(page)
+  await onboard(page)
+
+  // From the intro, any move opens its guide.
+  await page.goto('/#/workout?snack=3')
+  const move = page.getByRole('link').filter({ hasText: /\w/ }).first()
+  const name = (await move.textContent())!.trim()
+  await move.click()
+  await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Tutorial' })).toBeVisible()
+  await page.goBack()
+
+  await page.getByRole('button', { name: "Let's go" }).click()
+  const feedback = page.getByRole('heading', { name: 'Workout done!' })
+  for (let i = 0; i < 80 && !(await feedback.isVisible()); i++) {
+    for (const n of ['Done', 'Skip rest', 'Go', /^Start( now| · \d+)$/]) {
+      const b = page.getByRole('button', { name: n, exact: typeof n === 'string' })
+      if (await b.isVisible()) {
+        await b.click()
+        break
+      }
+    }
+  }
+  await page.getByRole('button', { name: /Just right/ }).click()
+  await expect(page.getByRole('heading', { name: 'Nice work!' })).toBeVisible()
+
+  // "Not a fan?" on the summary skips it from now on (and a second tap keeps it).
+  const chip = page.getByRole('button', { name: `Leave out ${name}` })
+  await chip.click()
+  await expect(chip).toHaveAttribute('aria-pressed', 'true')
+  await page.goto('/#/train/skipped')
+  await expect(page.getByRole('button', { name: `Bring back ${name}` })).toBeVisible()
+  await expectNoErrors(errors)
+})
