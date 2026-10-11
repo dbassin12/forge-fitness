@@ -270,3 +270,14 @@ test('phone reminders: no setup, straight into the calendar', async ({ page }) =
   await expect(page.getByRole('link', { name: /Get phone reminders, done/ })).toBeVisible()
   await expectNoErrors(errors)
 })
+
+test('Settings: check for updates shows the version and that it is current', async ({ page }) => {
+  const errors = trackErrors(page)
+  await onboard(page)
+  await page.goto('/#/more')
+  const row = page.getByRole('button', { name: /Check for updates/ })
+  await expect(row).toContainText(/Version \d{4}-\d{2}-\d{2}/)
+  await row.click()
+  await expect(row).toContainText(/You’re up to date · \d{4}-\d{2}-\d{2}/, { timeout: 15_000 })
+  await expectNoErrors(errors)
+})

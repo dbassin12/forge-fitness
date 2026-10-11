@@ -135,6 +135,7 @@ const FORGE_FAQ = [
   { q: 'Can I change my days or session length?', a: 'Yes: Settings → Schedule. Your progress and levels stay as they are.' },
   { q: 'I don’t like one of the exercises.', a: 'Tap it under “Not a fan of any of these?” after a workout, “Not for me” on its page, “Never include” in the swap sheet, or pick it in Settings → Exercises I skip. It stays out of your workouts, warm-ups and games until you bring it back.' },
   { q: 'The voice coach is silent.', a: 'On iPhone check the volume, and the silent switch: with “Play over my music” on, the coach follows it. In Settings → Voice & sounds make sure the voice coach is on, and pick a voice. Captions always show either way.' },
+  { q: 'How do I get the newest version?', a: 'Forge checks when you open it or come back to it, and shows “A new version is ready”: tap Update. To check right away, use Settings → Check for updates. Your data stays as it is.' },
   { q: 'Where is my data?', a: 'Only on this phone. Export a backup now and then from Settings → Backup & data, and restore it on a new phone.' },
 ]
 
@@ -247,6 +248,7 @@ const BLOOM_FAQ = [
   { q: 'I’m pregnant.', a: 'Turn on Settings → Be gentle with → I’m pregnant. Bloom then skips belly-down poses, deep twists and core work on your back. Please check with your doctor or midwife first.' },
   { q: 'Can I change my days or practice length?', a: 'Yes: Settings → Schedule. Your progress stays as it is.' },
   { q: 'The voice guide is silent.', a: 'On iPhone check the silent switch and volume. In Settings → Voice & sounds make sure the voice guide is on, and pick a voice. Captions always show either way.' },
+  { q: 'How do I get the newest version?', a: 'Bloom checks when you open it or come back to it, and shows “A new version is ready”: tap Update. To check right away, use Settings → Check for updates. Your data stays as it is.' },
   { q: 'Where is my data?', a: 'Only on this phone, kept separate from Forge. Export a backup now and then from Settings → Backup & data, and restore it on a new phone.' },
 ]
 

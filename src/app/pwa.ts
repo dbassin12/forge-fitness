@@ -19,6 +19,14 @@ interface PwaState {
 }
 
 let updateSW: ((reload?: boolean) => Promise<void>) | undefined
+let registration: ServiceWorkerRegistration | undefined
+let lastCheck = 0
+
+/** Look for a new version now (quietly; a found one shows the "new version" prompt). */
+function lookForUpdate(): Promise<void> {
+  lastCheck = Date.now()
+  return registration ? registration.update().then(() => undefined) : Promise.resolve()
+}
 
 export const usePwa = create<PwaState>((set, get) => ({
   needRefresh: false,
@@ -54,11 +62,45 @@ export function initPwa() {
       usePwa.setState({ offlineReady: true })
       setTimeout(() => usePwa.setState({ offlineReady: false }), 4000)
     },
-    onRegistered(registration) {
-      // Check for app updates every hour while open.
-      setInterval(() => void registration.update(), 60 * 60 * 1000)
+    onRegistered(r) {
+      registration = r
+      lastCheck = Date.now()
+      // Check for app updates every hour while open, and whenever you come back to the app (a phone
+      // brings a Home Screen app back from the background without reloading it).
+      setInterval(() => void lookForUpdate().catch(() => undefined), 60 * 60 * 1000)
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && Date.now() - lastCheck > 5 * 60 * 1000) void lookForUpdate().catch(() => undefined)
+      })
     },
   })
+}
+
+export type UpdateCheck = 'updating' | 'latest' | 'offline' | 'unavailable'
+
+/**
+ * "Check for updates": look for a new version now and, if there is one, switch to it as soon as
+ * it has downloaded (the page reloads into it).
+ */
+export async function checkForUpdate(): Promise<UpdateCheck> {
+  const pwa = usePwa.getState()
+  if (pwa.needRefresh) {
+    pwa.update()
+    return 'updating'
+  }
+  if (!registration) return 'unavailable'
+  try {
+    await lookForUpdate()
+  } catch {
+    return 'offline'
+  }
+  // A newer version downloads in the background; give it a little while to be ready.
+  const deadline = Date.now() + 30_000
+  while ((registration.installing || registration.waiting) && !usePwa.getState().needRefresh && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 300))
+  }
+  if (!usePwa.getState().needRefresh) return 'latest'
+  usePwa.getState().update()
+  return 'updating'
 }
 
 /**
@@ -96,6 +138,9 @@ function registerAppSW(o: { onNeedRefresh: () => void; onOfflineReady: () => voi
   return async () => {
     await ready
     skipWaiting?.()
+    // The reload normally follows the new version taking over this page. A page the old version
+    // never controlled (e.g. the first visit since installing) sees no takeover: reload anyway.
+    setTimeout(() => window.location.reload(), 3000)
   }
 }
 

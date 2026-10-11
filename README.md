@@ -101,6 +101,11 @@ deployed. Install it the same way as Forge (below), starting from that address.
    your calendar app. That's all. (Prefer smart notifications? Pick **Smart notifications** on
    the same screen after doing the server setup below.)
 
+**Updates** arrive on their own: whenever a new version is published, Forge notices when you open
+it or come back to it and shows **"A new version of Forge is ready" → Update**. To check right
+away, use **Settings → Check for updates**, which also shows the version you're on. Updating never
+touches your data.
+
 Your data lives on the phone. Use **Settings → Backup & data → Export backup** now and then
 (especially before switching phones), and **Protect** storage so the browser won't clear it.
 
