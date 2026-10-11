@@ -9,7 +9,7 @@ import { getExercise, motionFor } from '@/data/exercises'
 import { haptic } from '@/device/haptics'
 import { sfx } from '@/device/sfx'
 import { planContext } from '@/engines/plan'
-import { wheelSlices, wheelXp, type WheelSlice } from '@/engines/play'
+import { spokenMove, wheelSlices, wheelXp, type WheelSlice } from '@/engines/play'
 import { todayISO } from '@/lib/dates'
 import { usePlan } from '@/state/plan'
 import { logPlay } from '@/state/play'
@@ -66,7 +66,8 @@ export default function WheelPage() {
       setResult(s)
       sfx.pop()
       haptic('success')
-      void speech.speak(`${s.label}!`, { priority: 'cue', interrupt: true })
+      const ex = getExercise(s.exerciseId)
+      void speech.speak(ex ? spokenMove(ex, s.amount, s.measure) : `${s.label}!`, { priority: 'cue', interrupt: true })
     }
     if (reducedMotion()) {
       if (wheelRef.current) wheelRef.current.style.transform = `rotate(${to}deg)`

@@ -12,7 +12,7 @@ import { haptic } from '@/device/haptics'
 import { sfx } from '@/device/sfx'
 import { useTotalXp } from '@/state/gamification'
 import { CountUp } from '@/ui/CountUp'
-import { coachLine } from '@/voice/coachLines'
+import { COACH_LINES, coachLine } from '@/voice/coachLines'
 import { makeShareCard, shareImage } from './shareCard'
 import { db, kvSet } from '@/db/db'
 import { getExercise } from '@/data/exercises'
@@ -39,7 +39,8 @@ import { useSessionFromParams } from '../train/useSessionParams'
 import { finishWorkout, type FinishResult, type StepValues } from './finish'
 import { StreakIcon } from '../today/StreakCard'
 import { RunView } from './RunView'
-import { buildSteps, withoutSkipped } from './steps'
+import { buildSteps, skipFrom, withoutSkipped } from './steps'
+import { sessionLines } from './announce'
 import { depthFor, FULL_EXPLANATIONS } from './howto'
 
 const SAVE_KEY = 'player.run'
@@ -97,6 +98,14 @@ export default function WorkoutPlayer() {
   const explained = useExplained()
   const depthOf = useCallback((id: string) => depthFor(voice.explain, explained?.[id] ?? 0), [voice.explain, explained])
 
+  // Download the natural voice for this workout while you look over the intro.
+  const style = usePrefs((st) => st.coach)
+  useEffect(() => {
+    if (!steps.length) return
+    const coach = Object.values(COACH_LINES[style] ?? {}).flat()
+    void speech.prefetch(sessionLines(steps, depthOf, coach))
+  }, [steps, depthOf, style])
+
   // Keep the screen on and silence speech when leaving.
   useEffect(() => {
     return () => {
@@ -141,18 +150,12 @@ export default function WorkoutPlayer() {
   const skipExercise = (exerciseId: string, forever: boolean) => {
     if (!run) return
     if (forever) void setExerciseSkipped(exerciseId, true)
-    const at = (id: string) => allSteps.findIndex((st) => st.id === id)
-    const from = at(steps[run.cursor]?.id ?? '')
-    const nextSkips = { ...run.skips, [exerciseId]: Math.max(0, from) }
-    const remaining = withoutSkipped(allSteps, nextSkips)
-    // Carry on with the transition into the next exercise still to come (its how-to, if it's new).
-    const nextWork = remaining.findIndex((st) => st.kind === 'work' && at(st.id) >= from)
-    if (nextWork < 0) {
+    const { skips: nextSkips, cursor } = skipFrom(allSteps, run.skips, steps[run.cursor], exerciseId)
+    if (cursor === null) {
       setRun({ ...run, skips: nextSkips })
       complete(run.values)
       return
     }
-    const cursor = remaining[nextWork - 1]?.kind === 'rest' ? nextWork - 1 : nextWork
     persist({ ...run, skips: nextSkips, cursor })
   }
 

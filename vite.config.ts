@@ -75,7 +75,8 @@ export default defineConfig({
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2,wasm,json}'],
         // iOS fetches launch screens itself when the app is installed; no need to precache them.
-        globIgnores: ['splash/**', 'bloom/splash/**'],
+        // Nor the natural voice: its recordings are cached as they're used (see src/sw.ts).
+        globIgnores: ['splash/**', 'bloom/splash/**', 'voice/**'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
       },
       devOptions: { enabled: false, type: 'module' },
@@ -96,7 +97,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['tests/unit/**/*.test.{ts,tsx}', 'tests/visual/**/*.test.ts', 'tests/api/**/*.test.ts', 'server/**/*.test.ts', 'shared/**/*.test.ts'],
+    include: ['tests/unit/**/*.test.{ts,tsx}', 'tests/visual/**/*.test.ts', 'tests/voice/**/*.test.ts', 'tests/api/**/*.test.ts', 'server/**/*.test.ts', 'shared/**/*.test.ts'],
     environment: 'node',
     setupFiles: ['tests/unit/setup.ts'],
     restoreMocks: true,

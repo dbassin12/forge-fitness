@@ -9,3 +9,5 @@ anim-sheets
 .env*
 !.env.example
 *.tsbuildinfo
+voice-lines.json
+__pycache__/

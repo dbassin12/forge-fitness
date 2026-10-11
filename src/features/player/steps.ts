@@ -157,9 +157,33 @@ export function withoutSkipped(steps: Step[], skips: Record<string, number> | un
   return link(out)
 }
 
-/** The target as a short spoken sentence: "12 reps.", "30 seconds, first side." */
+/**
+ * Skip the rest of an exercise from the step you're on: the new skips, the steps left, and where to
+ * carry on (the transition into the next exercise still to come), or `null` when nothing is left.
+ */
+export function skipFrom(
+  all: Step[],
+  skips: Record<string, number> | undefined,
+  current: Step | undefined,
+  exerciseId: string,
+): { skips: Record<string, number>; steps: Step[]; cursor: number | null } {
+  const at = (id: string) => all.findIndex((st) => st.id === id)
+  const from = Math.max(0, current ? at(current.id) : 0)
+  const next = { ...skips, [exerciseId]: from }
+  const steps = withoutSkipped(all, next)
+  const work = steps.findIndex((st) => st.kind === 'work' && at(st.id) >= from)
+  if (work < 0) return { skips: next, steps, cursor: null }
+  return { skips: next, steps, cursor: steps[work - 1]?.kind === 'rest' ? work - 1 : work }
+}
+
+/**
+ * The target as a short spoken sentence: "12 reps.", "30 seconds each side." (A one-side-at-a-time
+ * set is introduced as a whole; "Switch sides" comes when it's time.)
+ */
 export function spokenTarget(w: WorkStep): string {
-  return `${describeWork(w)}.`
+  if (w.seconds !== undefined) return `${w.seconds} seconds${w.side ? ' each side' : ''}.`
+  const r = w.reps ?? 0
+  return `${r} ${repWord(w.item.exerciseId, r)}${w.side || w.cyclesPerRep === 2 || w.item.perSide ? ' each side' : ''}.`
 }
 
 /** Index of the work step before/after `i` (for back/skip). */

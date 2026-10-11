@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { getExercise } from '@/data/exercises'
 import { DEFAULT_EQUIPMENT } from '@/domain/types'
-import { generateSession, type PlanInputs } from '@/engines/plan'
+import { generateSession, generateSnack, type PlanInputs } from '@/engines/plan'
 import { initialProgress } from '@/engines/progression/progress'
 import { holdsForIntro, restLines } from '@/features/player/announce'
 import { aggregate } from '@/features/player/finish'
 import { depthFor, FULL_EXPLANATIONS, howToSteps, introLines, spokenStepCount } from '@/features/player/howto'
-import { buildSteps, withoutSkipped, type RestStep, type Step, type WorkStep } from '@/features/player/steps'
+import { buildSteps, skipFrom, withoutSkipped, type RestStep, type Step, type WorkStep } from '@/features/player/steps'
 
 const base: PlanInputs = {
   goal: 'build_muscle',
@@ -90,6 +90,31 @@ describe('skipping an exercise mid-workout', () => {
     const after = left[left.indexOf(lastB) + 1]
     expect(after.kind).toBe('rest')
     expect((after as RestStep).seconds).toBe(s.blocks[superset].restSec)
+  })
+
+  it('carries on with the transition into the next exercise (its how-to)', () => {
+    for (const s of sessions()) {
+      const all = buildSteps(s)
+      const firstWork = all.findIndex((st) => st.kind === 'work')
+      const victim = (all[firstWork] as WorkStep).item.exerciseId
+      // From the exercise itself, and from the how-to before it.
+      for (const current of [all[firstWork], all[firstWork - 1]]) {
+        const r = skipFrom(all, undefined, current, victim)
+        if (r.cursor === null) continue
+        const landed = r.steps[r.cursor] as RestStep
+        expect(landed.kind).toBe('rest')
+        expect(landed.next!.item.exerciseId).not.toBe(victim)
+        expect(landed.first).toBe(true)
+        expect(works(r.steps.slice(r.cursor)).some((w) => w.item.exerciseId === victim)).toBe(false)
+      }
+    }
+  })
+
+  it('has nothing left to do once every exercise is skipped', () => {
+    const all = buildSteps(generateSnack(base, 2, 0))
+    let r: ReturnType<typeof skipFrom> | undefined
+    for (const id of new Set(works(all).map((w) => w.item.exerciseId))) r = skipFrom(all, r?.skips, all[0], id)
+    expect(r!.cursor).toBeNull()
   })
 
   it('is a no-op without skips', () => {

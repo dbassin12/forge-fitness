@@ -40,6 +40,17 @@ deployed. Install it the same way as Forge (below), starting from that address.
   tutorials (setup, movement, breathing, common mistakes with the wrong form shown, easier and
   harder versions). During workouts the voice counts reps in tempo, calls rest and "next up",
   and the screen stays awake.
+- **A how-to before every new move.** Before an exercise's first set, the player shows the
+  demo slowed down with numbered steps, and the coach reads them out one by one. The countdown
+  waits until it's done. A move is explained in full the first two times it comes up, then the
+  coach gives a quick reminder instead (or explains every time, or never: your choice). **How to**
+  during a set pauses and brings the steps back.
+- **A natural coach voice.** Everything the coach says is pre-recorded with a neural voice:
+  **Heart** (female) or **Michael** (male). It plays offline once heard, and the phone's own voice
+  is still there as an option. See [Natural voice](#natural-voice).
+- **Skip exercises you don't like.** Leave any exercise out from its page, the swap sheet, the
+  workout preview, mid-workout, or **Settings → Exercises I skip**. Workouts, warm-ups, snacks
+  and games then use the closest alternative instead.
 - **Food and calories.** Personal calorie, protein, carb, fat, fiber and water targets;
   400 built-in foods, barcode scanning (Open Food Facts), online search, recents, favorites,
   quick add, custom foods, a weekly meal plan from 55 quick recipes with a grocery list, and a Lite
@@ -171,6 +182,8 @@ Phone (PWA, offline-first)                     Vercel project
 | `src/engines` | Pure, unit-tested logic: plan generator and fitter, progression, nutrition targets, meal planner, grocery list, XP/streaks/achievements, weekly review, tips, calendar export |
 | `src/features` | Screens: onboarding, today, train, player, eat, progress, coach, more |
 | `src/state` | Dexie-backed state hooks and actions |
+| `src/voice` | Speech engine, natural-voice clip player and catalog, coach lines, tutorial scripts |
+| `public/voice` | Natural voice recordings (`npm run voice`), one folder per voice |
 | `src/sw.ts` | Service worker: precache, push, notification taps |
 | `shared` | Code used by both the app and the server (reminder rules and scheduling) |
 | `server`, `api` | Vercel functions and their helpers |
@@ -184,10 +197,33 @@ npm run check      # typecheck + lint + unit/API tests
 npm run build      # production build (dist/)
 npm run e2e        # Playwright end-to-end tests at phone size (builds and serves dist/)
 npm run anim:sheet # render animation contact sheets to anim-sheets/
+npm run voice      # record any new coaching lines in the natural voices (see below)
 ```
 
 The Animation Lab at `/#/lab` shows every exercise animation with a scrubber (and at
 `/bloom/#/lab`, every yoga pose).
+
+### Natural voice
+
+Forge's coach voices are recorded ahead of time with [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M)
+(an open text-to-speech model, Apache-2.0). Every sentence the app can say, from counts and
+"Rest for 45 seconds" to every how-to step, cue and tutorial line, is listed by
+`src/voice/catalog.ts`. Each one is saved as a small MP3 in `public/voice/<voice>/`, named after
+a hash of the sentence. At run time the player looks each sentence up, downloads what a workout
+needs while you read its intro, and plays it through Web Audio. Anything not recorded is said by
+the phone's voice instead.
+
+`tests/voice/catalog.test.ts` fails when the coaching copy changes and a sentence has no
+recording. To record the new lines (needs Python 3.10–3.12 and ffmpeg):
+
+```sh
+pip install "kokoro>=0.9.4" soundfile
+pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+npm run voice      # exports the catalog, then records only what's missing
+```
+
+A full recording takes about an hour per voice on a laptop CPU. Only missing sentences are
+recorded, so a copy change takes seconds.
 
 To try either app on a phone on the same Wi-Fi, run `npm run dev -- --host` and open the
 `Network` address it prints (add `bloom/` for Bloom). Over plain `http` the app runs fully, but

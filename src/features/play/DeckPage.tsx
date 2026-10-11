@@ -9,7 +9,7 @@ import { highlightFor, motionFor } from '@/data/exercises'
 import { haptic } from '@/device/haptics'
 import { sfx } from '@/device/sfx'
 import { planContext } from '@/engines/plan'
-import { buildDeck, cardReps, deckPlan, deckTotals, pluralName, RANK_LABEL, SUIT_RED, SUIT_SYMBOL, SUITS, type Card as PlayingCard, type DeckMode, type DeckSize } from '@/engines/play'
+import { buildDeck, cardReps, deckPlan, deckTotals, pluralName, RANK_LABEL, spokenMove, SUIT_RED, SUIT_SYMBOL, SUITS, type Card as PlayingCard, type DeckMode, type DeckSize } from '@/engines/play'
 import { usePlan } from '@/state/plan'
 import { logPlay, saveDeckTime, useDeckBests } from '@/state/play'
 import { Button } from '@/ui/Button'
@@ -92,7 +92,7 @@ export default function DeckPage() {
       if (c && dp) {
         const ex = dp.suits[c.suit]
         const n = cardReps(c, mode, ex)
-        void speech.speak(`${n} ${pluralName(ex.name, n)}.`, { priority: 'cue', interrupt: true })
+        void speech.speak(spokenMove(ex, n, 'reps'), { priority: 'cue', interrupt: true })
       }
     }, 350)
     return () => window.clearTimeout(id)

@@ -40,6 +40,7 @@ const FORGE_SECTIONS: Section[] = [
     points: [
       'Every exercise has an animated, voiced tutorial: setup, the movement, breathing, common mistakes, and easier or harder versions.',
       'The working muscles glow in your accent color, so you know where you should feel it.',
+      'Don’t like an exercise? Tap “Not for me” on its page, or pick several in Settings → Exercises I skip. Forge leaves them out and uses the closest alternative.',
     ],
     cta: { label: 'Open the exercise library', to: '/train/library' },
   },
@@ -48,7 +49,9 @@ const FORGE_SECTIONS: Section[] = [
     emoji: '▶️',
     title: 'The workout player',
     points: [
-      'The voice coach counts your reps in tempo and the timers run themselves. Pick Hype, Calm, Drill sergeant or Zen.',
+      'Before a new exercise, the coach explains how to do it, step by step, with the demo playing. The countdown waits until it’s done; tap Start now to go sooner.',
+      'The voice coach counts your reps in tempo and the timers run themselves. Pick Hype, Calm, Drill sergeant or Zen, and a natural voice in Settings → Voice & sounds.',
+      'Stuck mid-set? Tap How to for the steps, or skip that exercise for today or for good.',
       'Done finishes a set early, the arrows skip or go back, and you can fix your reps during the rest.',
       'At the end, say how it felt. Too easy or too hard, and the next workout adapts.',
     ],
@@ -130,7 +133,8 @@ const FORGE_FAQ = [
   { q: 'Something hurts.', a: 'Stop that exercise. Tap the swap icon next to it in the workout preview for an alternative, and add the ache in Settings → Aches & limits so Forge avoids it. Sharp or lasting pain is a reason to see a professional.' },
   { q: 'I found my heavier dumbbell.', a: 'Settings → Equipment, switch it on. Goblet squats and one-arm rows will use it.' },
   { q: 'Can I change my days or session length?', a: 'Yes: Settings → Schedule. Your progress and levels stay as they are.' },
-  { q: 'The voice coach is silent.', a: 'On iPhone check the silent switch and volume. In Settings → Voice & sounds make sure the voice coach is on, and pick a voice. Captions always show either way.' },
+  { q: 'I don’t like one of the exercises.', a: 'Tap “Not for me” on its page, “Never include” in the swap sheet, or pick it in Settings → Exercises I skip. It stays out of your workouts, warm-ups and games until you bring it back.' },
+  { q: 'The voice coach is silent.', a: 'On iPhone check the volume, and the silent switch: with “Play over my music” on, the coach follows it. In Settings → Voice & sounds make sure the voice coach is on, and pick a voice. Captions always show either way.' },
   { q: 'Where is my data?', a: 'Only on this phone. Export a backup now and then from Settings → Backup & data, and restore it on a new phone.' },
 ]
 

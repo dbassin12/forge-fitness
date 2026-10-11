@@ -1,4 +1,7 @@
+import { unlockAudio } from './beeps'
 import { useCaption } from './captions'
+import { clips } from './clipPlayer'
+import { voicePack } from './packs'
 import { useVoiceSettings } from './settings'
 
 export type SpeechPriority = 'cue' | 'count' | 'narration'
@@ -9,6 +12,8 @@ export interface SpeakOptions {
   interrupt?: boolean
   /** Update the on-screen caption (default true). */
   caption?: boolean
+  /** Say it with this natural voice (or `null`: the phone's voice) instead of the chosen one. */
+  pack?: string | null
 }
 
 interface Item {
@@ -65,6 +70,7 @@ class SpeechEngine {
   private queue: Item[] = []
   private busy = false
   private unlocked = false
+  private warmed = false
   private voices: SpeechSynthesisVoice[] = []
   private listeners = new Set<() => void>()
   private generation = 0
@@ -101,8 +107,25 @@ class SpeechEngine {
     return rankVoices(this.voices)[0]
   }
 
+  /** The natural voice to use, if any. */
+  private pack(opts?: SpeakOptions): string | undefined {
+    const id = opts && 'pack' in opts ? opts.pack : useVoiceSettings.getState().pack
+    return id ? voicePack(id)?.id : undefined
+  }
+
+  /** Download what these lines need ahead of time (natural voice), so they play without a gap. */
+  prefetch(lines: string[], pack = this.pack()): Promise<void> {
+    return pack ? clips.prefetch(pack, lines) : Promise.resolve()
+  }
+
   /** Must run inside a user gesture once (iOS Safari requirement). */
   unlock(): void {
+    // The natural voice plays through Web Audio, which needs the same gesture.
+    unlockAudio()
+    if (!this.warmed) {
+      this.warmed = true
+      void this.prefetch(['Get ready.', 'Go!', ...Array.from({ length: 20 }, (_, i) => String(i + 1))])
+    }
     if (!this.supported || this.unlocked) return
     this.unlocked = true
     try {
@@ -119,6 +142,7 @@ class SpeechEngine {
     const pending = this.queue.splice(0)
     pending.forEach((p) => p.resolve())
     this.busy = false
+    clips.stop()
     if (this.supported) window.speechSynthesis.cancel()
   }
 
@@ -139,7 +163,12 @@ class SpeechEngine {
     const gen = this.generation
     const settings = useVoiceSettings.getState()
     if (item.opts.caption !== false) useCaption.getState().set(item.text)
-    if (!settings.enabled || !this.supported) {
+    const pack = settings.enabled ? this.pack(item.opts) : undefined
+    // The natural voice when this line is recorded; otherwise (or if it can't play) the phone's.
+    const natural = pack ? await clips.play(pack, item.text, settings.volume, () => gen === this.generation) : false
+    if (natural) {
+      /* said */
+    } else if (!settings.enabled || !this.supported) {
       await new Promise((r) => setTimeout(r, estimateMs(item.text, settings.rate)))
     } else {
       await new Promise<void>((done) => {

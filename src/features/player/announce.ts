@@ -1,7 +1,7 @@
 import { isBloom } from '@/app/brand'
 import { getExercise } from '@/data/exercises'
 import { coachLine, type CoachMoment } from '@/voice/coachLines'
-import { introLines, type HowToDepth } from './howto'
+import { howToSteps, introLines, type HowToDepth } from './howto'
 import type { RestStep, Step } from './steps'
 
 /**
@@ -42,4 +42,23 @@ export function restLines(st: RestStep, prev: Step | undefined, depth: HowToDept
 /** Whether the countdown waits for the coach to finish introducing the next exercise. */
 export function holdsForIntro(st: RestStep, depth: HowToDepth): boolean {
   return !!st.first && !!st.next && depth !== 'name'
+}
+
+/** Everything the coach may say during these steps (to download the natural voice ahead of time). */
+export function sessionLines(steps: Step[], depthOf: (exerciseId: string) => HowToDepth, coach: string[]): string[] {
+  const out = ['Go!', 'Resume.', ...coach]
+  const seen = new Set<string>()
+  steps.forEach((st, i) => {
+    if (st.kind === 'rest') {
+      const id = st.next?.item.exerciseId
+      out.push(...restLines(st, steps[i - 1], id ? depthOf(id) : 'name', () => '').filter(Boolean))
+      return
+    }
+    for (let n = 1; n <= (st.reps ?? 0); n++) out.push(String(n))
+    if (seen.has(st.item.exerciseId)) return
+    seen.add(st.item.exerciseId)
+    const ex = getExercise(st.item.exerciseId)
+    if (ex) out.push(...ex.copy.cues, ...howToSteps(ex))
+  })
+  return out
 }

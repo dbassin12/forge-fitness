@@ -148,6 +148,11 @@ export function pluralName(name: string, n: number): string {
   return /(ch|sh|x)$/.test(lower) ? `${lower}es` : `${lower}s`
 }
 
+/** How the coach announces a move out loud: "Wall sit. 30 seconds." / "15 bodyweight squats." */
+export function spokenMove(ex: Exercise, amount: number, measure: 'reps' | 'time'): string {
+  return measure === 'time' ? `${ex.name}. ${amount} seconds.` : `${amount} ${pluralName(ex.name, amount)}${ex.perSide ? ' each side' : ''}.`
+}
+
 function moveLabel(ex: Exercise, amount: number, measure: 'reps' | 'time'): string {
   return measure === 'time' ? `${amount}s ${ex.name.toLowerCase()}` : `${amount} ${pluralName(ex.name, amount)}${ex.perSide ? ' / side' : ''}`
 }
