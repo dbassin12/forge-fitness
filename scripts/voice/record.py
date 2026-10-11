@@ -4,7 +4,8 @@
 Every sentence the app can say (exported by `npm run voice:lines`) is synthesized once with
 Kokoro-82M (https://huggingface.co/hexgrad/Kokoro-82M, Apache-2.0), trimmed and saved as a small
 MP3 named after the sentence's key. Only missing sentences are recorded; recordings that are no
-longer in the catalog are removed.
+longer in the catalog are removed. To re-record a voice from scratch, delete its folder (and give
+it a new pack id if it has shipped: phones keep the clips they already have).
 
     npm run voice                       # export the catalog, then record every pack
     python3 scripts/voice/record.py voice-lines.json public/voice --packs heart --jobs 2
@@ -25,18 +26,37 @@ from multiprocessing import get_context
 RATE = 24000
 BITRATE = '32k'
 
+# Lines a voice says unclearly on their own, and how to record them instead (each checked with
+# Whisper). 'say' replaces the text, 'speed' changes the pace, and 'cut' says the carrier phrase and
+# keeps just that word: a number said mid-phrase keeps its "-ty" ("sixty", not "sixteen"), and the
+# "t" of "times" gives a clean place to cut.
+TAKES = {
+    'am_michael': {
+        '50.': {'say': 'Fifty times.', 'cut': 'Fifty'},
+        '60.': {'say': 'Sixty times.', 'cut': 'Sixty'},
+        '70.': {'say': 'Seventy times.', 'cut': 'Seventy'},
+        'Wall sit.': {'speed': 0.8},
+        'Quick, light feet.': {'speed': 0.9},
+    },
+}
+
 
 def trim(audio, rate=RATE):
-    """Cut leading and trailing silence, keeping a short natural edge."""
+    """Cut leading and trailing silence, keeping a short natural edge. The ends fade, so a breath
+    that runs past the cut doesn't click."""
     import numpy as np
 
     level = np.abs(audio)
-    loud = np.flatnonzero(level > max(0.012, float(level.max()) * 0.02))
+    loud = np.flatnonzero(level > max(0.004, float(level.max()) * 0.006))
     if not len(loud):
         return audio
     start = max(0, loud[0] - int(0.03 * rate))
-    end = min(len(audio), loud[-1] + int(0.08 * rate))
-    return audio[start:end]
+    end = min(len(audio), loud[-1] + int(0.12 * rate))
+    out = np.array(audio[start:end], dtype=np.float32)
+    fade_in, fade_out = min(len(out), int(0.005 * rate)), min(len(out), int(0.05 * rate))
+    out[:fade_in] *= np.linspace(0, 1, fade_in, dtype=np.float32)
+    out[len(out) - fade_out:] *= np.linspace(1, 0, fade_out, dtype=np.float32)
+    return out
 
 
 def encode(audio, path):
@@ -64,10 +84,24 @@ def speakable(text):
     return text.replace('’', "'").replace('‘', "'").replace('“', '"').replace('”', '"')
 
 
+def synth(pipe, voice, text):
+    """A sentence as raw audio, recorded the way TAKES says for this voice (None if nothing came out)."""
+    import numpy as np
+
+    take = TAKES.get(voice, {}).get(text, {})
+    results = list(pipe(speakable(take.get('say', text)), voice=voice, speed=take.get('speed', 1.0)))
+    if not results:
+        return None
+    audio = np.concatenate([r.audio.numpy() if hasattr(r.audio, 'numpy') else np.asarray(r.audio) for r in results])
+    if 'cut' in take:
+        word = next(t for t in results[0].tokens if t.text.lower() == take['cut'].lower())
+        audio = audio[int(max(0, word.start_ts - 0.05) * RATE):int((word.end_ts + 0.03) * RATE)]
+    return audio
+
+
 def work(args):
     """Record a batch of sentences in one worker process: [(id, text)] -> [(id, ms)]."""
     voice, items, out_dir, threads = args
-    import numpy as np
     import torch
     from kokoro import KPipeline
 
@@ -75,11 +109,11 @@ def work(args):
     pipe = KPipeline(lang_code='a', repo_id='hexgrad/Kokoro-82M')
     done = []
     for cid, text in items:
-        parts = [a.numpy() if hasattr(a, 'numpy') else a for _, _, a in pipe(speakable(text), voice=voice, speed=1.0)]
-        if not parts:
+        audio = synth(pipe, voice, text)
+        if audio is None:
             print(f'  ! nothing for {text!r}', file=sys.stderr)
             continue
-        audio = trim(np.concatenate(parts))
+        audio = trim(audio)
         encode(audio, os.path.join(out_dir, f'{cid}.mp3'))
         done.append((cid, round(len(audio) * 1000 / RATE)))
     return done
