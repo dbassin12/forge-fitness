@@ -38,7 +38,13 @@
 - **Downloads and offline.** The workout intro screen prefetches what that workout needs. The service worker keeps clips with CacheFirst (`voice` cache) and refreshes manifests NetworkFirst. `voice/**` is not in the precache.
 - **Bloom is unchanged.** Its lines aren't recorded, so `VOICE_PACKS` is empty there and it keeps the phone's voices.
 - **Re-recording.** `npm run voice` exports the catalog (`voice:lines`), then runs `scripts/voice/record.py`, which only records missing sentences. It needs Python 3.10–3.12, `kokoro>=0.9.4`, `soundfile`, spaCy `en_core_web_sm` and ffmpeg. `--verify` re-records unreadable files.
+  - The recorder trims gently and fades each clip's ends, so a breath that runs past the cut doesn't click. Heart was recorded before this; its endings were already clean.
+  - `TAKES` in `record.py` gives a voice an alternate take of a line it says unclearly: different wording, a different speed, or one word cut from a carrier phrase. To re-record one clip, delete its MP3 and run `npm run voice` again.
 - **Quality check.** All 2,747 Heart clips decode in Chromium's Web Audio, and their lengths match the manifest to within 2 ms. A Whisper `base.en` transcription of 250 random clips came back with a 1.1% word error rate. Rechecked with `small.en`, the flagged lines were natural connected speech (e.g. "wall sit" run together), not garbled audio.
+  - **Michael** went through the same checks, on all 2,747 clips. Every clip decodes in Chromium within 2 ms of the manifest. Whisper `base.en` gave a 1.5% word error rate.
+  - Flagged clips were rechecked with `small.en` beside Heart. Michael's final consonants are softer ("squat" can sound like "squad", "sides" like "side"). That's the voice: other speeds and endings didn't change it.
+  - His bare "50", "60" and "70" sounded like "15", "16" and "17". They're now cut from "Fifty times." etc. (`TAKES`). All 69 clips with a teen or a round ten now come through.
+  - He was re-recorded once with the fixed recorder, before shipping. His first take was cut mid-breath in ~40% of clips.
 - **Other speech changes.**
   - Spoken per-side targets now say "each side".
   - Play lines are built from recorded sentences (`spokenMove()`).
@@ -49,6 +55,10 @@
 - **Checks on return.** `src/app/pwa.ts` looks for a new version at launch, hourly, and whenever the app comes back to the foreground (at most every 5 minutes). A phone usually resumes a Home Screen app instead of relaunching it, so before this the "new version" bar could wait until the app was force-closed.
 - **Settings › Check for updates** (`UpdateRow` in `src/features/more/MorePage.tsx`). It shows the version you're on (`__APP_BUILD__`: build date and commit, set in `vite.config.ts`). If there's a newer version, it downloads it and reloads into it; otherwise it says you're up to date or offline.
 - **Never stuck on "Updating".** After telling the new version to take over, the app reloads anyway after 3 seconds. The takeover event never fires on a page the old version didn't control (e.g. the first visit after installing).
+
+### 5. Onboarding lands on Today once
+- `finish()` in `src/features/onboarding/OnboardingPage.tsx` saves the plan, then the profile. Saving the profile is what takes you to Today (`OnlyNewUsers` in `src/App.tsx`).
+- It used to navigate a second time after both saves. That navigation could land after you'd already moved on, and it made the "deck of cards" e2e test fail now and then.
 
 ### Tests
 - **Results.** `npm run check` passes: typecheck, lint and 1,349 unit tests. `npm run e2e` passes all 26 phone-size tests.
@@ -75,7 +85,7 @@
 
 ## Known Issues / Gotchas
 - **iPhone silent switch.** With "Play over my music" on, sounds and the natural voice use the "ambient" audio session, which follows the silent switch. Turning that setting off makes the coach speak through silent mode, but it pauses your music.
-- **Repo size.** Each voice is 2,747 small MP3s: 29 MB for Heart and 32 MB for Michael, who speaks a little slower. A different take of an existing voice needs a new pack id, because clip file names stay the same and the service worker would keep serving the old audio.
+- **Repo size.** Each voice is 2,747 small MP3s: 29 MB for Heart and 33 MB for Michael, who speaks a little slower. A different take of an existing voice needs a new pack id, because clip file names stay the same and the service worker would keep serving the old audio.
 - **Rare numbers.** These fall back to the phone voice unless they can be built from a count plus a phrase: "N seconds" above 120 that isn't a multiple of 5, and counts above 100.
 
 ## Next Steps

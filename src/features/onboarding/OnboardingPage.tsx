@@ -1,5 +1,4 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router'
 import {
   Apple,
   ArrowLeft,
@@ -237,7 +236,6 @@ function Title({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
 }
 
 export default function OnboardingPage() {
-  const navigate = useNavigate()
   const palette = usePalette()
   const [step, setStep] = useState<Step>('welcome')
   const [d, setD] = useState<Draft>(DEFAULT_DRAFT)
@@ -292,10 +290,11 @@ export default function OnboardingPage() {
         .filter(Boolean),
       createdAt: new Date().toISOString(),
     }
-    await saveProfile(profile)
+    // The plan first: saving the profile is what takes you to Today (OnlyNewUsers), once, with
+    // everything in place. A second navigation here could land after you'd already moved on.
     await saveProgress(initialProgress(profile, startTest))
+    await saveProfile(profile)
     void requestPersistence()
-    navigate('/today', { replace: true })
   }
 
   let body: ReactNode = null
