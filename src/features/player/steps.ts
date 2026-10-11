@@ -34,6 +34,8 @@ export interface RestStep {
   label: string
   /** The work step that follows (for the "next up" preview). */
   next?: WorkStep
+  /** The next exercise starts here for the first time this session (time to explain it). */
+  first?: boolean
 }
 
 export type Step = WorkStep | RestStep
@@ -115,16 +117,49 @@ export function buildSteps(s: PlannedSession): Step[] {
   })
   // A short "get ready" before the very first move.
   if (out[0]?.kind === 'work') out.unshift({ kind: 'rest', id: 'ready', seconds: READY_SEC, reason: 'ready', label: 'Get ready' })
-  // Link every rest to the work that follows it.
+  return link(out)
+}
+
+/** Point every rest at the work that follows it, flag first appearances, drop a trailing rest. */
+function link(out: Step[]): Step[] {
   let nextWork: WorkStep | undefined
   for (let i = out.length - 1; i >= 0; i--) {
     const st = out[i]
     if (st.kind === 'work') nextWork = st
     else st.next = nextWork
   }
-  // Drop a trailing rest (nothing follows it).
   while (out.length && out[out.length - 1].kind === 'rest') out.pop()
+  const seen = new Set<string>()
+  for (const st of out) {
+    if (st.kind !== 'rest' || !st.next) continue
+    const id = st.next.item.exerciseId
+    st.first = !seen.has(id)
+    seen.add(id)
+  }
   return out
+}
+
+/**
+ * The steps without the exercises skipped mid-workout: each exercise id maps to the step index
+ * (in `steps`) it was skipped at, so sets done before then still count. When rests end up back to
+ * back, the first one stays (the rest planned after the last set you did), re-pointed at what now
+ * follows.
+ */
+export function withoutSkipped(steps: Step[], skips: Record<string, number> | undefined): Step[] {
+  if (!skips || !Object.keys(skips).length) return steps
+  const out: Step[] = []
+  steps.forEach((st, i) => {
+    if (st.kind === 'work') {
+      const from = skips[st.item.exerciseId]
+      if (from === undefined || i < from) out.push(st)
+    } else if (out[out.length - 1]?.kind !== 'rest') out.push({ ...st })
+  })
+  return link(out)
+}
+
+/** The target as a short spoken sentence: "12 reps.", "30 seconds, first side." */
+export function spokenTarget(w: WorkStep): string {
+  return `${describeWork(w)}.`
 }
 
 /** Index of the work step before/after `i` (for back/skip). */

@@ -1,51 +1,24 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { Search } from 'lucide-react'
-import { EXERCISES, MUSCLE_LABEL, PATTERN_LABEL, motionFor, type Pattern } from '@/data/exercises'
+import { Ban, ChevronRight, Search } from 'lucide-react'
+import { EXERCISES, MUSCLE_LABEL, PATTERN_LABEL, motionFor } from '@/data/exercises'
 import { Mannequin } from '@/anim/Mannequin'
 import { PageHeader } from '@/ui/PageHeader'
 import { Chip, LevelDots } from '@/ui/Chip'
-import { isBloom } from '@/app/brand'
+import { isBloom, W } from '@/app/brand'
 import { usePalette } from '@/app/theme'
-
-const FORGE_GROUPS: Array<{ label: string; patterns: Pattern[] }> = [
-  { label: 'All', patterns: [] },
-  { label: 'Push', patterns: ['h_push', 'v_push'] },
-  { label: 'Pull', patterns: ['h_pull', 'v_pull'] },
-  { label: 'Legs', patterns: ['squat', 'lunge', 'hinge', 'bridge'] },
-  { label: 'Core', patterns: ['core'] },
-  { label: 'Cardio', patterns: ['cond'] },
-  { label: 'Arms', patterns: ['arms'] },
-  { label: 'Mobility', patterns: ['mobility'] },
-]
-
-const BLOOM_GROUPS: Array<{ label: string; patterns: Pattern[] }> = [
-  { label: 'All', patterns: [] },
-  { label: 'Flows', patterns: ['flow'] },
-  { label: 'Standing', patterns: ['standing'] },
-  { label: 'Balance', patterns: ['balance'] },
-  { label: 'Hips', patterns: ['hip'] },
-  { label: 'Folds', patterns: ['fold'] },
-  { label: 'Backbends & twists', patterns: ['backbend', 'twist'] },
-  { label: 'Core', patterns: ['core'] },
-  { label: 'Stretches', patterns: ['mobility'] },
-  { label: 'Restore', patterns: ['restore'] },
-  { label: 'Gentle strength', patterns: ['bridge', 'h_push', 'squat', 'cond'] },
-]
-
-const GROUPS = isBloom ? BLOOM_GROUPS : FORGE_GROUPS
+import { useSkipped } from '@/state/store'
+import { cx } from '@/ui/cx'
+import { GROUPS, PATTERN_ORDER as ORDER } from './groups'
 
 type EquipFilter = 'any' | 'none' | 'db'
-
-const ORDER: Pattern[] = isBloom
-  ? ['flow', 'standing', 'balance', 'hip', 'fold', 'backbend', 'twist', 'core', 'mobility', 'restore', 'bridge', 'h_push', 'squat', 'cond']
-  : ['h_push', 'v_push', 'h_pull', 'v_pull', 'squat', 'lunge', 'hinge', 'bridge', 'core', 'cond', 'arms', 'mobility']
 
 export default function LibraryPage() {
   const [q, setQ] = useState('')
   const [group, setGroup] = useState(0)
   const [equip, setEquip] = useState<EquipFilter>('any')
   const palette = usePalette()
+  const skipped = useSkipped()
 
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -91,12 +64,26 @@ export default function LibraryPage() {
             <Chip active={equip === 'db'} onClick={() => setEquip('db')}>Dumbbells</Chip>
           </div>
         )}
+        <Link to="/train/skipped" className="mt-3 flex items-center gap-2 rounded-2xl bg-surface-2 px-3 py-2.5 text-sm">
+          <Ban size={16} className="shrink-0 text-muted" />
+          <span className="flex-1">
+            {skipped?.size
+              ? `You skip ${skipped.size} ${skipped.size === 1 ? W.exercise : W.exercises}. Change which`
+              : `Don’t like ${isBloom ? 'a pose' : 'an exercise'}? Leave it out of your ${W.workouts}`}
+          </span>
+          <ChevronRight size={16} className="shrink-0 text-faint" />
+        </Link>
         <ul className="mt-4 grid grid-cols-2 gap-3">
           {list.map((e) => (
             <li key={e.id}>
               <Link to={`/exercise/${e.id}`} className="block rounded-2xl border border-line/70 bg-surface p-2 transition active:scale-[0.98]">
-                <div className="overflow-hidden rounded-xl bg-bg">
-                  <Mannequin motion={motionFor(e)} playing={false} time={0.9} palette={palette} className="aspect-[4/3] w-full" title={e.name} />
+                <div className="relative overflow-hidden rounded-xl bg-bg">
+                  <Mannequin motion={motionFor(e)} playing={false} time={0.9} palette={palette} className={cx('aspect-[4/3] w-full', skipped?.has(e.id) && 'opacity-40')} title={e.name} />
+                  {skipped?.has(e.id) ? (
+                    <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-bad px-2 py-0.5 text-[11px] font-semibold text-white">
+                      <Ban size={11} /> Skipped
+                    </span>
+                  ) : null}
                 </div>
                 <div className="px-1 pt-2">
                   <div className="line-clamp-2 text-sm font-semibold leading-snug">{e.name}</div>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Check, RotateCcw } from 'lucide-react'
+import { Ban, Check, RotateCcw } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
+import { APP, W } from '@/app/brand'
 import { usePalette } from '@/app/theme'
 import { EQUIP_LABEL, getExercise, motionFor } from '@/data/exercises'
 import { alternativesFor, type PlanContext, type PlannedItem } from '@/engines/plan'
@@ -14,32 +15,71 @@ export interface SwapChoice {
   always: boolean
 }
 
-/** Pick an alternative for one exercise: just for this workout, or from now on. */
+/**
+ * Pick an alternative for one exercise (just for this workout, or from now on), or leave it out of
+ * every workout. `swappable: false` (warm-up and cool-down moves) offers only leaving it out.
+ */
 export function SwapSheet({
   item,
   ctx,
   open,
   swapped,
+  swappable = true,
   onClose,
   onPick,
+  onSkip,
 }: {
   item: PlannedItem | null
   ctx: PlanContext
   open: boolean
   swapped: boolean
+  swappable?: boolean
   onClose: () => void
   onPick: (c: SwapChoice) => void
+  /** Leave this exercise out of every workout from now on. */
+  onSkip?: (exerciseId: string) => void
 }) {
   const palette = usePalette()
   const [sel, setSel] = useState<string | null>(null)
   const cur = item ? getExercise(item.exerciseId) : undefined
-  const alts = item ? alternativesFor(item.exerciseId, ctx, item.ladder) : []
+  const alts = item && swappable ? alternativesFor(item.exerciseId, ctx, item.ladder) : []
   const close = () => {
     setSel(null)
     onClose()
   }
+  const skip = onSkip && cur ? (
+    <div className={swappable ? 'mt-4 border-t border-line/60 pt-3' : ''}>
+      <Button
+        block
+        variant={swappable ? 'ghost' : 'primary'}
+        size={swappable ? 'md' : 'lg'}
+        icon={<Ban size={16} />}
+        onClick={() => {
+          onSkip(cur.id)
+          close()
+        }}
+      >
+        {swappable ? `Never include ${cur.name}` : `Leave ${cur.name} out`}
+      </Button>
+      <p className="mt-1 text-center text-xs text-muted">
+        {APP.name} uses {swappable ? 'the closest alternative' : `a different ${W.exercise}`} instead. Bring it back any time in Settings.
+      </p>
+    </div>
+  ) : null
+  if (!swappable) {
+    return (
+      <Sheet open={open && !!item} onClose={close} title={`Not a fan of this ${W.exercise}?`}>
+        {cur ? (
+          <p className="-mt-1 mb-4 text-sm text-muted">
+            Leave <b className="text-ink">{cur.name}</b> out of your {W.workouts}, warm-ups and cool-downs.
+          </p>
+        ) : null}
+        {skip}
+      </Sheet>
+    )
+  }
   return (
-    <Sheet open={open && !!item} onClose={close} title="Swap exercise">
+    <Sheet open={open && !!item} onClose={close} title={`Swap ${W.exercise}`}>
       {cur ? (
         <p className="-mt-1 mb-3 text-sm text-muted">
           Instead of <b className="text-ink">{cur.name}</b>, do:
@@ -102,9 +142,10 @@ export function SwapSheet({
             close()
           }}
         >
-          Back to the planned exercise
+          Back to the planned {W.exercise}
         </Button>
       ) : null}
+      {skip}
     </Sheet>
   )
 }

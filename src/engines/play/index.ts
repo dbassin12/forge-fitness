@@ -1,6 +1,6 @@
 import type { ISODate } from '@/domain/types'
 import { getExercise, type Exercise } from '@/data/exercises'
-import { isAllowed, LADDERS, resolveLadder, type LadderId, type PlanContext, type ProgressState } from '@/engines/plan'
+import { isAllowed, LADDERS, resolveSlot, type LadderId, type PlanContext, type ProgressState } from '@/engines/plan'
 
 /**
  * Play: game-style workouts (Spin the wheel, Deck of cards, record challenges). Pure logic only;
@@ -17,7 +17,7 @@ export interface PlayMove {
 /** The user's current exercise on a ladder (what their plan would give them today). */
 export function currentFor(ladder: LadderId, progress: ProgressState, ctx: PlanContext, fallback: string): Exercise {
   const rung = progress.ladders[ladder]?.rung ?? LADDERS[ladder].start[0]
-  const r = resolveLadder(ladder, rung, ctx)
+  const r = resolveSlot(ladder, rung, ctx)
   return getExercise(r?.exerciseId ?? fallback) ?? getExercise(fallback)!
 }
 
@@ -165,7 +165,7 @@ export function wheelSlices(progress: ProgressState, ctx: PlanContext, seed: num
       // Keep the wheel playful: one notch easier than the plan's current rung when possible.
       ex = cur.level > 2 ? (firstAllowed(LADDERS[idea.ladder].exercises.slice(0, LADDERS[idea.ladder].exercises.indexOf(cur.id)).reverse(), ctx) ?? cur) : cur
     } else ex = firstAllowed(idea.ids, ctx)
-    if (!ex || used.has(ex.id)) continue
+    if (!ex || used.has(ex.id) || !isAllowed(ex, ctx)) continue
     used.add(ex.id)
     const measure: 'reps' | 'time' = ex.measure === 'time' ? 'time' : 'reps'
     const amount = measure === 'time' ? (idea.seconds ?? 30) : Math.max(ex.range[0], Math.min(ex.range[1] * 2, idea.reps ?? 10))

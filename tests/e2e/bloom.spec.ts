@@ -42,8 +42,8 @@ test('Bloom onboarding builds a gentle practice and a mini flow is logged', asyn
   await page.getByRole('button', { name: 'Begin', exact: true }).click()
   const feedback = page.getByRole('heading', { name: 'Practice done!' })
   for (let i = 0; i < 80 && !(await feedback.isVisible()); i++) {
-    for (const name of ['Done', 'Skip rest', 'Begin']) {
-      const b = page.getByRole('button', { name, exact: true })
+    for (const name of ['Done', 'Skip rest', 'Begin', /^Start( now| · \d+)$/]) {
+      const b = page.getByRole('button', { name, exact: typeof name === 'string' })
       if (await b.isVisible()) {
         await b.click()
         break

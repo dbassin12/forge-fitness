@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import {
   Apple,
+  Ban,
   Bell,
   BookOpen,
   Check,
@@ -27,6 +28,7 @@ import { APP, isBloom, W } from '@/app/brand'
 import { COACH_STYLES, usePrefs } from '@/app/prefs'
 import { accentInfo, useTheme } from '@/app/theme'
 import type { Ache, DietStyle, Equipment, Experience, Goal, Intention, Profile } from '@/domain/types'
+import { getExercise } from '@/data/exercises'
 import { planInputsFromProfile, programName } from '@/engines/plan'
 import { WEEKDAY_SHORT } from '@/lib/dates'
 import { downloadBlob, exportBackup, parseBackup, requestPersistence, restoreBackup, wipeAll } from '@/state/backup'
@@ -82,6 +84,12 @@ const DIET_LABEL: Record<DietStyle, string> = { none: 'No restrictions', kosher:
 function intentionsLabel(list: Intention[] | undefined): string {
   const titles = (list ?? []).map((i) => INTENTIONS.find((x) => x.id === i)?.title).filter(Boolean)
   return titles.length ? titles.join(', ') : 'Gentle yoga'
+}
+
+function skippedLabel(p: Profile): string {
+  const names = (p.excludedExercises ?? []).map((id) => getExercise(id)?.name).filter(Boolean)
+  if (!names.length) return isBloom ? 'None yet: leave out any pose you dislike' : 'None yet: leave out any exercise you dislike'
+  return names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2} more` : names.join(', ')
 }
 
 function propsLabel(e: Equipment): string {
@@ -142,6 +150,7 @@ export default function MorePage() {
               sub={p.aches.length ? p.aches.map((a) => (a === 'pregnancy' ? 'pregnancy' : a.replace('_', ' '))).join(', ') : 'None'}
               onClick={() => setPanel('health')}
             />
+            <Row icon={<Ban size={18} />} title={isBloom ? 'Poses I skip' : 'Exercises I skip'} sub={skippedLabel(p)} to="/train/skipped" />
             <Row icon={<Apple size={18} />} title="Food & nutrition" sub={`${DIET_LABEL[p.diet]} · ${p.trackingMode === 'lite' ? (isBloom ? 'Light touch' : 'Lite') : 'Full'} tracking`} onClick={() => setPanel('food')} />
           </ul>
         </Card>

@@ -23,6 +23,8 @@ export interface PlanContext {
   quietMode: boolean
   /** Yoga practices word their cautions differently and never stack "harder" modifiers. */
   program?: Program
+  /** Exercises the user asked to leave out. */
+  excluded?: ReadonlySet<string>
 }
 
 export function availability(eq: Equipment): Availability {
@@ -69,10 +71,11 @@ export function hasEquipment(ex: ExerciseDef, av: Availability): boolean {
   })
 }
 
-export type BlockReason = 'equipment' | 'ache' | 'impact'
+export type BlockReason = 'skipped' | 'equipment' | 'ache' | 'impact'
 
 /** Why an exercise is excluded for this user (undefined = allowed). */
 export function blockReason(ex: ExerciseDef, ctx: PlanContext): BlockReason | undefined {
+  if (ctx.excluded?.has(ex.id)) return 'skipped'
   if (!hasEquipment(ex, ctx.av)) return 'equipment'
   if (ex.avoidIf?.some((a) => ctx.aches.includes(a))) return 'ache'
   if (ctx.quietMode && ex.impact === 'high') return 'impact'

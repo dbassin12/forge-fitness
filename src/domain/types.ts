@@ -65,6 +65,8 @@ export interface Profile {
   program?: Program
   /** Yoga only: what the practice should help with. */
   intentions?: Intention[]
+  /** Exercise ids the user never wants in a workout (the plan picks the closest alternative). */
+  excludedExercises?: string[]
   createdAt: string
 }
 

@@ -29,14 +29,18 @@ import { Sheet } from '@/ui/Sheet'
 import { Toggle } from '@/ui/Toggle'
 import { cx } from '@/ui/cx'
 import { unlockAudio } from '@/voice/beeps'
-import { useVoiceSettings } from '@/voice/settings'
+import { useVoiceSettings, type ExplainMode } from '@/voice/settings'
+import { markExplained, useExplained } from '@/state/howto'
+import { setExerciseSkipped } from '@/state/store'
+import { Segmented } from '@/ui/Segmented'
 import { speech } from '@/voice/speech'
 import { blockSummary, gearFor } from '../train/sessionMeta'
 import { useSessionFromParams } from '../train/useSessionParams'
 import { finishWorkout, type FinishResult, type StepValues } from './finish'
 import { StreakIcon } from '../today/StreakCard'
 import { RunView } from './RunView'
-import { buildSteps } from './steps'
+import { buildSteps, withoutSkipped } from './steps'
+import { depthFor, FULL_EXPLANATIONS } from './howto'
 
 const SAVE_KEY = 'player.run'
 const RESUME_WINDOW_MS = 12 * 60 * 60 * 1000
@@ -51,6 +55,8 @@ interface SavedRun {
   startedAt: number
   activeMs: number
   savedAt: number
+  /** Exercises skipped mid-workout → the step index (in the full step list) they were skipped at. */
+  skips?: Record<string, number>
 }
 
 type Phase = 'intro' | 'run' | 'feedback' | 'saving' | 'summary'
@@ -85,7 +91,11 @@ export default function WorkoutPlayer() {
 
   const resumable = saved && Date.now() - saved.savedAt < RESUME_WINDOW_MS && (saved.search === search || !search) ? saved : null
   const session = run?.session ?? fresh?.session
-  const steps = useMemo(() => (session ? buildSteps(session) : []), [session])
+  const allSteps = useMemo(() => (session ? buildSteps(session) : []), [session])
+  const skips = run?.skips
+  const steps = useMemo(() => withoutSkipped(allSteps, skips), [allSteps, skips])
+  const explained = useExplained()
+  const depthOf = useCallback((id: string) => depthFor(voice.explain, explained?.[id] ?? 0), [voice.explain, explained])
 
   // Keep the screen on and silence speech when leaving.
   useEffect(() => {
@@ -125,6 +135,25 @@ export default function WorkoutPlayer() {
     activeSince.current = Date.now()
     persist(r)
     setPhase('run')
+  }
+
+  /** Take an exercise out of the rest of this workout (and, if asked, out of the plan for good). */
+  const skipExercise = (exerciseId: string, forever: boolean) => {
+    if (!run) return
+    if (forever) void setExerciseSkipped(exerciseId, true)
+    const at = (id: string) => allSteps.findIndex((st) => st.id === id)
+    const from = at(steps[run.cursor]?.id ?? '')
+    const nextSkips = { ...run.skips, [exerciseId]: Math.max(0, from) }
+    const remaining = withoutSkipped(allSteps, nextSkips)
+    // Carry on with the transition into the next exercise still to come (its how-to, if it's new).
+    const nextWork = remaining.findIndex((st) => st.kind === 'work' && at(st.id) >= from)
+    if (nextWork < 0) {
+      setRun({ ...run, skips: nextSkips })
+      complete(run.values)
+      return
+    }
+    const cursor = remaining[nextWork - 1]?.kind === 'rest' ? nextWork - 1 : nextWork
+    persist({ ...run, skips: nextSkips, cursor })
   }
 
   const complete = (values: StepValues) => {
@@ -176,6 +205,9 @@ export default function WorkoutPlayer() {
           onValues={(values) => setRun((r) => (r ? { ...r, values } : r))}
           onComplete={complete}
           onQuit={() => setQuitOpen(true)}
+          depthOf={depthOf}
+          onExplained={(id) => void markExplained(id)}
+          onSkipExercise={skipExercise}
         />
         <Sheet open={quitOpen} onClose={() => setQuitOpen(false)} title={`End ${W.workout}?`}>
           <p className="text-sm text-muted">{isBloom ? 'Save what you’ve done so far, or keep going. Even a few poses count.' : "Save what you've done so far, or keep going. Even a few sets count."}</p>
@@ -321,6 +353,26 @@ export default function WorkoutPlayer() {
       </Card>
       {gear.length ? <p className="mt-3 text-sm text-muted">Have ready: {gear.join(', ')}.</p> : null}
       <CoachPicker />
+      <div className="mt-4">
+        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted">How-to before each {W.exercise}</div>
+        <Segmented<ExplainMode>
+          label={`How-to before each ${W.exercise}`}
+          value={voice.explain}
+          onChange={(x) => voice.update({ explain: x })}
+          options={[
+            { value: 'new', label: isBloom ? 'New poses' : 'New moves' },
+            { value: 'always', label: 'Every time' },
+            { value: 'off', label: 'Just go' },
+          ]}
+        />
+        <p className="mt-1 px-1 text-xs text-muted">
+          {voice.explain === 'new'
+            ? `The coach explains each ${W.exercise} step by step the first ${FULL_EXPLANATIONS} times, then gives a quick reminder.`
+            : voice.explain === 'always'
+              ? `The coach explains every ${W.exercise} step by step before you start it.`
+              : `The coach just names what’s next. Tap “How to” any time for the steps.`}
+        </p>
+      </div>
       <div className="mt-3 rounded-2xl bg-surface-2 px-3 py-1">
         <Toggle checked={voice.enabled} onChange={(x) => voice.update({ enabled: x })} label="Voice coach" />
         <Toggle checked={voice.countReps} onChange={(x) => voice.update({ countReps: x })} label={isBloom ? 'Count slow movements aloud' : 'Count my reps in tempo'} />

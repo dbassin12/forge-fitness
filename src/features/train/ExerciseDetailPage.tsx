@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Dumbbell, ExternalLink, Flower2, PlayCircle, Wind } from 'lucide-react'
-import { isBloom } from '@/app/brand'
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Ban, Dumbbell, ExternalLink, Flower2, PlayCircle, ThumbsDown, Wind } from 'lucide-react'
+import { isBloom, W } from '@/app/brand'
 import { repWord } from '@/engines/plan'
 import { useCelebrate } from '@/app/celebrate'
 import { MoveRunner } from '../play/MoveRunner'
-import { EQUIP_LABEL, EXERCISES, MUSCLE_LABEL, PATTERN_LABEL, getExercise, highlightFor, motionFor, youtubeUrl } from '@/data/exercises'
+import { EQUIP_LABEL, EXERCISES, MUSCLE_LABEL, PATTERN_LABEL, getExercise, highlightFor, inApp, motionFor, youtubeUrl, type Exercise } from '@/data/exercises'
+import { haptic } from '@/device/haptics'
+import { setExerciseSkipped, useSkipped } from '@/state/store'
 import { Mannequin } from '@/anim/Mannequin'
 import { PageHeader } from '@/ui/PageHeader'
 import { Card, SectionTitle } from '@/ui/Card'
@@ -92,6 +94,8 @@ export default function ExerciseDetailPage() {
             {isBloom ? 'Try it' : 'Try a set'}
           </Button>
         </div>
+
+        <SkipControl ex={ex} />
 
         <SectionTitle>{isBloom ? 'Where you’ll feel it' : 'Muscles worked'}</SectionTitle>
         <Card className="flex items-center gap-4">
@@ -196,5 +200,44 @@ export default function ExerciseDetailPage() {
         />
       ) : null}
     </>
+  )
+}
+
+/** Leave this exercise out of the plan, or bring it back. */
+function SkipControl({ ex }: { ex: Exercise }) {
+  const skipped = useSkipped()
+  if (!skipped || !inApp(ex)) return null
+  if (skipped.has(ex.id)) {
+    return (
+      <Card className="mt-3 flex items-center gap-3 border-bad/40 bg-bad/5 py-3">
+        <Ban size={20} className="shrink-0 text-bad" />
+        <div className="min-w-0 flex-1 text-sm">
+          <b>You skip this {W.exercise}.</b> It stays out of your {W.workouts}.
+        </div>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            haptic('light')
+            void setExerciseSkipped(ex.id, false)
+          }}
+        >
+          Bring back
+        </Button>
+      </Card>
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        haptic('light')
+        void setExerciseSkipped(ex.id, true)
+        useCelebrate.getState().toast({ tone: 'info', title: `${ex.name} is out`, text: `The closest alternative takes its place in your ${W.workouts}.`, emoji: '👍' })
+      }}
+      className="mt-1 flex w-full items-center justify-center gap-2 py-2.5 text-sm text-muted hover:text-ink"
+    >
+      <ThumbsDown size={16} /> Not for me: leave it out of my {W.workouts}
+    </button>
   )
 }

@@ -152,20 +152,28 @@ class SpeechEngine {
         u.rate = settings.rate
         u.pitch = settings.pitch
         u.volume = settings.volume
+        const expected = estimateMs(item.text, settings.rate)
+        const started = Date.now()
         let finished = false
         const finish = () => {
           if (finished) return
           finished = true
           clearTimeout(watchdog)
-          done()
+          // A line that "ends" far sooner than it could be spoken failed silently (no voices, an
+          // interrupted audio session): give its caption the time it would have taken, so a
+          // spoken explanation doesn't flash by unread.
+          const short = expected - (Date.now() - started)
+          if (short > expected * 0.75 && gen === this.generation) setTimeout(done, short)
+          else done()
         }
         u.onend = finish
         u.onerror = finish
-        const watchdog = setTimeout(finish, estimateMs(item.text, settings.rate) * 1.8 + 2500)
+        const watchdog = setTimeout(finish, expected * 1.8 + 2500)
         window.speechSynthesis.speak(u)
       })
     }
-    if (gen !== this.generation) return
+    // Interrupted: settle this line's promise too (cancel() settled the queued ones).
+    if (gen !== this.generation) return item.resolve()
     this.busy = false
     item.resolve()
     void this.pump()
