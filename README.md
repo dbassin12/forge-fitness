@@ -232,7 +232,9 @@ npm run voice      # exports the catalog, then records only what's missing
 A full recording takes one to two hours per voice on a laptop CPU. Only missing sentences are
 recorded, so a copy change takes seconds. To offer another voice, add it to `VOICE_PACKS` in
 `src/voice/packs.ts` (any Kokoro voice) and run `npm run voice`. Each voice adds about 30 MB to
-the repo, but a phone only downloads the voice it uses.
+the repo, but a phone only downloads the voice it uses. If a voice says a line unclearly, give it
+an alternate take in `TAKES` in `scripts/voice/record.py` (other wording, another speed, or one
+word cut from a carrier phrase), delete that clip's MP3 and run `npm run voice` again.
 
 To try either app on a phone on the same Wi-Fi, run `npm run dev -- --host` and open the
 `Network` address it prints (add `bloom/` for Bloom). Over plain `http` the app runs fully, but
