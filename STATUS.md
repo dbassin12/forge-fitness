@@ -31,7 +31,7 @@
 - **The recordings.** Every sentence Forge says is listed by `src/voice/catalog.ts` (2,747 sentences). Each was recorded with **Kokoro-82M** (Apache-2.0) as a 32 kbps MP3 in `public/voice/<pack>/<id>.mp3`.
   - The id is `clipId()`, a hash of the normalized sentence (`src/voice/voiceKey.ts`).
   - Each folder has a `manifest.json` that maps id → length in ms.
-- **Voices** (`src/voice/packs.ts`): **Heart** (`af_heart`), the default, plus the phone's own voices. A male voice, **Michael** (`am_michael`), was still recording when this was written. To add it, list it in `VOICE_PACKS`, run `npm run voice`, then commit `public/voice/michael/`.
+- **Voices** (`src/voice/packs.ts`): **Heart** (`af_heart`), the default, plus the phone's own voices. A male voice wasn't included: Kokoro's male voices are rated well below Heart, and each voice adds about 29 MB. To add one (e.g. `am_michael`), list it in `VOICE_PACKS`, run `npm run voice` (one to two hours), then commit its `public/voice/<id>/` folder.
 - **Playback.** `src/voice/clipPlayer.ts` plays each line's sentences back to back through Web Audio. "12 push-ups" is said as a count followed by a phrase. `speech.ts` tries the clips first and falls back to the phone voice for any line that isn't recorded or can't play.
 - **Downloads and offline.** The workout intro screen prefetches what that workout needs. The service worker keeps clips with CacheFirst (`voice` cache) and refreshes manifests NetworkFirst. `voice/**` is not in the precache.
 - **Bloom is unchanged.** Its lines aren't recorded, so `VOICE_PACKS` is empty there and it keeps the phone's voices.
