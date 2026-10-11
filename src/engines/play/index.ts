@@ -1,6 +1,6 @@
 import type { ISODate } from '@/domain/types'
-import { getExercise, type Exercise } from '@/data/exercises'
-import { isAllowed, LADDERS, resolveLadder, type LadderId, type PlanContext, type ProgressState } from '@/engines/plan'
+import { EXERCISES, getExercise, type Exercise } from '@/data/exercises'
+import { isAllowed, LADDERS, resolveSlot, type LadderId, type PlanContext, type ProgressState } from '@/engines/plan'
 
 /**
  * Play: game-style workouts (Spin the wheel, Deck of cards, record challenges). Pure logic only;
@@ -17,8 +17,13 @@ export interface PlayMove {
 /** The user's current exercise on a ladder (what their plan would give them today). */
 export function currentFor(ladder: LadderId, progress: ProgressState, ctx: PlanContext, fallback: string): Exercise {
   const rung = progress.ladders[ladder]?.rung ?? LADDERS[ladder].start[0]
-  const r = resolveLadder(ladder, rung, ctx)
+  const r = resolveSlot(ladder, rung, ctx)
   return getExercise(r?.exerciseId ?? fallback) ?? getExercise(fallback)!
+}
+
+/** The easiest allowed exercise of a movement pattern (when a preference list is all ruled out). */
+function anyAllowed(pattern: Exercise['pattern'], ctx: PlanContext): Exercise | undefined {
+  return EXERCISES.filter((e) => e.pattern === pattern && !e.tags?.includes('cooldown') && isAllowed(e, ctx)).sort((a, b) => a.level - b.level)[0]
 }
 
 /** First allowed exercise from a preference list. */
@@ -81,8 +86,9 @@ export interface DeckPlan {
 export function deckPlan(progress: ProgressState, ctx: PlanContext): DeckPlan {
   const cardio =
     firstAllowed(ctx.quietMode || ctx.aches.includes('knees') ? ['step-jacks', 'march-in-place', 'shadow-boxing'] : ['jumping-jacks', 'high-knees', 'step-jacks', 'march-in-place'], ctx) ??
+    anyAllowed('cond', ctx) ??
     getExercise('march-in-place')!
-  const core = firstAllowed(['crunch', 'bicycle-crunch', 'dead-bug', 'reverse-crunch', 'bird-dog'], ctx) ?? getExercise('dead-bug')!
+  const core = firstAllowed(['crunch', 'bicycle-crunch', 'dead-bug', 'reverse-crunch', 'bird-dog'], ctx) ?? anyAllowed('core', ctx) ?? getExercise('dead-bug')!
   return {
     suits: {
       spades: currentFor('squat', progress, ctx, 'bodyweight-squat'),
@@ -148,6 +154,11 @@ export function pluralName(name: string, n: number): string {
   return /(ch|sh|x)$/.test(lower) ? `${lower}es` : `${lower}s`
 }
 
+/** How the coach announces a move out loud: "Wall sit. 30 seconds." / "15 bodyweight squats." */
+export function spokenMove(ex: Exercise, amount: number, measure: 'reps' | 'time'): string {
+  return measure === 'time' ? `${ex.name}. ${amount} seconds.` : `${amount} ${pluralName(ex.name, amount)}${ex.perSide ? ' each side' : ''}.`
+}
+
 function moveLabel(ex: Exercise, amount: number, measure: 'reps' | 'time'): string {
   return measure === 'time' ? `${amount}s ${ex.name.toLowerCase()}` : `${amount} ${pluralName(ex.name, amount)}${ex.perSide ? ' / side' : ''}`
 }
@@ -165,7 +176,7 @@ export function wheelSlices(progress: ProgressState, ctx: PlanContext, seed: num
       // Keep the wheel playful: one notch easier than the plan's current rung when possible.
       ex = cur.level > 2 ? (firstAllowed(LADDERS[idea.ladder].exercises.slice(0, LADDERS[idea.ladder].exercises.indexOf(cur.id)).reverse(), ctx) ?? cur) : cur
     } else ex = firstAllowed(idea.ids, ctx)
-    if (!ex || used.has(ex.id)) continue
+    if (!ex || used.has(ex.id) || !isAllowed(ex, ctx)) continue
     used.add(ex.id)
     const measure: 'reps' | 'time' = ex.measure === 'time' ? 'time' : 'reps'
     const amount = measure === 'time' ? (idea.seconds ?? 30) : Math.max(ex.range[0], Math.min(ex.range[1] * 2, idea.reps ?? 10))

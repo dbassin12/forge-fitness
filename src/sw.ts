@@ -28,6 +28,20 @@ registerRoute(
   }),
 )
 
+// The natural coach voice: recordings are kept once heard (or prefetched), so workouts work
+// offline; the list of recordings refreshes from the network when it can.
+registerRoute(
+  ({ url }) => url.origin === self.location.origin && url.pathname.startsWith('/voice/') && url.pathname.endsWith('.mp3'),
+  new CacheFirst({
+    cacheName: 'voice',
+    plugins: [new ExpirationPlugin({ maxEntries: 8000, purgeOnQuotaError: true })],
+  }),
+)
+registerRoute(
+  ({ url }) => url.origin === self.location.origin && url.pathname.startsWith('/voice/') && url.pathname.endsWith('/manifest.json'),
+  new NetworkFirst({ cacheName: 'voice-lists', networkTimeoutSeconds: 4 }),
+)
+
 // Open Food Facts product lookups: network first, fall back to cache when offline.
 registerRoute(
   ({ url }) => url.hostname.endsWith('openfoodfacts.org'),

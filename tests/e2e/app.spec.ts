@@ -23,8 +23,8 @@ test('onboarding builds a plan and a full workout is logged', async ({ page }) =
   await page.getByRole('button', { name: "Let's go" }).click()
   const feedback = page.getByRole('heading', { name: 'Workout done!' })
   for (let i = 0; i < 80 && !(await feedback.isVisible()); i++) {
-    for (const name of ['Done', 'Skip rest', 'Go']) {
-      const b = page.getByRole('button', { name, exact: true })
+    for (const name of ['Done', 'Skip rest', 'Go', /^Start( now| · \d+)$/]) {
+      const b = page.getByRole('button', { name, exact: typeof name === 'string' })
       if (await b.isVisible()) {
         await b.click()
         break

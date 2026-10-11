@@ -18,7 +18,9 @@
     "check": "npm run typecheck && npm run lint && npm run test",
     "e2e": "playwright test",
     "icons": "node scripts/gen-icons.mjs",
-    "anim:sheet": "ANIM_SHEET=1 vitest run tests/visual/sheet.test.ts"
+    "anim:sheet": "ANIM_SHEET=1 vitest run tests/visual/sheet.test.ts",
+    "voice:lines": "VOICE_LINES=voice-lines.json vitest run tests/voice/export.test.ts",
+    "voice": "npm run voice:lines && python3 scripts/voice/record.py voice-lines.json public/voice"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.0",

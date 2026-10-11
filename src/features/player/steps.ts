@@ -34,6 +34,8 @@ export interface RestStep {
   label: string
   /** The work step that follows (for the "next up" preview). */
   next?: WorkStep
+  /** The next exercise starts here for the first time this session (time to explain it). */
+  first?: boolean
 }
 
 export type Step = WorkStep | RestStep
@@ -115,16 +117,78 @@ export function buildSteps(s: PlannedSession): Step[] {
   })
   // A short "get ready" before the very first move.
   if (out[0]?.kind === 'work') out.unshift({ kind: 'rest', id: 'ready', seconds: READY_SEC, reason: 'ready', label: 'Get ready' })
-  // Link every rest to the work that follows it.
+  return link(out)
+}
+
+/** Point every rest at the work that follows it, flag first appearances, drop a trailing rest. */
+function link(out: Step[]): Step[] {
   let nextWork: WorkStep | undefined
   for (let i = out.length - 1; i >= 0; i--) {
     const st = out[i]
     if (st.kind === 'work') nextWork = st
     else st.next = nextWork
   }
-  // Drop a trailing rest (nothing follows it).
   while (out.length && out[out.length - 1].kind === 'rest') out.pop()
+  const seen = new Set<string>()
+  for (const st of out) {
+    if (st.kind !== 'rest' || !st.next) continue
+    const id = st.next.item.exerciseId
+    st.first = !seen.has(id)
+    seen.add(id)
+  }
   return out
+}
+
+/**
+ * The steps without the exercises skipped mid-workout: each exercise id maps to the step index
+ * (in `steps`) it was skipped at, so sets done before then still count. When rests end up back to
+ * back, one stays, re-pointed at what now follows: the longer one (a round's rest, not the quick
+ * switch inside it), never a side switch with no second side left, and always the opening "get
+ * ready".
+ */
+export function withoutSkipped(steps: Step[], skips: Record<string, number> | undefined): Step[] {
+  if (!skips || !Object.keys(skips).length) return steps
+  const out: Step[] = []
+  steps.forEach((st, i) => {
+    if (st.kind === 'work') {
+      const from = skips[st.item.exerciseId]
+      if (from === undefined || i < from) out.push(st)
+      return
+    }
+    const prev = out[out.length - 1]
+    if (prev?.kind !== 'rest') out.push({ ...st })
+    else if (prev.reason !== 'ready' && (prev.reason === 'side' || st.seconds > prev.seconds)) out[out.length - 1] = { ...st }
+  })
+  return link(out)
+}
+
+/**
+ * Skip the rest of an exercise from the step you're on: the new skips, the steps left, and where to
+ * carry on (the transition into the next exercise still to come), or `null` when nothing is left.
+ */
+export function skipFrom(
+  all: Step[],
+  skips: Record<string, number> | undefined,
+  current: Step | undefined,
+  exerciseId: string,
+): { skips: Record<string, number>; steps: Step[]; cursor: number | null } {
+  const at = (id: string) => all.findIndex((st) => st.id === id)
+  const from = Math.max(0, current ? at(current.id) : 0)
+  const next = { ...skips, [exerciseId]: from }
+  const steps = withoutSkipped(all, next)
+  const work = steps.findIndex((st) => st.kind === 'work' && at(st.id) >= from)
+  if (work < 0) return { skips: next, steps, cursor: null }
+  return { skips: next, steps, cursor: steps[work - 1]?.kind === 'rest' ? work - 1 : work }
+}
+
+/**
+ * The target as a short spoken sentence: "12 reps.", "30 seconds each side." (A one-side-at-a-time
+ * set is introduced as a whole; "Switch sides" comes when it's time.)
+ */
+export function spokenTarget(w: WorkStep): string {
+  if (w.seconds !== undefined) return `${w.seconds} seconds${w.side ? ' each side' : ''}.`
+  const r = w.reps ?? 0
+  return `${r} ${repWord(w.item.exerciseId, r)}${w.side || w.cyclesPerRep === 2 || w.item.perSide ? ' each side' : ''}.`
 }
 
 /** Index of the work step before/after `i` (for back/skip). */

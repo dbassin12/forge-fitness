@@ -1,126 +1,90 @@
 # System Status
-*Last updated: 2026-10-07 17:55 UTC*
-*Session summary: Built **Bloom**, a gentle yoga app for Michal, as a second app inside the Forge repo (it lives at `/bloom/`). All work is pushed to `claude/stoic-gauss-qogxju` and open as draft PR #4. The PR is green and only needs to be merged.*
+*Last updated: 2026-10-11 (UTC)*
+*Session summary: Three Forge improvements David asked for. You can now skip exercises you don't like. The coach explains each new exercise before it starts. The voice is a natural, pre-recorded one instead of the phone's robotic text-to-speech. Everything is on `claude/sharp-ramanujan-y020x1`, open as draft PR #5.*
 
 ## What Changed This Session
 
-Three commits on `claude/stoic-gauss-qogxju`, branched from `main` at `a7bc192`. Together they change 133 files (+7114 / −644).
+### 1. Skip exercises you don't like
+- **Data.** `Profile.excludedExercises` → `PlanInputs.excluded` → `PlanContext.excluded`. `blockReason()` returns `'skipped'` for these exercises (`src/engines/plan/equipment.ts`), so everything that checks `isAllowed` leaves them out: sessions, warm-ups, cool-downs, snacks, swaps, Play games and the progression ladder climb.
+- **Fallback.** `resolveSlot()` (`src/engines/plan/resolve.ts`) uses the ladder's next allowed rung. If every rung is skipped, it picks the closest move of the same pattern, which then progresses like a swapped-in exercise.
+- **Where you skip one:**
+  - Settings → **Exercises I skip** (`src/features/train/SkipListPage.tsx`, route `/train/skipped`), with search and Push/Pull/Legs… filters. It warns when nothing is left for a movement.
+  - "Not for me" on every exercise page.
+  - "Never include …" in the swap sheet.
+  - A thumbs-down on warm-up and cool-down rows in the workout preview.
+  - Mid-workout, for today or for good.
+  - On the summary right after a workout ("Not a fan of any of these?"), while the moves are fresh.
+- The library marks skipped moves. Helpers are `setExerciseSkipped` and `useSkipped` in `src/state/store.ts`.
 
-| Commit | Time (UTC) | What |
-|---|---|---|
-| `a57147f` | 2026-10-07 16:35 | App-flavor system, Bloom's entry page and icons, the yoga poses and their animations, and the practice generator |
-| `5e9a5e0` | 2026-10-07 17:02 | Bloom versions of the screens, Breathe tab, quests/badges/levels, local `/bloom` redirect, README |
-| `e3b9483` | 2026-10-07 17:23 | Bloom check-in, Progress, weekly recap, guide, Ask Claude, reminders, and the tests |
+### 2. A how-to before each exercise
+- **The how-to screen.** Before an exercise's first set (`RestStep.first` in `src/features/player/steps.ts`), the player shows `HowToScreen` (`src/features/player/RunView.tsx`): the demo at 0.75× speed, then numbered setup and movement steps, each highlighted while it's read out, then a breathing tip.
+- **Timing.** The countdown holds at 4 s until the coach finishes, then goes 3-2-1. "Start now" skips ahead.
+- **How much is explained.** It's chosen per exercise: `depthFor()` in `src/features/player/howto.ts`.
+  - The first two full explanations of a move are counted in `howto.explained` (kv, `src/state/howto.ts`).
+  - After that the coach says the name, the target and one cue.
+  - The setting is `VoiceSettings.explain`: New moves / Every time / Just go, shown on the workout intro screen.
+  - Warm-up and cool-down moves get only their first ~45 words read out. The screen always lists every step.
+- **What's said.** `restLines()` in `src/features/player/announce.ts`.
+- **Mid-set "How to".** Pauses the set and opens the steps, "Read it to me", the full tutorial, and "Not for me: skip this exercise".
+- **Before starting.** Every move named on the workout intro screen links to its guide.
+- **Skipping mid-workout.** `withoutSkipped()` drops the exercise's remaining sets and keeps the ones already done. Back-to-back rests merge, keeping the first. The cursor moves to the transition into the next exercise. The run state keeps `skips`.
 
-### Where things live
-- **Which app is running.** `src/app/brand.ts` exports `APP`, `isBloom`, `W` (everyday words, such as "practice" in Bloom vs "workout" in Forge), `storageKey` and `asset`. `src/app/appId.ts` maps a path to an app.
-  - `bloom/index.html` stamps `data-app="bloom"`, and everything reads the flavor from there.
-  - `public/bloom/` holds Bloom's manifest, icons and splash screens.
-  - `vite.config.ts` builds the second page and redirects `/bloom` to `/bloom/` in `npm run dev` and `npm run preview`.
-  - `vercel.json` has the `/bloom` rewrites.
-- **Look.** `src/styles.css` overrides the color tokens under `[data-app="bloom"]` (dusk plum in dark mode, warm paper in light). `src/app/theme.ts` has Bloom's accent colors. Bloom's mascot, Lila, is in `src/ui/Mascot.tsx`.
-- **Poses.** Definitions are in `src/data/exercises/yoga.ts`, the spoken copy in `src/data/exercises/copy/yoga.ts`, and the animations in `src/anim/families/yoga.ts`.
-- **Practice generator.** `src/engines/plan/yoga.ts` has the themes, fits a practice to the chosen minutes (45 max) and builds the mini flows. Related pieces:
-  - `src/engines/plan/templates.ts`: `yogaRotation`, `rotationFor`, `programName`.
-  - `src/engines/plan/ladders.ts`: the `y_*` ladders and `laddersFor(program)`.
-- **Breathe tab.** `src/engines/breath.ts` (the logic), `src/features/breathe/` (the screens) and `src/state/breathe.ts` (saved as workouts with a `breathe:` key).
-- **Bloom-only content:**
-  - tips: `src/data/tips/bloom.ts`
-  - quests: `src/engines/quests.ts` (`questDef`, plus a yoga branch in `pickQuests`)
-  - badges and level titles: `src/engines/gamification/achievements.ts` (`BLOOM_ACHIEVEMENTS`) and `xp.ts`
-  - reminders: `shared/reminder-rules.ts` (`bloomText`, `reminderLabel`, and `presetRules(…, { app })`)
-  - Ask Claude prompt and summary: `src/features/claude/handoff.ts` (`BLOOM_GUIDE`) and `src/features/coach/context.ts`
-  - 4-week check-in: `src/features/onboarding/BloomCheckIn.tsx`
-  - onboarding choice lists: `src/features/onboarding/choices.ts`
-- **Tests:**
-  - `tests/unit/yoga.test.ts`, `breath.test.ts` and `bloom.test.ts`
-  - `tests/unit/bloom-mode.test.ts`, which mocks `@/app/brand` so modules run as Bloom
-  - `tests/e2e/bloom.spec.ts`
-- **Docs.** The README now has a "Bloom" section and steps for running it locally.
+### 3. A natural voice
+- **The recordings.** Every sentence Forge says is listed by `src/voice/catalog.ts` (2,747 sentences). Each was recorded with **Kokoro-82M** (Apache-2.0) as a 32 kbps MP3 in `public/voice/<pack>/<id>.mp3`.
+  - The id is `clipId()`, a hash of the normalized sentence (`src/voice/voiceKey.ts`).
+  - Each folder has a `manifest.json` that maps id → length in ms.
+- **Voices** (`src/voice/packs.ts`): **Heart** (`af_heart`), the default, plus the phone's own voices. A male voice wasn't included: Kokoro's male voices are rated well below Heart, and each voice adds about 29 MB. To add one (e.g. `am_michael`), list it in `VOICE_PACKS`, run `npm run voice` (one to two hours), then commit its `public/voice/<id>/` folder.
+- **Playback.** `src/voice/clipPlayer.ts` plays each line's sentences back to back through Web Audio. "12 push-ups" is said as a count followed by a phrase. `speech.ts` tries the clips first and falls back to the phone voice for any line that isn't recorded or can't play.
+- **Downloads and offline.** The workout intro screen prefetches what that workout needs. The service worker keeps clips with CacheFirst (`voice` cache) and refreshes manifests NetworkFirst. `voice/**` is not in the precache.
+- **Bloom is unchanged.** Its lines aren't recorded, so `VOICE_PACKS` is empty there and it keeps the phone's voices.
+- **Re-recording.** `npm run voice` exports the catalog (`voice:lines`), then runs `scripts/voice/record.py`, which only records missing sentences. It needs Python 3.10–3.12, `kokoro>=0.9.4`, `soundfile`, spaCy `en_core_web_sm` and ffmpeg. `--verify` re-records unreadable files.
+- **Quality check.** All 2,747 Heart clips decode in Chromium's Web Audio, and their lengths match the manifest to within 2 ms. A Whisper `base.en` transcription of 250 random clips came back with a 1.1% word error rate. Rechecked with `small.en`, the flagged lines were natural connected speech (e.g. "wall sit" run together), not garbled audio.
+- **Other speech changes.**
+  - Spoken per-side targets now say "each side".
+  - Play lines are built from recorded sentences (`spokenMove()`).
+  - A line that fails instantly keeps its caption up for its estimated length.
+  - Interrupted lines now settle their promises.
 
-### Verified at 2026-10-07 17:23 UTC
-- `npm run check` passes: typecheck, lint, and 1313 unit tests.
-- `npm run e2e` passes all 20 phone-size tests, 3 of them Bloom.
-- `npm run build` emits `dist/index.html` and `dist/bloom/index.html`.
-- I walked through every Bloom screen in a phone-size browser, in dark and light mode, with no console errors.
+### Tests
+- **Results.** `npm run check` passes: typecheck, lint and 1,349 unit tests. `npm run e2e` passes all 24 phone-size tests.
+- **New unit tests:**
+  - `tests/unit/exclusions.test.ts`
+  - `tests/unit/howto.test.ts`
+  - `tests/unit/voice-clips.test.ts`
+  - `tests/voice/catalog.test.ts`: the catalog covers everything the player, games and tests say, and every pack has every sentence recorded.
+- **New e2e tests:** `tests/e2e/skip-howto.spec.ts` and `tests/e2e/voice.spec.ts`.
+- **Updated:** the player loops in `app.spec.ts` and `bloom.spec.ts` now press the how-to's Start button.
 
 ## Current State of Services
 | Service | Status | Address | Notes |
 |---|---|---|---|
-| Forge production (Vercel, `main`) | Live | https://forge-fitness-liard.vercel.app | Unchanged until PR #4 is merged |
-| Bloom production | **Not live yet** | https://forge-fitness-liard.vercel.app/bloom/ | Goes live automatically when PR #4 merges. Same Vercel project, no extra setup |
-| Vercel preview of the branch | Ready (deploy of `e3b9483`) | https://forge-fitness-git-claude-stoic-gauss-qogxju-dbassin12s-projects.vercel.app/bloom/ | Behind Vercel login: opens for David, not for Michal |
-| Local dev server | Not running | `npm run dev` → http://localhost:5173/bloom/ | Forge is at http://localhost:5173 |
-| Local production preview | Not running | `npm run build && npm run preview` → http://localhost:4173/bloom/ | Playwright e2e builds and serves this itself |
-| Reminder clock (GitHub Actions `.github/workflows/fitness-reminders.yml`) | Runs every 15 min from `main` | POSTs `https://forge-fitness-liard.vercel.app/api/tick` | Serves both apps; Bloom phones register with `app: 'bloom'` |
-| Smart-notification server (`api/push/*`, `api/tick`) | Whatever is already set up for Forge (not checked this session) | Vercel env: `APP_PASSCODE`, `CRON_SECRET`, `VAPID_*`, `BLOB_READ_WRITE_TOKEN` | Bloom uses the same server and passcode. Calendar ("phone") reminders need none of this |
+| Forge production (Vercel, `main`) | Live | https://forge-fitness-liard.vercel.app | Gets these changes when PR #5 merges |
+| Bloom production | Live (PR #4 merged) | https://forge-fitness-liard.vercel.app/bloom/ | Unaffected by this work except shared fixes |
+| Vercel preview of the branch | Built by Vercel on each push | see the PR's Vercel check | Behind Vercel login |
+| Local dev / preview | Not running | `npm run dev` → http://localhost:5173 · `npm run build && npm run preview` → http://localhost:4173 | |
+| Reminder clock (GitHub Actions) | Runs every 15 min from `main` | POSTs `/api/tick` | Unchanged |
 
 ## Active Projects
-- **dbassin12/forge-fitness**
-  - Branch `claude/stoic-gauss-qogxju` is at `e3b9483`, pushed, with a clean tree.
-  - Draft PR: https://github.com/dbassin12/forge-fitness/pull/4. The Vercel deploy is green, there are no review comments, and there's no merge conflict (the branch contains `main` at `a7bc192`).
-  - It is waiting only on David to mark it ready and merge.
-- **dbassin12/mitzvah-calendar**: not touched this session.
+- **dbassin12/forge-fitness:** branch `claude/sharp-ramanujan-y020x1`, draft PR https://github.com/dbassin12/forge-fitness/pull/5.
+- **dbassin12/mitzvah-calendar:** not touched this session.
 
 ## Known Issues / Gotchas
-- **Preview links need a Vercel login.** Michal can only use Bloom from the production address once the PR is merged.
-- **Plain `http` on a phone runs the app, but not everything works.** `npm run dev -- --host` and opening the Network address plus `bloom/` works, but Add to Home Screen, offline mode and notifications need `https` (the Vercel address).
-- **Data stays on each phone, per app.** Bloom stores everything in an IndexedDB database named `bloom`, and Forge in one named `forge`; nothing syncs between devices. Use Settings → Backup & data to move to a new phone.
-- **Playwright locally.** `playwright.config.ts` uses `/opt/pw-browsers/chromium` only when that path exists (the cloud container). On your own machine, run `npx playwright install chromium` once before `npm run e2e`.
-- **A cloud check-in is still scheduled.** The routine "Check Bloom PR #4" (`trig_01U7AbVg2RnEuJoTGXpHeJ7g`) fires at 2026-10-07 18:14 UTC into the cloud session. It only re-reads the PR's state. Delete it from your Routines list if you're continuing locally.
-- **Nothing is half-done.** Every item from this session is finished and pushed.
+- **iPhone silent switch.** With "Play over my music" on, sounds and the natural voice use the "ambient" audio session, which follows the silent switch. Turning that setting off makes the coach speak through silent mode, but it pauses your music.
+- **Repo size.** Heart's recordings are 29 MB (2,747 small MP3s), and each further voice adds about as much. A different take of an existing voice needs a new pack id, because clip file names stay the same and the service worker would keep serving the old audio.
+- **Rare numbers.** These fall back to the phone voice unless they can be built from a count plus a phrase: "N seconds" above 120 that isn't a multiple of 5, and counts above 100.
 
 ## Next Steps
-- [ ] Get the code on your computer:
-  ```sh
-  git clone https://github.com/dbassin12/forge-fitness   # or cd into your copy
-  cd forge-fitness
-  git fetch origin && git checkout claude/stoic-gauss-qogxju && git pull
-  npm install
-  npm run dev        # open http://localhost:5173/bloom/  (needs Node 22, or 20.19+)
-  ```
-- [ ] Try Bloom: run onboarding, then a 3-minute mini flow, the Breathe tab and the check-in on the Progress tab.
-- [ ] Merge PR #4: mark it **Ready for review** (it's a draft), then **Merge**. Vercel deploys `main` within a couple of minutes.
-- [ ] On Michal's iPhone:
-  - [ ] In Safari, open https://forge-fitness-liard.vercel.app/bloom/, then tap **Share → Add to Home Screen**, and open Bloom from the new icon.
-  - [ ] Go through setup. Tick **I'm pregnant** if it applies; it skips belly-down poses, deep twists and core work on the back.
-  - [ ] Turn on reminders: **Settings → Reminders → Add to my calendar**.
-- [ ] Optional polish, not started:
-  - Count mountain breath in "breaths" rather than "rounds".
-  - Keep the pregnancy safety tip off Lila's first-day tip slot unless pregnancy is ticked.
-  - Add a Hebrew version if Michal would prefer it.
-- [ ] To keep working with Claude on your computer, open the clone in the Claude Desktop app or run `claude remote-control` inside it, and point it at this file.
+- [ ] Try it on the iPhone once PR #5 is merged:
+  - [ ] A workout: the how-to before each new move, "How to" mid-set, and skipping a move.
+  - [ ] Settings → Voice & sounds: compare Heart with the phone's voice.
+  - [ ] Settings → Exercises I skip.
+- [ ] Optional: record a Bloom voice. Make the catalog app-aware (run it with the brand mocked as Bloom, as `tests/unit/bloom-mode.test.ts` does), add a calm pack, and enable `VOICE_PACKS` for Bloom.
 
 ## Don't Touch
 - **`src/app/brand.ts`:** the `dbName` / `storagePrefix` / `base` values (`forge`/`bloom`, `/`/`/bloom/`). Changing them orphans data already on phones and breaks the install scope.
 - **`public/bloom/manifest.webmanifest`:** `id`, `scope` and `start_url` (`/bloom/`). A new `id` makes phones treat Bloom as a different app.
 - **Service-worker registration in `src/app/pwa.ts`** (scope = `APP.base`) **and the per-app shells in `src/sw.ts`.** Forge must stay at `/` and Bloom at `/bloom/`.
-- **`vercel.json` Bloom rewrites and the manifest header.** They're ordered so `icons/`, `splash/` and the manifest are served as files.
+- **`vercel.json` rewrites and the manifest header.** They're ordered so `icons/`, `splash/`, `voice/` and the manifests are served as files.
 - **`.github/workflows/fitness-reminders.yml`:** the shared reminder clock for both apps.
-- **Forge's behavior.** Every Bloom difference goes through `isBloom` / `APP` / `program === 'yoga'`. Keep Forge's wording and tests unchanged when editing shared screens.
-
-## Where the files are on your computer
-If you downloaded `forge-fitness-bloom.zip` from the Claude app, it's in your Downloads folder. Double-click it to unzip, which gives you:
-- **Mac:** `~/Downloads/forge-fitness/` (that is, `/Users/<you>/Downloads/forge-fitness/`)
-- **Windows:** `C:\Users\<you>\Downloads\forge-fitness\`
-
-The zip is a full git checkout of `claude/stoic-gauss-qogxju`, with history and the GitHub remote. It leaves out `node_modules`, so run `npm install` once. You can also get the same folder with `git clone https://github.com/dbassin12/forge-fitness` and `git checkout claude/stoic-gauss-qogxju`.
-
-Inside `forge-fitness/`:
-- `STATUS.md`: this handoff
-- `README.md`: the "Bloom" section and how to run it
-- `bloom/index.html`: Bloom's page; the app opens at `/bloom/`
-- `src/app/brand.ts`: the Forge/Bloom switch (`isBloom`, `APP`, `W`)
-- `src/`: everything else, laid out as in "Where things live" above
-- `tests/unit/bloom*.test.ts` and `tests/e2e/bloom.spec.ts`: Bloom's tests
-
-## Prompt for a local Claude session
-Open `~/Downloads/forge-fitness` in the Claude Desktop app, or run `claude` (or `claude remote-control`) inside that folder, and paste:
-
-> You're picking up work on my repo dbassin12/forge-fitness, unzipped at ~/Downloads/forge-fitness (this folder). Read STATUS.md here first; it's the handoff from the previous session.
->
-> Context: I asked for a gentle yoga app for my wife Michal, who wants yoga rather than intense workouts. It's built as "Bloom", a second app in this repo at /bloom/ that shares the engine of Forge, my calisthenics app at /. Forge must keep working exactly as before. All the work is on branch `claude/stoic-gauss-qogxju` (already checked out here), open as draft PR #4.
->
-> 1. Run `git pull` to pick up anything newer, then `npm install` and `npm run check`, and tell me if anything fails.
-> 2. Start `npm run dev` and give me the Bloom address (http://localhost:5173/bloom/) so I can try it.
-> 3. Then wait for what I want to change. Route every Bloom difference through `isBloom` / `APP` from `src/app/brand.ts`, keep Forge's behavior and tests unchanged, and follow the "Don't Touch" list in STATUS.md. Before you push, run `npm run check`, plus `npm run e2e` for UI changes (run `npx playwright install chromium` once first).
+- **Clip ids (`src/voice/voiceKey.ts`).** Changing how sentences are normalized or hashed renames every recording. Re-run `npm run voice` if you do.
+- **Bloom's behavior.** Every Forge-only difference goes through `isBloom` / `APP` / `program === 'yoga'`.

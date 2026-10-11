@@ -23,5 +23,6 @@ export function planInputsFromProfile(p: Profile): PlanInputs {
     bodyWeightKg: p.weightKg,
     program: p.program ?? 'strength',
     intentions: p.intentions ?? [],
+    excluded: p.excludedExercises ?? [],
   }
 }

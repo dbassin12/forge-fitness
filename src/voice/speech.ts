@@ -1,4 +1,7 @@
+import { unlockAudio } from './beeps'
 import { useCaption } from './captions'
+import { clips } from './clipPlayer'
+import { voicePack } from './packs'
 import { useVoiceSettings } from './settings'
 
 export type SpeechPriority = 'cue' | 'count' | 'narration'
@@ -9,6 +12,8 @@ export interface SpeakOptions {
   interrupt?: boolean
   /** Update the on-screen caption (default true). */
   caption?: boolean
+  /** Say it with this natural voice (or `null`: the phone's voice) instead of the chosen one. */
+  pack?: string | null
 }
 
 interface Item {
@@ -65,6 +70,7 @@ class SpeechEngine {
   private queue: Item[] = []
   private busy = false
   private unlocked = false
+  private warmed = false
   private voices: SpeechSynthesisVoice[] = []
   private listeners = new Set<() => void>()
   private generation = 0
@@ -101,8 +107,25 @@ class SpeechEngine {
     return rankVoices(this.voices)[0]
   }
 
+  /** The natural voice to use, if any. */
+  private pack(opts?: SpeakOptions): string | undefined {
+    const id = opts && 'pack' in opts ? opts.pack : useVoiceSettings.getState().pack
+    return id ? voicePack(id)?.id : undefined
+  }
+
+  /** Download what these lines need ahead of time (natural voice), so they play without a gap. */
+  prefetch(lines: string[], pack = this.pack()): Promise<void> {
+    return pack ? clips.prefetch(pack, lines) : Promise.resolve()
+  }
+
   /** Must run inside a user gesture once (iOS Safari requirement). */
   unlock(): void {
+    // The natural voice plays through Web Audio, which needs the same gesture.
+    unlockAudio()
+    if (!this.warmed) {
+      this.warmed = true
+      void this.prefetch(['Get ready.', 'Go!', ...Array.from({ length: 20 }, (_, i) => String(i + 1))])
+    }
     if (!this.supported || this.unlocked) return
     this.unlocked = true
     try {
@@ -119,6 +142,7 @@ class SpeechEngine {
     const pending = this.queue.splice(0)
     pending.forEach((p) => p.resolve())
     this.busy = false
+    clips.stop()
     if (this.supported) window.speechSynthesis.cancel()
   }
 
@@ -139,7 +163,14 @@ class SpeechEngine {
     const gen = this.generation
     const settings = useVoiceSettings.getState()
     if (item.opts.caption !== false) useCaption.getState().set(item.text)
-    if (!settings.enabled || !this.supported) {
+    const pack = settings.enabled ? this.pack(item.opts) : undefined
+    // The natural voice when this line is recorded; otherwise (or if it can't play) the phone's.
+    const natural = pack ? await clips.play(pack, item.text, settings.volume, () => gen === this.generation) : false
+    // Cancelled while the recording loaded: don't fall back to saying it with the phone's voice.
+    if (gen !== this.generation) return item.resolve()
+    if (natural) {
+      /* said */
+    } else if (!settings.enabled || !this.supported) {
       await new Promise((r) => setTimeout(r, estimateMs(item.text, settings.rate)))
     } else {
       await new Promise<void>((done) => {
@@ -152,20 +183,28 @@ class SpeechEngine {
         u.rate = settings.rate
         u.pitch = settings.pitch
         u.volume = settings.volume
+        const expected = estimateMs(item.text, settings.rate)
+        const started = Date.now()
         let finished = false
         const finish = () => {
           if (finished) return
           finished = true
           clearTimeout(watchdog)
-          done()
+          // A line that "ends" far sooner than it could be spoken failed silently (no voices, an
+          // interrupted audio session): give its caption the time it would have taken, so a
+          // spoken explanation doesn't flash by unread.
+          const short = expected - (Date.now() - started)
+          if (short > expected * 0.75 && gen === this.generation) setTimeout(done, short)
+          else done()
         }
         u.onend = finish
         u.onerror = finish
-        const watchdog = setTimeout(finish, estimateMs(item.text, settings.rate) * 1.8 + 2500)
+        const watchdog = setTimeout(finish, expected * 1.8 + 2500)
         window.speechSynthesis.speak(u)
       })
     }
-    if (gen !== this.generation) return
+    // Interrupted: settle this line's promise too (cancel() settled the queued ones).
+    if (gen !== this.generation) return item.resolve()
     this.busy = false
     item.resolve()
     void this.pump()

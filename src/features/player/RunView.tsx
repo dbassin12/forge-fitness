@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { Check, ChevronsRight, Lightbulb, Pause, Play, Plus, SkipBack, Volume2, VolumeX, Wind, X } from 'lucide-react'
+import { Check, ChevronsRight, CircleHelp, ExternalLink, Lightbulb, Pause, Play, PlayCircle, Plus, SkipBack, ThumbsDown, Volume2, VolumeX, Wind, X } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
 import { usePalette } from '@/app/theme'
-import { getExercise, highlightFor, motionFor } from '@/data/exercises'
-import { isBloom } from '@/app/brand'
+import { getExercise, highlightFor, motionFor, youtubeUrl, type Exercise } from '@/data/exercises'
+import { isBloom, W } from '@/app/brand'
 import { TIPS } from '@/data/tips'
 import { repSeconds, repWord, type PlannedSession } from '@/engines/plan'
 import { Button } from '@/ui/Button'
+import { Sheet } from '@/ui/Sheet'
 import { Stepper } from '@/ui/Stepper'
 import { cx } from '@/ui/cx'
 import { chime, go, tick } from '@/voice/beeps'
@@ -15,6 +16,9 @@ import { useVoiceSettings } from '@/voice/settings'
 import { speech } from '@/voice/speech'
 import { haptic, vibrate } from '@/device/haptics'
 import { coachLine } from '@/voice/coachLines'
+import { TutorialPlayer } from '../train/TutorialPlayer'
+import { holdsForIntro, restLines } from './announce'
+import { howToSteps, introLines, type HowToDepth } from './howto'
 import { describeWork, prevWork, type RestStep, type Step, type WorkStep } from './steps'
 import type { StepValues } from './finish'
 
@@ -30,6 +34,9 @@ export function secondsPerRep(w: WorkStep): number {
   const mod = w.item.modifier ? MOD_EXTRA[w.item.modifier] : undefined
   return (mod ? mod(base) : base) * w.cyclesPerRep
 }
+
+/** Once the coach has finished introducing the next exercise, the countdown runs from here. */
+const HOLD_SEC = 4
 
 /** Pausable stopwatch in seconds. */
 function useClock() {
@@ -63,43 +70,6 @@ const HOLD_BREATHS = [
   'Notice your breath. Let it be smooth and easy.',
   'Relax your shoulders. Stay with your breath.',
 ]
-
-function nameOf(w?: WorkStep) {
-  return w ? (getExercise(w.item.exerciseId)?.name ?? '') : ''
-}
-
-function announce(st: Step, steps: Step[], i: number) {
-  if (st.kind === 'work') return
-  const n = st.next
-  const what = n ? `${nameOf(n)}, ${describeWork(n)}` : ''
-  const prev = steps[i - 1]
-  const sameEx = prev?.kind === 'work' && n && prev.item.exerciseId === n.item.exerciseId
-  switch (st.reason) {
-    case 'ready':
-      say(isBloom ? `Find your space. First: ${what}.` : `Get ready. First up: ${what}.`, true)
-      break
-    case 'side':
-      say('Switch sides.', true)
-      break
-    case 'switch':
-      say(`Next: ${what}.`, true)
-      break
-    case 'set':
-      say(sameEx ? `Rest ${st.seconds} seconds. Then ${isBloom ? 'round' : 'set'} ${n!.round} of ${n!.rounds}.` : `Rest ${st.seconds} seconds. Next: ${what}.`, true)
-      if (n && n.round === n.rounds && n.rounds > 1) say(coachLine('lastRound'))
-      else if (st.seconds >= 30) say(coachLine('rest'))
-      break
-    case 'round':
-      say(`Round done. Rest ${st.seconds} seconds. Next: ${what}.`, true)
-      if (n && n.round === n.rounds && n.rounds > 1) say(coachLine('lastRound'))
-      break
-    case 'block': {
-      const needsDb = n ? getExercise(n.item.exerciseId)?.equipment.some((e) => e.startsWith('db')) : false
-      say(`${isBloom ? 'Lovely.' : 'Nice work.'} Next: ${what}.${needsDb ? ' Grab your dumbbells.' : ''}`, true)
-      break
-    }
-  }
-}
 
 function fmt(sec: number) {
   const s = Math.max(0, Math.ceil(sec))
@@ -151,9 +121,17 @@ export interface RunViewProps {
   onValues: (v: StepValues) => void
   onComplete: (values: StepValues) => void
   onQuit: () => void
+  /** How much the coach explains an exercise before its first set (default: just its name). */
+  depthOf?: (exerciseId: string) => HowToDepth
+  /** The coach just explained this exercise in full. */
+  onExplained?: (exerciseId: string) => void
+  /** Leave the rest of an exercise out of this workout (and with `forever`, out of every workout). */
+  onSkipExercise?: (exerciseId: string, forever: boolean) => void
 }
 
-export function RunView({ session, steps, cursor, values, onCursor, onValues, onComplete, onQuit }: RunViewProps) {
+type Overlay = 'howto' | 'skip' | 'tutorial' | null
+
+export function RunView({ session, steps, cursor, values, onCursor, onValues, onComplete, onQuit, depthOf, onExplained, onSkipExercise }: RunViewProps) {
   const palette = usePalette()
   const clock = useClock()
   const [paused, setPaused] = useState(false)
@@ -171,6 +149,34 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
   const step = steps[cursor]
   const t = clock.now()
 
+  // Decided once per step (and what follows it): how much to explain, and which screen to show.
+  // Explaining a move bumps its count, which must not flip the screen mid-explanation.
+  const nextOf = step.kind === 'rest' ? step.next?.item.exerciseId : undefined
+  const planKey = `${step.id}>${nextOf ?? ''}`
+  const stepPlan = useRef<{ key: string; depth: HowToDepth; howTo: boolean } | null>(null)
+  if (stepPlan.current?.key !== planKey) {
+    const depth: HowToDepth = nextOf && depthOf ? depthOf(nextOf) : 'name'
+    stepPlan.current = { key: planKey, depth, howTo: step.kind === 'rest' && !!step.first && depth === 'full' }
+  }
+
+  // What the coach is saying to bring in the next exercise, and how far it has got.
+  const intro = useRef<{ lines: string[]; at: number }>({ lines: [], at: 0 })
+  const [line, setLine] = useState(0)
+  // While true, a rest can't count down past HOLD_SEC: the coach is still explaining.
+  const hold = useRef(false)
+  const [holding, setHolding] = useState(false)
+  const [overlay, setOverlay] = useState<Overlay>(null)
+  const resumeAfterOverlay = useRef<'no' | 'yes' | 'now'>('no')
+  const speakToken = useRef(0)
+  const explainedRef = useRef(onExplained)
+  explainedRef.current = onExplained
+
+  /** Stop talking and forget any explanation in progress. */
+  const hush = useCallback(() => {
+    speakToken.current++
+    speech.cancel()
+  }, [])
+
   const setValue = useCallback(
     (id: string, v: number) => {
       const next = { ...valuesRef.current, [id]: v }
@@ -181,20 +187,70 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
   )
 
   const advance = useCallback(() => {
+    speakToken.current++
     if (cursor + 1 >= steps.length) onComplete(valuesRef.current)
     else onCursor(cursor + 1, valuesRef.current)
   }, [cursor, steps.length, onComplete, onCursor])
 
-  // New step: reset the clock and announce what's coming.
+  /** Let the countdown finish: at least HOLD_SEC more, so "3, 2, 1" comes after the coach. */
+  const release = useCallback(() => {
+    if (!hold.current) return
+    hold.current = false
+    setHolding(false)
+    const st = steps[cursor]
+    if (st?.kind === 'rest') {
+      const now = clock.now()
+      setExtra((x) => Math.max(x, now + HOLD_SEC - st.seconds))
+    }
+  }, [steps, cursor, clock])
+
+  /** Speak the intro lines from `from` on, tracking the current line; release the hold at the end. */
+  const speakIntro = useCallback(
+    (from: number) => {
+      const token = ++speakToken.current
+      speech.cancel()
+      const { lines } = intro.current
+      intro.current.at = from
+      setLine(from)
+      let last: Promise<void> = Promise.resolve()
+      for (let k = from; k < lines.length; k++) {
+        last = speech.speak(lines[k], { priority: 'cue' }).then(() => {
+          if (speakToken.current !== token) return
+          intro.current.at = k + 1
+          setLine(k + 1)
+        })
+      }
+      void last.then(() => {
+        if (speakToken.current === token) release()
+      })
+    },
+    [release],
+  )
+
+  // New step: reset the clock and announce what's coming (explaining it the first time).
   useEffect(() => {
     clock.reset()
     flags.current.clear()
     lastCount.current = 0
     finishingAt.current = null
     setExtra(0)
-    announce(steps[cursor], steps, cursor)
+    setOverlay(null)
+    const st = steps[cursor]
+    if (st?.kind === 'rest') {
+      const id = st.next?.item.exerciseId
+      const depth = stepPlan.current?.depth ?? 'name'
+      intro.current = { lines: restLines(st, steps[cursor - 1], depth), at: 0 }
+      hold.current = holdsForIntro(st, depth)
+      setHolding(hold.current)
+      if (id && st.first && depth === 'full') explainedRef.current?.(id)
+      speakIntro(0)
+    } else {
+      intro.current = { lines: [], at: 0 }
+      hold.current = false
+      setHolding(false)
+    }
     force()
-  }, [cursor, steps, clock])
+  }, [cursor, steps, clock, speakIntro])
 
   // The heartbeat: timers, counting, cues.
   useEffect(() => {
@@ -205,10 +261,15 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
       const once = (k: string) => (flags.current.has(k) ? false : (flags.current.add(k), true))
       if (st.kind === 'rest') {
         const left = st.seconds + extra - now
+        if (hold.current && left <= HOLD_SEC) {
+          force()
+          return
+        }
         for (const n of [3, 2, 1]) if (left <= n && left > n - 1 && once(`b${n}`)) tick()
         if (left <= 0) {
           go()
           vibrate(40)
+          speakToken.current++
           if (st.next) say(isBloom ? 'Begin.' : st.reason === 'side' ? 'Go.' : 'Go!', true)
           advance()
           return
@@ -266,16 +327,73 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
     return () => window.clearInterval(id)
   }, [cursor, steps, paused, extra, guided, clock, advance, setValue])
 
+  const resume = useCallback(() => {
+    clock.resume()
+    setPaused(false)
+    // Pick the explanation up where it stopped.
+    if (hold.current) speakIntro(intro.current.at)
+    else say('Resume.', true)
+  }, [clock, speakIntro])
+
   const togglePause = () => {
+    if (paused) resume()
+    else {
+      clock.pause()
+      setPaused(true)
+      hush()
+    }
+  }
+
+  // Overlays (how-to, skip, tutorial) pause the workout and resume it when they close.
+  const openOverlay = (o: Exclude<Overlay, null>) => {
+    if (!overlay) {
+      resumeAfterOverlay.current = paused ? 'no' : 'yes'
+      if (!paused) {
+        clock.pause()
+        setPaused(true)
+      }
+    }
+    hush()
+    setOverlay(o)
+  }
+  const closeOverlay = () => {
+    if (resumeAfterOverlay.current === 'yes') resumeAfterOverlay.current = 'now'
+    setOverlay(null)
+  }
+  // Resume after the overlay is gone (the tutorial silences speech as it unmounts).
+  useEffect(() => {
+    if (overlay || resumeAfterOverlay.current !== 'now') return
+    resumeAfterOverlay.current = 'no'
+    resume()
+  }, [overlay, resume])
+
+  /** Read the full how-to now (from a rest screen that only named the next exercise). */
+  const explainNow = () => {
+    if (step.kind !== 'rest' || !step.next) return
+    const ex = getExercise(step.next.item.exerciseId)
+    if (!ex) return
+    if (stepPlan.current) stepPlan.current.howTo = true
+    intro.current = { lines: introLines(ex, step.next, 'full', cursor === 0 ? 'first' : 'next'), at: 0 }
+    hold.current = true
+    setHolding(true)
+    explainedRef.current?.(ex.id)
     if (paused) {
       clock.resume()
       setPaused(false)
-      say('Resume.', true)
-    } else {
-      clock.pause()
-      setPaused(true)
-      speech.cancel()
     }
+    speakIntro(0)
+  }
+
+  const subject = step.kind === 'work' ? getExercise(step.item.exerciseId) : step.next ? getExercise(step.next.item.exerciseId) : undefined
+
+  const skipExercise = (forever: boolean) => {
+    if (!subject || !onSkipExercise) return
+    resumeAfterOverlay.current = 'no'
+    setOverlay(null)
+    hush()
+    clock.resume()
+    setPaused(false)
+    onSkipExercise(subject.id, forever)
   }
 
   const doneSet = () => {
@@ -289,12 +407,22 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
   }
 
   const skip = () => {
-    speech.cancel()
+    hush()
+    useCaption.getState().clear()
+    advance()
+  }
+
+  /** Done listening: start the exercise now, with the same beep and "Go!" as the countdown. */
+  const startNow = () => {
+    hush()
+    go()
+    vibrate(40)
+    say(isBloom ? 'Begin.' : 'Go!', true)
     advance()
   }
 
   const back = () => {
-    speech.cancel()
+    hush()
     onCursor(prevWork(steps, cursor), valuesRef.current)
   }
 
@@ -323,8 +451,11 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
           type="button"
           aria-label={voiceOn ? 'Mute voice' : 'Turn voice on'}
           onClick={() => {
-            if (voiceOn) speech.cancel()
-            updateVoice({ enabled: !voiceOn })
+            if (!voiceOn) return updateVoice({ enabled: true })
+            hush()
+            updateVoice({ enabled: false })
+            // Mid-explanation: carry on from the same step, as captions.
+            if (hold.current && !paused) speakIntro(intro.current.at)
           }}
           className="-mr-2 grid h-10 w-10 place-items-center rounded-full text-muted hover:bg-surface-2"
         >
@@ -343,7 +474,43 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
     </div>
   )
 
-  if (step.kind === 'rest') return <RestScreen key={step.id} {...{ step, steps, cursor, values, setValue, extra, setExtra, t, paused, togglePause, skip, header, captionBar, palette }} />
+  const overlays = subject ? (
+    <>
+      <HowToSheet
+        open={overlay === 'howto'}
+        ex={subject}
+        onClose={closeOverlay}
+        onTutorial={() => setOverlay('tutorial')}
+        onSkip={onSkipExercise ? () => setOverlay('skip') : undefined}
+      />
+      <SkipSheet open={overlay === 'skip'} ex={subject} onClose={closeOverlay} onSkip={skipExercise} />
+      {overlay === 'tutorial' ? <TutorialPlayer exercise={subject} onClose={closeOverlay} /> : null}
+    </>
+  ) : null
+
+  if (step.kind === 'rest') {
+    const nextEx = step.next ? getExercise(step.next.item.exerciseId) : undefined
+    // Which how-to step is being read out (the intro opens with the rest and the exercise name).
+    const offset = nextEx ? intro.current.lines.indexOf(howToSteps(nextEx)[0]) : -1
+    return (
+      <>
+        {stepPlan.current?.howTo && nextEx && step.next ? (
+          <HowToScreen
+            key={step.id}
+            {...{ step, ex: nextEx, next: step.next, holding, extra, setExtra, t, paused, togglePause, header, palette }}
+            skip={startNow}
+            active={holding && offset >= 0 ? line - offset : undefined}
+            first={cursor === 0}
+            onTutorial={() => openOverlay('tutorial')}
+            onSkipMove={onSkipExercise ? () => openOverlay('skip') : undefined}
+          />
+        ) : (
+          <RestScreen key={step.id} {...{ step, steps, cursor, values, setValue, extra, setExtra, t, paused, holding, togglePause, skip, header, captionBar, palette }} onHowTo={explainNow} />
+        )}
+        {overlays}
+      </>
+    )
+  }
 
   const ex = getExercise(step.item.exerciseId)!
   const motion = motionFor(ex)
@@ -362,13 +529,22 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
       {header}
       <div className="relative mx-4 mt-3 min-h-[150px] flex-1 overflow-hidden rounded-3xl border border-line bg-surface">
         <Mannequin motion={motion} clock={motionClock} palette={palette} pulse={hl.primary} className="h-full w-full" title={`${ex.name} demonstration`} />
-        <div className="pointer-events-none absolute inset-x-3 top-3 flex items-center justify-between">
+        <div className="pointer-events-none absolute inset-x-3 top-3 flex items-center justify-between gap-2">
           <span className="flex items-center gap-2 rounded-full bg-black/45 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
             {step.rounds > 1 ? <SetDots round={step.round} rounds={step.rounds} /> : step.blockTitle}
           </span>
-          {step.item.loadLb ? <span className="rounded-full bg-black/45 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">{step.item.loadLb} lb</span> : null}
+          <span className="flex items-center gap-1.5">
+            {step.item.loadLb ? <span className="rounded-full bg-black/45 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">{step.item.loadLb} lb</span> : null}
+            <button
+              type="button"
+              onClick={() => openOverlay('howto')}
+              className="pointer-events-auto flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur active:scale-95"
+            >
+              <CircleHelp size={14} /> How to
+            </button>
+          </span>
         </div>
-        {paused ? (
+        {paused && !overlay ? (
           <div className="absolute inset-0 grid place-items-center bg-black/50 backdrop-blur-[2px]">
             <span className="flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 font-semibold text-white">
               <Pause size={18} /> Paused
@@ -411,7 +587,236 @@ export function RunView({ session, steps, cursor, values, onCursor, onValues, on
           <ChevronsRight size={22} />
         </button>
       </div>
+      {overlays}
     </div>
+  )
+}
+
+/** Numbered setup and movement steps; `active` is highlighted (the one being read out). */
+function StepList({ steps, active, className }: { steps: string[]; active?: number; className?: string }) {
+  const refs = useRef<(HTMLLIElement | null)[]>([])
+  useEffect(() => {
+    if (active === undefined || active < 0) return
+    refs.current[active]?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+  }, [active])
+  return (
+    <ol className={cx('space-y-1.5', className)}>
+      {steps.map((s, i) => {
+        const on = i === active
+        return (
+          <li
+            key={i}
+            ref={(el) => {
+              refs.current[i] = el
+            }}
+            className={cx('flex gap-2.5 rounded-xl px-2 py-1.5 transition-colors', on ? 'bg-ember/12 text-ink' : active !== undefined && active >= 0 && i > active ? 'text-muted' : 'text-ink')}
+          >
+            <span className={cx('grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-semibold', on ? 'bg-ember text-on-accent' : 'bg-surface-2 text-ember')}>{i + 1}</span>
+            <span className="text-[15px] leading-snug">{s}</span>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+/** Before an exercise's first set: what it is, how to do it (read out step by step), then go. */
+function HowToScreen({
+  step,
+  ex,
+  next,
+  first,
+  active,
+  holding,
+  extra,
+  setExtra,
+  t,
+  paused,
+  togglePause,
+  skip,
+  header,
+  palette,
+  onTutorial,
+  onSkipMove,
+}: {
+  step: RestStep
+  ex: Exercise
+  next: WorkStep
+  first: boolean
+  /** Index of the how-to step being read out. */
+  active?: number
+  holding: boolean
+  extra: number
+  setExtra: (fn: (x: number) => number) => void
+  t: number
+  paused: boolean
+  togglePause: () => void
+  skip: () => void
+  header: React.ReactNode
+  palette: ReturnType<typeof usePalette>
+  onTutorial: () => void
+  onSkipMove?: () => void
+}) {
+  const hl = highlightFor(ex)
+  const list = howToSteps(ex)
+  const total = step.seconds + extra
+  const left = holding ? Math.max(HOLD_SEC, total - t) : total - t
+  return (
+    <div className="flex h-dvh flex-col overflow-hidden">
+      {header}
+      <div className="mt-3 flex min-h-0 flex-1 flex-col px-4">
+        <div className="relative overflow-hidden rounded-3xl border border-line bg-surface">
+          <Mannequin motion={motionFor(ex)} speed={0.75} palette={palette} pulse={hl.primary} className="aspect-[16/9] max-h-[30vh] w-full" title={`${ex.name} demonstration`} />
+          <span className="absolute left-3 top-3 rounded-full bg-black/45 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
+            {first ? 'First up' : 'Up next'} · how to do it
+          </span>
+          {paused ? (
+            <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white">
+              <Pause size={12} /> Paused
+            </span>
+          ) : null}
+        </div>
+        <div className="mt-3 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="font-display text-2xl font-bold leading-tight">{ex.name}</h1>
+            <div className="text-muted">
+              {describeWork(next)}
+              {next.item.loadLb ? ` · ${next.item.loadLb} lb` : ''}
+            </div>
+          </div>
+          <Ring progress={holding ? 1 : 1 - t / total} tone="teal" className="h-16 w-16">
+            <div className="font-display text-xl font-bold tabular leading-none" aria-label={holding ? 'Starts when the coach finishes' : `${fmt(left)} seconds`}>
+              {holding ? <Volume2 size={18} className="text-teal" /> : fmt(left)}
+            </div>
+          </Ring>
+        </div>
+        <div className="no-scrollbar -mx-1 mt-2 min-h-0 flex-1 overflow-y-auto px-1 pb-1">
+          <StepList steps={list} active={active} />
+          <div className="mt-2 flex gap-2 rounded-xl bg-surface-2 p-2.5 text-sm text-muted">
+            <Wind size={16} className="mt-0.5 shrink-0 text-sky" />
+            <span>{ex.copy.breathing}</span>
+          </div>
+        </div>
+        <div className="flex justify-center gap-6 py-1.5 text-sm font-medium text-muted">
+          <button type="button" onClick={onTutorial} className="flex items-center gap-1.5 py-1.5 hover:text-ink">
+            <PlayCircle size={16} /> Full tutorial
+          </button>
+          {onSkipMove ? (
+            <button type="button" onClick={onSkipMove} className="flex items-center gap-1.5 py-1.5 hover:text-ink">
+              <ThumbsDown size={16} /> Not for me
+            </button>
+          ) : null}
+        </div>
+      </div>
+      <div className="grid grid-cols-[auto_auto_1fr] gap-2 px-4 pt-1" style={{ paddingBottom: 'calc(var(--safe-bottom) + 14px)' }}>
+        <Button size="lg" variant="secondary" className="w-14 px-0" onClick={togglePause} aria-label={paused ? 'Resume' : 'Pause'} icon={paused ? <Play size={20} /> : <Pause size={20} />} />
+        <Button size="lg" variant="secondary" className="px-3" onClick={() => setExtra((x) => x + 15)} aria-label="15 more seconds" icon={<Plus size={18} />}>
+          15 s
+        </Button>
+        <Button size="lg" className="min-w-0 px-3" onClick={skip} icon={<Play size={20} fill="currentColor" />}>
+          {holding ? 'Start now' : `Start · ${fmt(left)}`}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/** Mid-set help: the steps, read aloud on request, plus the full tutorial and a way out. */
+function HowToSheet({ open, ex, onClose, onTutorial, onSkip }: { open: boolean; ex: Exercise; onClose: () => void; onTutorial: () => void; onSkip?: () => void }) {
+  const [reading, setReading] = useState(-1)
+  const token = useRef(0)
+  const list = howToSteps(ex)
+  const stop = () => {
+    token.current++
+    speech.cancel()
+    setReading(-1)
+  }
+  const read = () => {
+    stop()
+    const mine = token.current
+    setReading(0)
+    list.forEach((s, k) => {
+      void speech.speak(s, { priority: 'narration' }).then(() => {
+        if (token.current === mine) setReading(k + 1 < list.length ? k + 1 : -1)
+      })
+    })
+  }
+  const close = () => {
+    stop()
+    onClose()
+  }
+  return (
+    <Sheet open={open} onClose={close} title={ex.name}>
+      <p className="-mt-1 mb-3 text-sm text-muted">{ex.copy.summary}</p>
+      <StepList steps={list} active={reading >= 0 ? reading : undefined} />
+      <div className="mt-2 flex gap-2 rounded-xl bg-surface-2 p-2.5 text-sm text-muted">
+        <Wind size={16} className="mt-0.5 shrink-0 text-sky" />
+        <span>{ex.copy.breathing}</span>
+      </div>
+      {ex.copy.cues.length ? (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {ex.copy.cues.map((c) => (
+            <span key={c} className="rounded-full border border-line bg-surface px-2.5 py-1 text-xs">
+              {c}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <Button variant="secondary" icon={<Volume2 size={16} />} onClick={read}>
+          Read it to me
+        </Button>
+        <Button
+          variant="secondary"
+          icon={<PlayCircle size={16} />}
+          onClick={() => {
+            stop()
+            onTutorial()
+          }}
+        >
+          Full tutorial
+        </Button>
+      </div>
+      <a href={youtubeUrl(ex)} target="_blank" rel="noreferrer" className="mt-1 flex items-center justify-center gap-2 py-2.5 text-sm text-muted hover:text-ink">
+        <ExternalLink size={15} /> See real people do it on YouTube
+      </a>
+      <Button block size="lg" icon={<Play size={18} />} onClick={close}>
+        Back to it
+      </Button>
+      {onSkip ? (
+        <button
+          type="button"
+          onClick={() => {
+            stop()
+            onSkip()
+          }}
+          className="mt-1 flex w-full items-center justify-center gap-2 py-2.5 text-sm text-muted hover:text-ink"
+        >
+          <ThumbsDown size={15} /> Not for me: skip this {W.exercise}
+        </button>
+      ) : null}
+    </Sheet>
+  )
+}
+
+/** Skip an exercise for the rest of this workout, or for good. */
+function SkipSheet({ open, ex, onClose, onSkip }: { open: boolean; ex: Exercise; onClose: () => void; onSkip: (forever: boolean) => void }) {
+  return (
+    <Sheet open={open} onClose={onClose} title={`Skip ${ex.name}?`}>
+      <p className="-mt-1 mb-4 text-sm text-muted">Its remaining sets come out of this {W.workout}. Sets you already did still count.</p>
+      <div className="grid gap-2">
+        <Button block size="lg" onClick={() => onSkip(false)}>
+          Skip it today
+        </Button>
+        <Button block variant="secondary" onClick={() => onSkip(true)}>
+          Skip it and leave it out for good
+        </Button>
+        <p className="text-center text-xs text-muted">Changed your mind later? Settings › {isBloom ? 'Poses' : 'Exercises'} I skip.</p>
+        <Button block variant="ghost" onClick={onClose}>
+          Keep it
+        </Button>
+      </div>
+    </Sheet>
   )
 }
 
@@ -427,11 +832,13 @@ function RestScreen({
   setExtra,
   t,
   paused,
+  holding,
   togglePause,
   skip,
   header,
   captionBar,
   palette,
+  onHowTo,
 }: {
   step: RestStep
   steps: Step[]
@@ -442,11 +849,13 @@ function RestScreen({
   setExtra: (fn: (x: number) => number) => void
   t: number
   paused: boolean
+  holding: boolean
   togglePause: () => void
   skip: () => void
   header: React.ReactNode
   captionBar: React.ReactNode
   palette: ReturnType<typeof usePalette>
+  onHowTo: () => void
 }) {
   const prev = steps[cursor - 1]
   const last = prev?.kind === 'work' ? prev : undefined
@@ -456,7 +865,7 @@ function RestScreen({
   const total = step.seconds + extra
   const tip = useMemo(() => (REST_TIPS.length ? REST_TIPS[(cursor * 7) % REST_TIPS.length] : undefined), [cursor])
   const short = step.reason === 'switch' || step.reason === 'side'
-  const left = total - t
+  const left = holding ? Math.max(HOLD_SEC, total - t) : total - t
   const ready = step.reason === 'ready'
   // Box-ish breathing: 4 s in, 4 s out, synced to the breathe animation.
   const inhale = Math.floor(t / 4) % 2 === 0
@@ -467,7 +876,7 @@ function RestScreen({
         <div className="text-sm font-semibold uppercase tracking-[0.2em] text-teal">{step.label}</div>
         <div className="relative mt-2 grid place-items-center">
           {!short && !ready && !paused ? <span aria-hidden className="absolute h-[min(52vw,30vh)] w-[min(52vw,30vh)] rounded-full bg-teal/10 animate-breathe" /> : null}
-          {ready && left <= 3 && left > 0 && !paused ? (
+          {ready && !holding && left <= 3 && left > 0 && !paused ? (
             <div key={Math.ceil(left)} className="grid h-[min(44vw,25vh)] w-[min(44vw,25vh)] place-items-center font-display text-[110px] font-black leading-none text-teal animate-zoom-out">
               {Math.ceil(left)}
             </div>
@@ -529,6 +938,14 @@ function RestScreen({
                 {next.item.loadLb ? ` · ${next.item.loadLb} lb` : ''}
               </div>
             </div>
+            <button
+              type="button"
+              onClick={onHowTo}
+              aria-label={`How to do ${nextEx.name}`}
+              className="flex shrink-0 flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-[11px] font-semibold text-ember hover:bg-ember/10"
+            >
+              <CircleHelp size={20} /> How to
+            </button>
           </div>
         ) : null}
         {tip && !short && !ready ? (

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, kvSet } from '@/db/db'
 import type { Profile } from '@/domain/types'
@@ -26,6 +27,24 @@ export async function saveProfile(p: Profile): Promise<void> {
 export async function updateProfile(patch: Partial<Profile>): Promise<void> {
   const cur = await read<Profile>(KEYS.profile)
   if (cur) await kvSet(KEYS.profile, { ...cur, ...patch })
+}
+
+/** Leave an exercise out of every workout (or bring it back). Safe to call in quick succession. */
+export async function setExerciseSkipped(id: string, skipped: boolean): Promise<void> {
+  await db.transaction('rw', db.kv, async () => {
+    const cur = await read<Profile>(KEYS.profile)
+    if (!cur) return
+    const list = (cur.excludedExercises ?? []).filter((x) => x !== id)
+    if (skipped) list.push(id)
+    await kvSet(KEYS.profile, { ...cur, excludedExercises: list })
+  })
+}
+
+/** Ids of the exercises the user skips; `undefined` while loading. */
+export function useSkipped(): ReadonlySet<string> | undefined {
+  const profile = useProfile()
+  const list = profile?.excludedExercises
+  return useMemo(() => (profile === undefined ? undefined : new Set(list ?? [])), [profile, list])
 }
 
 export function useStoredProgress(): ProgressState | null | undefined {

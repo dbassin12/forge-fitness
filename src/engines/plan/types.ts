@@ -111,6 +111,8 @@ export interface PlanInputs {
   program?: Program
   /** Yoga: what the practice is for (shapes the weekly themes). */
   intentions?: Intention[]
+  /** Exercise ids the user skips: never planned, swapped in or picked for games. */
+  excluded?: string[]
 }
 
 export type Target =

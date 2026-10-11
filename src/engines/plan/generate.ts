@@ -3,7 +3,7 @@ import { EXERCISES, getExercise, type Exercise } from '@/data/exercises'
 import type { Experience, ISODate } from '@/domain/types'
 import { addDays, isoWeekday } from '@/lib/dates'
 import { contextNotes, isAllowed, type PlanContext } from './equipment'
-import { blockWeek, planContext, resolveLadder } from './resolve'
+import { blockWeek, planContext, resolveLadder, resolveSlot } from './resolve'
 import { LADDERS, type Region } from './ladders'
 import { makeTarget, prescribe, targetValue } from './prescribe'
 import { repSeconds, SIDE_SWITCH_SEC, sessionKcal, sessionSeconds, SWITCH_SEC, workSeconds } from './duration'
@@ -466,7 +466,7 @@ export function generateSession(inputs: PlanInputs, progress: ProgressState, opt
         break
       }
     }
-    id ??= resolveLadder(slot.ladder, progress.ladders[slot.ladder]?.rung ?? 0, ctx, {
+    id ??= resolveSlot(slot.ladder, progress.ladders[slot.ladder]?.rung ?? 0, ctx, {
       variant: index + slotIndex,
       exclude: used,
     })?.exerciseId
@@ -506,7 +506,7 @@ export function generateSession(inputs: PlanInputs, progress: ProgressState, opt
       const id =
         want && !used.has(want.id) && isAllowed(want, ctx)
           ? want.id
-          : resolveLadder(ladder, progress.ladders[ladder]?.rung ?? 0, ctx, { variant: index + 11 + k, exclude: used })?.exerciseId
+          : resolveSlot(ladder, progress.ladders[ladder]?.rung ?? 0, ctx, { variant: index + 11 + k, exclude: used })?.exerciseId
       const ex = id ? getExercise(id) : undefined
       if (!ex) return
       used.add(ex.id)

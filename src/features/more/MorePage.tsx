@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import {
   Apple,
+  Ban,
   Bell,
   BookOpen,
   Check,
@@ -15,6 +16,7 @@ import {
   HeartPulse,
   Info,
   Moon,
+  Play,
   Smartphone,
   Sparkles,
   Sun,
@@ -27,6 +29,7 @@ import { APP, isBloom, W } from '@/app/brand'
 import { COACH_STYLES, usePrefs } from '@/app/prefs'
 import { accentInfo, useTheme } from '@/app/theme'
 import type { Ache, DietStyle, Equipment, Experience, Goal, Intention, Profile } from '@/domain/types'
+import { getExercise } from '@/data/exercises'
 import { planInputsFromProfile, programName } from '@/engines/plan'
 import { WEEKDAY_SHORT } from '@/lib/dates'
 import { downloadBlob, exportBackup, parseBackup, requestPersistence, restoreBackup, wipeAll } from '@/state/backup'
@@ -43,6 +46,7 @@ import { Stepper } from '@/ui/Stepper'
 import { Toggle } from '@/ui/Toggle'
 import { useVoiceSettings } from '@/voice/settings'
 import { speech } from '@/voice/speech'
+import { VOICE_PACKS, VOICE_PREVIEW, voicePack } from '@/voice/packs'
 import { ACHES, BLOOM_ACHES, INTENTIONS, PREGNANCY_NOTE } from '../onboarding/choices'
 import { InstallGuide } from '../onboarding/InstallGuide'
 import { EquipmentEditor } from '../settings/EquipmentEditor'
@@ -84,6 +88,12 @@ function intentionsLabel(list: Intention[] | undefined): string {
   return titles.length ? titles.join(', ') : 'Gentle yoga'
 }
 
+function skippedLabel(p: Profile): string {
+  const names = (p.excludedExercises ?? []).map((id) => getExercise(id)?.name).filter(Boolean)
+  if (!names.length) return isBloom ? 'None yet: leave out any pose you dislike' : 'None yet: leave out any exercise you dislike'
+  return names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2} more` : names.join(', ')
+}
+
 function propsLabel(e: Equipment): string {
   const have = [e.mat && 'mat', e.chair && 'chair', e.wall && 'wall'].filter(Boolean)
   return have.length ? `${have.join(', ')}`.replace(/^./, (c) => c.toUpperCase()) : 'Just the floor'
@@ -94,6 +104,8 @@ export default function MorePage() {
   const [panel, setPanel] = useState<Panel>(null)
   const { theme, mode, accent } = useTheme()
   const coach = usePrefs((s) => s.coach)
+  const pack = useVoiceSettings((s) => s.pack)
+  const voiceLabel = voicePack(pack ?? undefined) ? `${voicePack(pack ?? undefined)!.name} (natural voice)` : 'Phone voice'
   if (!profile) return <PageHeader title="Settings" back />
   const p = profile
   const close = () => setPanel(null)
@@ -142,6 +154,7 @@ export default function MorePage() {
               sub={p.aches.length ? p.aches.map((a) => (a === 'pregnancy' ? 'pregnancy' : a.replace('_', ' '))).join(', ') : 'None'}
               onClick={() => setPanel('health')}
             />
+            <Row icon={<Ban size={18} />} title={isBloom ? 'Poses I skip' : 'Exercises I skip'} sub={skippedLabel(p)} to="/train/skipped" />
             <Row icon={<Apple size={18} />} title="Food & nutrition" sub={`${DIET_LABEL[p.diet]} · ${p.trackingMode === 'lite' ? (isBloom ? 'Light touch' : 'Lite') : 'Full'} tracking`} onClick={() => setPanel('food')} />
           </ul>
         </Card>
@@ -150,7 +163,7 @@ export default function MorePage() {
         <Card className="py-1">
           <ul className="divide-y divide-line/60">
             <Row icon={<Bell size={18} />} title="Reminders" sub={`${W.Workout}s, meals, water, streaks`} to="/more/reminders" />
-            <Row icon={<Volume2 size={18} />} title="Voice & sounds" sub={isBloom ? 'Voice, speed, chimes, counting' : 'Voice, speed, beeps, rep counting'} onClick={() => setPanel('voice')} />
+            <Row icon={<Volume2 size={18} />} title="Voice & sounds" sub={`${voiceLabel} · ${isBloom ? 'chimes, counting' : 'beeps, rep counting'}`} onClick={() => setPanel('voice')} />
             <Row icon={<Bot size={18} />} title="Ask Claude" sub={isBloom ? 'Gentle answers and meal estimates in Claude' : 'Coach answers and meal estimates in your Claude app'} to="/coach" />
             <Row
               icon={<BookOpen size={18} />}
@@ -182,7 +195,8 @@ export default function MorePage() {
         <Card className="mt-3 flex gap-3 text-xs text-muted">
           <Info size={16} className="mt-0.5 shrink-0" />
           <p>
-            {APP.name} keeps your data on this phone. Food data partly from Open Food Facts (ODbL). {APP.name} gives general {isBloom ? 'wellbeing' : 'fitness'} guidance, not
+            {APP.name} keeps your data on this phone. Food data partly from Open Food Facts (ODbL).{VOICE_PACKS.length ? ' Natural voices recorded with Kokoro (Apache-2.0).' : ''}{' '}
+            {APP.name} gives general {isBloom ? 'wellbeing' : 'fitness'} guidance, not
             medical advice — stop if something hurts and check with a doctor if unsure.
           </p>
         </Card>
@@ -498,6 +512,12 @@ function VoiceEditor() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(() => speech.listVoices())
   useEffect(() => speech.onVoices(() => setVoices(speech.listVoices())), [])
   const english = voices.filter((x) => x.lang.toLowerCase().startsWith('en'))
+  const sample = isBloom ? 'Breathe in. Thirty seconds in tree pose. Find a still point ahead of you.' : VOICE_PREVIEW
+  const preview = (pack: string | null) => {
+    speech.unlock()
+    void speech.speak(sample, { interrupt: true, pack })
+  }
+  const phone = !v.pack || !VOICE_PACKS.length
   return (
     <div className="space-y-2">
       <Toggle checked={v.enabled} onChange={(x) => v.update({ enabled: x })} label={isBloom ? 'Voice guide' : 'Voice coach'} description="Captions always show, even when muted" />
@@ -509,33 +529,81 @@ function VoiceEditor() {
       />
       <Toggle checked={v.beeps} onChange={(x) => v.update({ beeps: x })} label={isBloom ? 'Countdown chimes' : 'Countdown beeps'} />
       <Toggle checked={v.mixWithMusic} onChange={(x) => v.update({ mixWithMusic: x })} label="Play over my music" description="iPhone: keep your music playing under the coach" />
-      <label className="block pt-2">
-        <span className="mb-1 block text-sm text-muted">Voice</span>
-        <select className={inputCls} value={v.voiceURI ?? ''} onChange={(e) => v.update({ voiceURI: e.target.value || undefined })}>
-          <option value="">Best available</option>
-          {english.map((x) => (
-            <option key={x.voiceURI} value={x.voiceURI}>
-              {x.name} ({x.lang})
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="flex items-center justify-between pt-2">
-        <span className="font-medium">Speaking speed</span>
-        <Stepper value={v.rate} onChange={(x) => v.update({ rate: x })} min={0.6} max={1.6} step={0.1} unit="×" label="speaking speed" />
+      <div className="pt-2">
+        <span className="mb-1.5 block text-sm text-muted">Voice</span>
+        {VOICE_PACKS.length ? (
+          <div role="radiogroup" aria-label="Voice" className="space-y-1.5">
+            {VOICE_PACKS.map((p) => (
+              <VoiceOption
+                key={p.id}
+                checked={v.pack === p.id}
+                title={p.name}
+                sub={`${p.blurb} · natural voice`}
+                onSelect={() => {
+                  v.update({ pack: p.id })
+                  preview(p.id)
+                }}
+                onPreview={() => preview(p.id)}
+              />
+            ))}
+            <VoiceOption
+              checked={phone}
+              title="Phone voice"
+              sub="Your phone’s built-in text-to-speech"
+              onSelect={() => {
+                v.update({ pack: null })
+                preview(null)
+              }}
+              onPreview={() => preview(null)}
+            />
+          </div>
+        ) : null}
       </div>
-      <Button
-        block
-        variant="secondary"
-        className="mt-3"
-        icon={<Volume2 size={16} />}
-        onClick={() => {
-          speech.unlock()
-          void speech.speak(isBloom ? 'Breathe in. Thirty seconds in tree pose. Find a still point ahead of you.' : "Let's go! Ten push-ups. Keep your body in one straight line.", { interrupt: true })
-        }}
-      >
-        Preview voice
-      </Button>
+      {phone ? (
+        <>
+          <select aria-label="Phone voice" className={inputCls} value={v.voiceURI ?? ''} onChange={(e) => v.update({ voiceURI: e.target.value || undefined })}>
+            <option value="">Best available</option>
+            {english.map((x) => (
+              <option key={x.voiceURI} value={x.voiceURI}>
+                {x.name} ({x.lang})
+              </option>
+            ))}
+          </select>
+          <p className="px-1 text-xs text-muted">
+            Sounds robotic? On iPhone, open Settings › Accessibility › Spoken Content › Voices › English and download an “Enhanced” or “Premium” voice. {APP.name} picks
+            the best one automatically.
+          </p>
+          <div className="flex items-center justify-between pt-2">
+            <span className="font-medium">Speaking speed</span>
+            <Stepper value={v.rate} onChange={(x) => v.update({ rate: x })} min={0.6} max={1.6} step={0.1} unit="×" label="speaking speed" />
+          </div>
+          {!VOICE_PACKS.length ? (
+            <Button block variant="secondary" className="mt-3" icon={<Volume2 size={16} />} onClick={() => preview(null)}>
+              Preview voice
+            </Button>
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+/** One choice in the voice list: tap to pick it (and hear it), or just hear it. */
+function VoiceOption({ checked, title, sub, onSelect, onPreview }: { checked: boolean; title: string; sub: string; onSelect: () => void; onPreview: () => void }) {
+  return (
+    <div className={cx('flex items-center gap-1 rounded-2xl border pr-1', checked ? 'border-ember bg-ember/10' : 'border-line bg-surface')}>
+      <button type="button" role="radio" aria-checked={checked} onClick={onSelect} className="flex min-w-0 flex-1 items-center gap-3 p-3 text-left">
+        <span className={cx('grid h-5 w-5 shrink-0 place-items-center rounded-full border-2', checked ? 'border-ember' : 'border-line')}>
+          {checked ? <span className="h-2.5 w-2.5 rounded-full bg-ember" /> : null}
+        </span>
+        <span className="min-w-0">
+          <span className="block font-semibold">{title}</span>
+          <span className="block truncate text-xs text-muted">{sub}</span>
+        </span>
+      </button>
+      <button type="button" aria-label={`Hear ${title}`} onClick={onPreview} className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-ink">
+        <Play size={18} />
+      </button>
     </div>
   )
 }

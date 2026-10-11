@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowDown, ArrowUp, Clock, Flame, Play, RotateCcw, Share2, Sparkles, Star, Zap } from 'lucide-react'
+import { ArrowDown, ArrowUp, Ban, Clock, Flame, Play, RotateCcw, Share2, Sparkles, Star, ThumbsDown, Zap } from 'lucide-react'
 import { APP, isBloom, W } from '@/app/brand'
 import { burst } from '@/app/confetti'
 import { COACH_STYLES, usePrefs } from '@/app/prefs'
@@ -12,7 +12,7 @@ import { haptic } from '@/device/haptics'
 import { sfx } from '@/device/sfx'
 import { useTotalXp } from '@/state/gamification'
 import { CountUp } from '@/ui/CountUp'
-import { coachLine } from '@/voice/coachLines'
+import { COACH_LINES, coachLine } from '@/voice/coachLines'
 import { makeShareCard, shareImage } from './shareCard'
 import { db, kvSet } from '@/db/db'
 import { getExercise } from '@/data/exercises'
@@ -29,14 +29,19 @@ import { Sheet } from '@/ui/Sheet'
 import { Toggle } from '@/ui/Toggle'
 import { cx } from '@/ui/cx'
 import { unlockAudio } from '@/voice/beeps'
-import { useVoiceSettings } from '@/voice/settings'
+import { useVoiceSettings, type ExplainMode } from '@/voice/settings'
+import { markExplained, useExplained } from '@/state/howto'
+import { setExerciseSkipped, useSkipped } from '@/state/store'
+import { Segmented } from '@/ui/Segmented'
 import { speech } from '@/voice/speech'
 import { blockSummary, gearFor } from '../train/sessionMeta'
 import { useSessionFromParams } from '../train/useSessionParams'
 import { finishWorkout, type FinishResult, type StepValues } from './finish'
 import { StreakIcon } from '../today/StreakCard'
 import { RunView } from './RunView'
-import { buildSteps } from './steps'
+import { buildSteps, skipFrom, withoutSkipped } from './steps'
+import { sessionLines } from './announce'
+import { depthFor, FULL_EXPLANATIONS } from './howto'
 
 const SAVE_KEY = 'player.run'
 const RESUME_WINDOW_MS = 12 * 60 * 60 * 1000
@@ -51,6 +56,8 @@ interface SavedRun {
   startedAt: number
   activeMs: number
   savedAt: number
+  /** Exercises skipped mid-workout → the step index (in the full step list) they were skipped at. */
+  skips?: Record<string, number>
 }
 
 type Phase = 'intro' | 'run' | 'feedback' | 'saving' | 'summary'
@@ -85,7 +92,19 @@ export default function WorkoutPlayer() {
 
   const resumable = saved && Date.now() - saved.savedAt < RESUME_WINDOW_MS && (saved.search === search || !search) ? saved : null
   const session = run?.session ?? fresh?.session
-  const steps = useMemo(() => (session ? buildSteps(session) : []), [session])
+  const allSteps = useMemo(() => (session ? buildSteps(session) : []), [session])
+  const skips = run?.skips
+  const steps = useMemo(() => withoutSkipped(allSteps, skips), [allSteps, skips])
+  const explained = useExplained()
+  const depthOf = useCallback((id: string) => depthFor(voice.explain, explained?.[id] ?? 0), [voice.explain, explained])
+
+  // Download the natural voice for this workout while you look over the intro.
+  const style = usePrefs((st) => st.coach)
+  useEffect(() => {
+    if (!steps.length) return
+    const coach = Object.values(COACH_LINES[style] ?? {}).flat()
+    void speech.prefetch(sessionLines(steps, depthOf, coach))
+  }, [steps, depthOf, style])
 
   // Keep the screen on and silence speech when leaving.
   useEffect(() => {
@@ -127,9 +146,21 @@ export default function WorkoutPlayer() {
     setPhase('run')
   }
 
-  const complete = (values: StepValues) => {
+  /** Take an exercise out of the rest of this workout (and, if asked, out of the plan for good). */
+  const skipExercise = (exerciseId: string, forever: boolean) => {
     if (!run) return
-    const r = persist({ ...run, values })
+    if (forever) void setExerciseSkipped(exerciseId, true)
+    const { skips: nextSkips, cursor } = skipFrom(allSteps, run.skips, steps[run.cursor], exerciseId)
+    if (cursor === null) {
+      complete(run.values, { ...run, skips: nextSkips })
+      return
+    }
+    persist({ ...run, skips: nextSkips, cursor })
+  }
+
+  const complete = (values: StepValues, from: SavedRun | null = run) => {
+    if (!from) return
+    const r = persist({ ...from, values })
     activeSince.current = null
     speech.cancel()
     sfx.levelUp()
@@ -164,7 +195,7 @@ export default function WorkoutPlayer() {
     return <div className="grid h-dvh place-items-center text-muted animate-pulse-soft">Loading…</div>
   }
 
-  if (phase === 'run' && run && session) {
+  if (phase === 'run' && run && session && steps.length) {
     return (
       <>
         <RunView
@@ -176,6 +207,9 @@ export default function WorkoutPlayer() {
           onValues={(values) => setRun((r) => (r ? { ...r, values } : r))}
           onComplete={complete}
           onQuit={() => setQuitOpen(true)}
+          depthOf={depthOf}
+          onExplained={(id) => void markExplained(id)}
+          onSkipExercise={skipExercise}
         />
         <Sheet open={quitOpen} onClose={() => setQuitOpen(false)} title={`End ${W.workout}?`}>
           <p className="text-sm text-muted">{isBloom ? 'Save what you’ve done so far, or keep going. Even a few poses count.' : "Save what you've done so far, or keep going. Even a few sets count."}</p>
@@ -315,18 +349,64 @@ export default function WorkoutPlayer() {
               <span className="font-semibold">{b.title}</span>
               <span className="text-xs text-muted">{blockSummary(b)}</span>
             </div>
-            <div className="mt-0.5 truncate text-sm text-muted">{b.items.map((it) => getExercise(it.exerciseId)?.name).join(' · ')}</div>
+            <div className="mt-0.5 truncate text-sm text-muted">
+              {b.items.map((it, k) => (
+                <Fragment key={it.exerciseId}>
+                  {k ? ' · ' : ''}
+                  <Link to={`/exercise/${it.exerciseId}`} className="underline decoration-dotted underline-offset-4 hover:text-ink">
+                    {getExercise(it.exerciseId)?.name}
+                  </Link>
+                </Fragment>
+              ))}
+            </div>
           </div>
         ))}
       </Card>
+      <p className="mt-2 px-1 text-xs text-muted">Tap any {W.exercise} to see how it’s done before you start.</p>
       {gear.length ? <p className="mt-3 text-sm text-muted">Have ready: {gear.join(', ')}.</p> : null}
       <CoachPicker />
+      <div className="mt-4">
+        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted">How-to before each {W.exercise}</div>
+        <Segmented<ExplainMode>
+          label={`How-to before each ${W.exercise}`}
+          value={voice.explain}
+          onChange={(x) => voice.update({ explain: x })}
+          options={[
+            { value: 'new', label: isBloom ? 'New poses' : 'New moves' },
+            { value: 'always', label: 'Every time' },
+            { value: 'off', label: 'Just go' },
+          ]}
+        />
+        <p className="mt-1 px-1 text-xs text-muted">
+          {voice.explain === 'new'
+            ? `The coach explains each ${W.exercise} step by step the first ${FULL_EXPLANATIONS} times, then gives a quick reminder.`
+            : voice.explain === 'always'
+              ? `The coach explains every ${W.exercise} step by step before you start it.`
+              : `The coach just names what’s next. Tap “How to” any time for the steps.`}
+        </p>
+      </div>
       <div className="mt-3 rounded-2xl bg-surface-2 px-3 py-1">
         <Toggle checked={voice.enabled} onChange={(x) => voice.update({ enabled: x })} label="Voice coach" />
         <Toggle checked={voice.countReps} onChange={(x) => voice.update({ countReps: x })} label={isBloom ? 'Count slow movements aloud' : 'Count my reps in tempo'} />
       </div>
+      {steps.length ? null : (
+        <Card className="mt-4 border-amber/40 bg-amber/5 text-sm">
+          Every {W.exercise} in this {W.workout} is one you skip, so there’s nothing to do here.{' '}
+          <Link to="/train/skipped" className="font-semibold text-ember">
+            Bring some back
+          </Link>
+          .
+        </Card>
+      )}
       <div className="mt-auto pt-6" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
-        <Button block size="lg" icon={<Play size={22} fill="currentColor" />} onClick={() => start(null)} className={cx('h-16 text-lg', resumable ? 'opacity-90' : 'animate-glow')}>
+        <Button
+          block
+          size="lg"
+          disabled={!steps.length}
+          icon={<Play size={22} fill="currentColor" />}
+          onClick={() => start(null)}
+          className={cx('h-16 text-lg', resumable ? 'opacity-90' : steps.length > 0 && 'animate-glow')}
+        >
           {resumable ? 'Start fresh' : isBloom ? 'Begin' : "Let's go"}
         </Button>
       </div>
@@ -525,6 +605,7 @@ function Summary({ result, onDone }: { result: FinishResult; onDone: () => void 
           </Card>
         </>
       ) : null}
+      <NotAFan ids={[...new Set(result.log.exercises.map((e) => e.exerciseId))]} />
       {sharing ? <p className="mt-3 text-center text-sm text-muted">{sharing}</p> : null}
       <div className="mt-auto grid grid-cols-[auto_1fr] gap-2 pt-6" style={{ paddingBottom: 'calc(var(--safe-bottom) + 16px)' }}>
         <Button size="lg" variant="secondary" icon={<Share2 size={20} />} onClick={() => void share()}>
@@ -535,5 +616,41 @@ function Summary({ result, onDone }: { result: FinishResult; onDone: () => void 
         </Button>
       </div>
     </div>
+  )
+}
+
+/** Right after a workout, while it's fresh: tap any move you didn't like to leave it out from now on. */
+function NotAFan({ ids }: { ids: string[] }) {
+  const skipped = useSkipped()
+  const moves = ids.map((id) => getExercise(id)).filter((e) => !!e)
+  if (!skipped || !moves.length) return null
+  return (
+    <>
+      <h2 className="mt-6 mb-1 px-1 text-[13px] font-semibold uppercase tracking-wider text-muted">Not a fan of any of these?</h2>
+      <p className="mb-2 px-1 text-sm text-muted">
+        Tap a {W.exercise} to leave it out of your next {W.workouts}. Tap again to keep it.
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {moves.map((ex) => {
+          const on = skipped.has(ex.id)
+          return (
+            <button
+              key={ex.id}
+              type="button"
+              aria-pressed={on}
+              aria-label={`Leave out ${ex.name}`}
+              onClick={() => {
+                haptic('light')
+                void setExerciseSkipped(ex.id, !on)
+              }}
+              className={cx('pressable flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm', on ? 'border-bad/50 bg-bad/10 text-bad' : 'border-line bg-surface')}
+            >
+              {on ? <Ban size={14} /> : <ThumbsDown size={14} className="text-muted" />}
+              <span className={on ? 'line-through' : undefined}>{ex.name}</span>
+            </button>
+          )
+        })}
+      </div>
+    </>
   )
 }

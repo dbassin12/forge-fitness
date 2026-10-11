@@ -16,6 +16,7 @@ const MorePage = lazy(() => import('@/features/more/MorePage'))
 const RemindersPage = lazy(() => import('@/features/more/RemindersPage'))
 const AnimationLab = lazy(() => import('@/lab/AnimationLab'))
 const LibraryPage = lazy(() => import('@/features/train/LibraryPage'))
+const SkipListPage = lazy(() => import('@/features/train/SkipListPage'))
 const ExerciseDetailPage = lazy(() => import('@/features/train/ExerciseDetailPage'))
 const OnboardingPage = lazy(() => import('@/features/onboarding/OnboardingPage'))
 const WorkoutPlayer = lazy(() => import('@/features/player/WorkoutPlayer'))
@@ -67,6 +68,7 @@ const router = createHashRouter([
       { path: 'train', element: <Page><TrainPage /></Page> },
       { path: 'train/session', element: <Page><SessionPage /></Page> },
       { path: 'train/library', element: <Page><LibraryPage /></Page> },
+      { path: 'train/skipped', element: <Page><SkipListPage /></Page> },
       { path: 'exercise/:id', element: <Page><ExerciseDetailPage /></Page> },
       { path: 'eat', element: <Page><EatPage /></Page> },
       { path: 'eat/add', element: <Page><AddFoodPage /></Page> },

@@ -41,7 +41,10 @@ export function TutorialPlayer({ exercise, onClose }: { exercise: Exercise; onCl
     }
   }, [idx, playing, seg.text, script.length])
 
-  useEffect(() => () => speech.cancel(), [])
+  useEffect(() => {
+    void speech.prefetch(script.map((s) => s.text))
+    return () => speech.cancel()
+  }, [script])
 
   // Watching a few chapters counts toward the "watch a tutorial" quest (once per opening).
   const counted = useRef(false)

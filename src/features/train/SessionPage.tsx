@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { ArrowLeftRight, Clock, Flame, Info, Play } from 'lucide-react'
+import { ArrowLeftRight, Clock, Flame, Info, Play, ThumbsDown } from 'lucide-react'
 import { Mannequin } from '@/anim/Mannequin'
 import { isBloom, W } from '@/app/brand'
 import { usePalette } from '@/app/theme'
 import { getExercise, motionFor } from '@/data/exercises'
 import { describeTarget, planContext, type PlannedItem } from '@/engines/plan'
 import { swapsFor, usePlan } from '@/state/plan'
-import { saveProgress, setSessionSwap } from '@/state/store'
+import { useCelebrate } from '@/app/celebrate'
+import { saveProgress, setExerciseSkipped, setSessionSwap } from '@/state/store'
 import { Button } from '@/ui/Button'
 import { Card } from '@/ui/Card'
 import { Tag } from '@/ui/Chip'
@@ -16,7 +17,7 @@ import { blockSummary, gearFor } from './sessionMeta'
 import { SwapSheet } from './SwapSheet'
 import { useSessionFromParams } from './useSessionParams'
 
-function ItemRow({ it, onSwap, swapped }: { it: PlannedItem; onSwap?: () => void; swapped?: boolean }) {
+function ItemRow({ it, onSwap, onSkip, swapped }: { it: PlannedItem; onSwap?: () => void; onSkip?: () => void; swapped?: boolean }) {
   const palette = usePalette()
   const ex = getExercise(it.exerciseId)
   if (!ex) return null
@@ -40,6 +41,10 @@ function ItemRow({ it, onSwap, swapped }: { it: PlannedItem; onSwap?: () => void
         <button type="button" onClick={onSwap} aria-label={`Swap ${ex.name}`} className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-ink">
           <ArrowLeftRight size={18} />
         </button>
+      ) : onSkip ? (
+        <button type="button" onClick={onSkip} aria-label={`Not a fan of ${ex.name}?`} className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-faint hover:bg-surface-2 hover:text-ink">
+          <ThumbsDown size={16} />
+        </button>
       ) : null}
     </li>
   )
@@ -51,10 +56,20 @@ export default function SessionPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const [swapItem, setSwapItem] = useState<PlannedItem | null>(null)
+  const [skipItem, setSkipItem] = useState<PlannedItem | null>(null)
   const ctx = useMemo(() => (plan ? planContext(plan.inputs) : null), [plan])
 
   if (!plan || !data || !ctx) return <PageHeader title={W.Workout} back="/train" />
   const { session: s, index, snack } = data
+  const skipForGood = (id: string) => {
+    void setExerciseSkipped(id, true)
+    useCelebrate.getState().toast({
+      tone: 'info',
+      title: `${getExercise(id)?.name ?? 'That one'} is out`,
+      text: `It won’t come back unless you bring it back in Settings › ${isBloom ? 'Poses' : 'Exercises'} I skip.`,
+      emoji: '👍',
+    })
+  }
   const swaps = swapsFor(plan, index) ?? {}
   const gear = gearFor(s)
   const weekLabel = snack ? 'Snack' : s.deload ? 'Deload week' : `Week ${s.mesoWeek + 1} of 4`
@@ -98,6 +113,7 @@ export default function SessionPage() {
                     it={it}
                     swapped={it.slot !== undefined && swaps[it.slot] === it.exerciseId}
                     onSwap={!snack && b.kind === 'main' && it.slot !== undefined ? () => setSwapItem(it) : undefined}
+                    onSkip={() => setSkipItem(it)}
                   />
                 ))}
               </ul>
@@ -113,7 +129,9 @@ export default function SessionPage() {
           </Button>
         </div>
       </div>
+      <SwapSheet item={skipItem} ctx={ctx} open={!!skipItem} swapped={false} swappable={false} onClose={() => setSkipItem(null)} onPick={() => {}} onSkip={skipForGood} />
       <SwapSheet
+        onSkip={skipForGood}
         item={swapItem}
         ctx={ctx}
         open={!!swapItem}

@@ -75,9 +75,10 @@ export function MoveRunner({ move, title, onDone, onCancel }: { move: PlayMove; 
   const lastCount = useRef(0)
 
   useEffect(() => {
-    say(`${move.measure === 'time' ? `${move.amount} seconds` : `${move.amount}${perSide ? ' each side' : ''}`}: ${ex.name}.`, true)
+    void speech.prefetch(['Switch sides!', ...Array.from({ length: Math.min(totalReps, 100) }, (_, i) => String(i + 1))])
+    say(`${ex.name}. ${move.measure === 'time' ? `${move.amount} seconds` : `${move.amount} ${repWord(ex.id, move.amount)}${perSide ? ' each side' : ''}`}.`, true)
     return () => speech.cancel()
-  }, [ex.name, move.amount, move.measure, perSide])
+  }, [ex.name, ex.id, move.amount, move.measure, perSide, totalReps])
 
   const finish = (value: number) => {
     if (stage === 'done') return

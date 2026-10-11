@@ -13,7 +13,7 @@
       "destination": "/bloom/index.html"
     },
     {
-      "source": "/((?!api/|assets/|icons/|sw.js|manifest.webmanifest|workbox-).*)",
+      "source": "/((?!api/|assets/|icons/|voice/|sw.js|manifest.webmanifest|workbox-).*)",
       "destination": "/index.html"
     }
   ],
