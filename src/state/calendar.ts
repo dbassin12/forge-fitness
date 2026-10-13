@@ -1,12 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { buildReminderCalendar, calendarConfig, encodeCalendarConfig, eventCount, eventText, firstOn, type CalendarConfig } from '@shared/calendar'
-import { ruleTimes } from '@shared/reminder-rules'
+import { ruleTimes, type ReminderRule } from '@shared/reminder-rules'
 import { APP } from '@/app/brand'
 import { isIOS } from '@/app/pwa'
 import { usePrefs } from '@/app/prefs'
 import { kvGet, kvSet } from '@/db/db'
 import type { Profile } from '@/domain/types'
-import { todayISO } from '@/lib/dates'
+import { todayISO, WEEKDAY_SHORT } from '@/lib/dates'
 import { downloadBlob } from './backup'
 import type { ReminderSettings } from './reminders'
 
@@ -18,6 +18,8 @@ export interface CalendarExport {
   /** Fingerprint of what was exported, to spot changes since. */
   key: string
   events: number
+  /** What was added (exports since this field exists), so the events can be found again to delete. */
+  cfg?: CalendarConfig
 }
 
 const MODE_KEY = 'reminders.mode'
@@ -62,8 +64,38 @@ export function addRemindersToCalendar(settings: ReminderSettings, profile: Prof
     downloadBlob(new Blob([ics], { type: 'text/calendar;charset=utf-8' }), `${APP.id}-reminders.ics`)
     how = 'downloaded'
   }
-  void kvSet(CALENDAR_KEY, { at: Date.now(), key: configKey(cfg), events: eventCount(cfg) } satisfies CalendarExport)
+  void kvSet(CALENDAR_KEY, { at: Date.now(), key: configKey(cfg), events: eventCount(cfg), cfg } satisfies CalendarExport)
   return how
+}
+
+/** The reminders are out of the calendar (deleted by hand): stop counting them as set up. */
+export async function forgetCalendarExport(): Promise<void> {
+  await kvSet(CALENDAR_KEY, null)
+}
+
+/** One reminder as it shows up in the calendar: a title, and a repeating event per time. */
+export interface CalendarSeries {
+  title: string
+  /** "Every day at 10:00, 12:00" */
+  when: string
+  /** Repeating events in the calendar for it (one per time). */
+  count: number
+}
+
+function daysLabel(days: number[]): string {
+  const d = [...new Set(days)].sort()
+  if (d.length === 7) return 'Every day'
+  if (d.length === 5 && d.every((x) => x <= 5)) return 'Weekdays'
+  return d.map((x) => WEEKDAY_SHORT[x - 1]).join(' ')
+}
+
+/** The events an export put in the calendar, one line per reminder, to find and delete them. */
+export function calendarSeries(cfg: CalendarConfig): CalendarSeries[] {
+  return cfg.rules.flatMap((rule) => {
+    const times = ruleTimes(rule as ReminderRule)
+    if (!times.length || !rule.days.length) return []
+    return [{ title: eventText(rule, cfg.coach, cfg.app).title, when: `${daysLabel(rule.days)} at ${times.join(', ')}`, count: times.length }]
+  })
 }
 
 /** One-tap alternative for Google Calendar users: the workout reminder as a repeating event. */

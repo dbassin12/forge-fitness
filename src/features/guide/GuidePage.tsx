@@ -114,8 +114,9 @@ const FORGE_SECTIONS: Section[] = [
     emoji: '🔔',
     title: 'Reminders',
     points: [
-      'Phone reminders (easiest): Settings → Reminders → “Add to my calendar”. Your phone’s calendar alerts you at your workout, meal and water times, even when Forge is closed. No setup at all.',
-      'Smart notifications (optional): personalized and they skip themselves once you’ve trained, but they need the Forge server set up with an access code.',
+      'Phone reminders (easiest): Settings → Reminders → “Add to my calendar”. They go in your phone’s calendar as events, which alert you at your workout, meal and water times, even when Forge is closed. No setup at all.',
+      'Smart notifications (optional): real notifications that skip themselves once you’ve trained, and nothing in your calendar. They need the Forge server set up with an access code.',
+      'Switching from phone reminders to notifications? Settings → Reminders lists the calendar events to delete, since Forge can’t remove them for you.',
     ],
     cta: { label: 'Reminders', to: '/more/reminders' },
   },
@@ -228,8 +229,9 @@ const BLOOM_SECTIONS: Section[] = [
     emoji: '🔔',
     title: 'Reminders',
     points: [
-      'Phone reminders (easiest): Settings → Reminders → “Add to my calendar”. Your phone’s calendar reminds you at your practice, meal and water times, even when Bloom is closed. No setup at all.',
-      'Smart notifications (optional): personalized and they skip themselves once you’ve practiced, but they need the server set up with an access code.',
+      'Phone reminders (easiest): Settings → Reminders → “Add to my calendar”. They go in your phone’s calendar as events, which remind you at your practice, meal and water times, even when Bloom is closed. No setup at all.',
+      'Smart notifications (optional): real notifications that skip themselves once you’ve practiced, and nothing in your calendar. They need the server set up with an access code.',
+      'Switching from phone reminders to notifications? Settings → Reminders lists the calendar events to delete, since Bloom can’t remove them for you.',
     ],
     cta: { label: 'Reminders', to: '/more/reminders' },
   },

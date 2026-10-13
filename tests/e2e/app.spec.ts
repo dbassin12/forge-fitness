@@ -271,6 +271,31 @@ test('phone reminders: no setup, straight into the calendar', async ({ page }) =
   await expectNoErrors(errors)
 })
 
+test('switching from calendar reminders to notifications lists the calendar events to delete', async ({ page }) => {
+  const errors = trackErrors(page)
+  // This deployment's notification server is set up.
+  await page.route('**/api/push/config', (r) =>
+    r.fulfill({ json: { ok: true, publicKey: 'x', configured: { blob: true, passcode: true, cronSecret: true }, scheduler: { lastTick: null, ticks: { github: Date.now() }, githubStale: false }, devices: 0 } }),
+  )
+  await onboard(page)
+  await page.goto('/#/more/reminders')
+  const notifications = page.getByRole('radio', { name: /Smart notifications/ })
+  await expect(notifications).toContainText('Ready')
+  await expect(notifications).toContainText('Nothing in your calendar')
+  await expect(page.getByRole('radio', { name: /Phone reminders/ })).toContainText('Adds them to your calendar')
+  await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Add \d+ reminders? to my calendar/ }).click()])
+  // Switch: Forge can't reach into the calendar, so it lists what to delete there.
+  await notifications.click()
+  await expect(page.getByText('Remove the calendar reminders')).toBeVisible()
+  const toDelete = page.getByRole('list', { name: 'Calendar events to delete' }).getByRole('listitem')
+  await expect(toDelete.first()).toContainText(/Workout time/)
+  await expect(page.getByText(/Delete All Future Events/)).toBeVisible()
+  await expect(page.getByText(/Forgot it\? It’s in Vercel/)).toBeVisible()
+  await page.getByRole('button', { name: /Done, they’re gone/ }).click()
+  await expect(page.getByText('Remove the calendar reminders')).toHaveCount(0)
+  await expectNoErrors(errors)
+})
+
 test('Settings: check for updates shows the version and that it is current', async ({ page }) => {
   const errors = trackErrors(page)
   await onboard(page)

@@ -1,6 +1,6 @@
 # System Status
-*Last updated: 2026-10-11 (UTC)*
-*Session summary: Three Forge improvements David asked for. You can now skip exercises you don't like. The coach explains each new exercise before it starts. The voice is a natural, pre-recorded one instead of the phone's robotic text-to-speech. These went out in PR #5 (merged, live). Then two follow-ups on `claude/sharp-ramanujan-y020x1`, open as draft PR #6: the app checks for a new version whenever you come back to it, with a "Check for updates" button in Settings, and there's a second natural voice, Michael (male).*
+*Last updated: 2026-10-13 (UTC)*
+*Session summary: Three Forge improvements David asked for. You can now skip exercises you don't like. The coach explains each new exercise before it starts. The voice is a natural, pre-recorded one instead of the phone's robotic text-to-speech. These went out in PR #5 (merged, live). PR #6 (merged, live) made updating from the phone easy and added a second natural voice, Michael (male). Now on `claude/sharp-ramanujan-y020x1`: switching reminders from calendar events to phone notifications, with a list of the calendar events to delete.*
 
 ## What Changed This Session
 
@@ -60,6 +60,15 @@
 - `finish()` in `src/features/onboarding/OnboardingPage.tsx` saves the plan, then the profile. Saving the profile is what takes you to Today (`OnlyNewUsers` in `src/App.tsx`).
 - It used to navigate a second time after both saves. That navigation could land after you'd already moved on, and it made the "deck of cards" e2e test fail now and then.
 
+### 6. Phone notifications instead of calendar events (2026-10-13)
+David found the calendar reminders too much: the Coach style puts 15 repeating events in the calendar. Smart notifications (push) were already built and the production server is set up (`/api/push/config`: Blob, passcode and cron secret configured; the GitHub clock runs). So this makes switching easy, without changing how either mode works.
+- **The choices say what they do.** Settings → Reminders checks the server on open, for both choices. "Phone reminders" now says it adds events to your calendar. "Smart notifications" shows **Ready** and "Nothing in your calendar" when the server is set up.
+- **Cleanup list.** After switching to notifications, a card lists the calendar events Forge added (`calendarSeries()` in `src/state/calendar.ts`), with how to delete a repeating event in iPhone Calendar and Google Calendar.
+  - "Done, they're gone" forgets the export (`forgetCalendarExport()`).
+  - Exports now store their config (`CalendarExport.cfg`), so the list is exact even after the reminder settings change. Older exports fall back to the current settings when they still match.
+- **Access code hint.** The form says where to find `APP_PASSCODE` in Vercel.
+- The in-app guide (Forge and Bloom) and the README say the same.
+
 ### Tests
 - **Results.** `npm run check` passes: typecheck, lint and 1,349 unit tests. `npm run e2e` passes all 26 phone-size tests.
 - **New unit tests:**
@@ -73,14 +82,14 @@
 ## Current State of Services
 | Service | Status | Address | Notes |
 |---|---|---|---|
-| Forge production (Vercel, `main`) | Live | https://forge-fitness-liard.vercel.app | Has PR #5 (skips, how-to, Heart voice). Gets PR #6 when it merges |
+| Forge production (Vercel, `main`) | Live | https://forge-fitness-liard.vercel.app | Has PRs #5 and #6. Smart-notification server set up (`/api/push/config` reports Blob, passcode and cron secret) |
 | Bloom production | Live (PR #4 merged) | https://forge-fitness-liard.vercel.app/bloom/ | Unaffected by this work except shared fixes |
 | Vercel preview of the branch | Built by Vercel on each push | see the PR's Vercel check | Behind Vercel login |
 | Local dev / preview | Not running | `npm run dev` → http://localhost:5173 · `npm run build && npm run preview` → http://localhost:4173 | |
 | Reminder clock (GitHub Actions) | Runs every 15 min from `main` | POSTs `/api/tick` | Unchanged |
 
 ## Active Projects
-- **dbassin12/forge-fitness:** PR https://github.com/dbassin12/forge-fitness/pull/5 is merged. Branch `claude/sharp-ramanujan-y020x1` (restarted from `main` after the merge) is open as draft PR https://github.com/dbassin12/forge-fitness/pull/6.
+- **dbassin12/forge-fitness:** PRs https://github.com/dbassin12/forge-fitness/pull/5 and https://github.com/dbassin12/forge-fitness/pull/6 are merged and live. Branch `claude/sharp-ramanujan-y020x1` (restarted from `main` after each merge) carries the reminders change as a draft PR.
 - **dbassin12/mitzvah-calendar:** not touched this session.
 
 ## Known Issues / Gotchas
@@ -92,9 +101,11 @@
 - [ ] Try it on the iPhone (PR #5 is live):
   - [ ] A workout: the how-to before each new move, "How to" mid-set, and skipping a move.
   - [ ] Settings → Exercises I skip.
-- [ ] Merge PR #6, then on the iPhone:
-  - [ ] Settings → Check for updates shows the new version (or reopen the app and tap Update on the bar).
-  - [ ] Settings → Voice & sounds: compare Heart, Michael and the phone's voice.
+- [ ] On the iPhone (PR #6 is live): Settings → Voice & sounds, compare Heart, Michael and the phone's voice.
+- [ ] Switch reminders to notifications on the iPhone:
+  - [ ] Settings → Reminders → Smart notifications → enter the access code (`APP_PASSCODE`) → Turn on → Allow → Send test.
+  - [ ] Delete the calendar events the card lists, then tap "Done, they're gone".
+  - [ ] Too many? Pick Gentle (about 2 a day) instead of Coach (about 8).
 - [ ] Optional: record a Bloom voice. Make the catalog app-aware (run it with the brand mocked as Bloom, as `tests/unit/bloom-mode.test.ts` does), add a calm pack, and enable `VOICE_PACKS` for Bloom.
 
 ## Don't Touch
