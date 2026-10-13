@@ -1,12 +1,24 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, BellRing, CalendarCheck, CalendarPlus, CheckCircle2, ExternalLink, Loader2, Send } from 'lucide-react'
+import { AlertTriangle, BellRing, CalendarCheck, CalendarPlus, CalendarX, CheckCircle2, ExternalLink, Loader2, Send } from 'lucide-react'
 import { nextOccurrence, presetRules, reminderLabel, ruleTimes, type ReminderRule, type ReminderType } from '@shared/reminders'
 import { eventCount } from '@shared/calendar'
 import { APP, isBloom, W } from '@/app/brand'
 import { isIOS } from '@/app/pwa'
 import { haptic } from '@/device/haptics'
 import { isoWeekday, todayISO, WEEKDAY_SHORT } from '@/lib/dates'
-import { addRemindersToCalendar, calendarUpToDate, configFor, googleCalendarLink, setReminderMode, useCalendarExport, useReminderMode, type ReminderMode } from '@/state/calendar'
+import {
+  addRemindersToCalendar,
+  calendarSeries,
+  calendarUpToDate,
+  configFor,
+  forgetCalendarExport,
+  googleCalendarLink,
+  setReminderMode,
+  useCalendarExport,
+  useReminderMode,
+  type CalendarSeries,
+  type ReminderMode,
+} from '@/state/calendar'
 import { usePlan } from '@/state/plan'
 import {
   disablePush,
@@ -41,6 +53,50 @@ function ago(ms: number): string {
   return h < 48 ? `${h} h ago` : `${Math.round(h / 24)} days ago`
 }
 
+/** After switching to notifications: the calendar events to delete by hand (the app can't reach them). */
+function CalendarCleanup({ series, total, onDone }: { series: CalendarSeries[] | null; total: number; onDone: () => void }) {
+  return (
+    <Card className="mt-3 border-amber/40">
+      <div className="flex items-start gap-3">
+        <CalendarX className="mt-0.5 shrink-0 text-amber" size={22} />
+        <div className="flex-1">
+          <div className="font-semibold">Remove the calendar reminders</div>
+          <p className="mt-0.5 text-sm text-muted">
+            {APP.name} added {total} repeating event{total === 1 ? '' : 's'} to your calendar and can’t delete {total === 1 ? 'it' : 'them'} for you. Once notifications are on,
+            delete {total === 1 ? 'it' : 'them'} so reminders don’t come twice.
+          </p>
+        </div>
+      </div>
+      {series ? (
+        <ul className="mt-3 space-y-1.5 text-sm" aria-label="Calendar events to delete">
+          {series.map((x) => (
+            <li key={`${x.title} ${x.when}`}>
+              <span className="font-medium">{x.title}</span>
+              <span className="block text-xs text-muted">
+                {x.when}
+                {x.count > 1 ? ` · ${x.count} events` : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm text-muted">They have an emoji title and “Open {APP.name}” in their notes.</p>
+      )}
+      <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted">
+        <li>
+          <b className="text-ink">iPhone Calendar:</b> tap one → Delete Event → Delete All Future Events.
+        </li>
+        <li>
+          <b className="text-ink">Google Calendar:</b> tap one → ⋮ → Delete → All events.
+        </li>
+      </ul>
+      <Button block variant="secondary" className="mt-3" icon={<CheckCircle2 size={16} />} onClick={onDone}>
+        Done, they’re gone
+      </Button>
+    </Card>
+  )
+}
+
 function describeRule(r: ReminderRule): string {
   const days = r.days.length === 7 ? 'Every day' : r.days.length === 5 && !r.days.includes(6) && !r.days.includes(7) ? 'Weekdays' : r.days.map((d) => WEEKDAY_SHORT[d - 1]).join(' ')
   if (r.every) return `${days} · every ${r.every.minutes >= 60 ? `${r.every.minutes / 60} h` : `${r.every.minutes} min`}, ${r.every.start}–${r.every.end}`
@@ -58,9 +114,10 @@ export default function RemindersPage() {
   const mode = useReminderMode(settings?.enabled)
   const exported = useCalendarExport()
 
+  // Is the notification server set up here? Shown on both choices, so you know before switching.
   useEffect(() => {
-    if (mode === 'push') void fetchPushConfig().then(setCfg)
-  }, [mode])
+    void fetchPushConfig().then(setCfg)
+  }, [])
 
   if (!plan || !settings || passcode === undefined || mode === undefined || exported === undefined) return <PageHeader title="Reminders" back="/more" />
   const p = plan.profile
@@ -116,17 +173,26 @@ export default function RemindersPage() {
     void setReminderMode(m)
   }
 
+  const ready = !!cfg?.ok
+  const choices: { id: ReminderMode; emoji: string; title: string; text: string; badge: string | null }[] = [
+    { id: 'calendar', emoji: '📅', title: 'Phone reminders', text: 'No setup. Adds them to your calendar as events.', badge: ready ? null : 'Easiest' },
+    {
+      id: 'push',
+      emoji: '🔔',
+      title: 'Smart notifications',
+      text: ready ? 'Notifications only. Nothing in your calendar.' : 'Personal, skip when done. Needs server setup.',
+      badge: ready ? 'Ready' : null,
+    },
+  ]
+  // Calendar events added earlier, to delete by hand once notifications take over.
+  const leftover = exported ? (exported.cfg ? calendarSeries(exported.cfg) : upToDate ? calendarSeries(configFor(settings, p)) : null) : null
+
   return (
     <>
       <PageHeader title="Reminders" subtitle="Nudges that fit your day" back="/more" />
       <div className="px-4">
         <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={`How ${APP.name} reminds you`}>
-          {(
-            [
-              { id: 'calendar', emoji: '📅', title: 'Phone reminders', text: 'No setup. Your phone’s calendar alerts you.', badge: 'Easiest' },
-              { id: 'push', emoji: '🔔', title: 'Smart notifications', text: 'Personal, skip when done. Needs server setup.' },
-            ] as const
-          ).map((o) => (
+          {choices.map((o) => (
             <button
               key={o.id}
               type="button"
@@ -135,7 +201,7 @@ export default function RemindersPage() {
               onClick={() => pickMode(o.id)}
               className={cx('pressable relative rounded-2xl border p-3 text-left', mode === o.id ? 'border-ember bg-ember/10' : 'border-line bg-surface')}
             >
-              {'badge' in o ? <span className="absolute top-2 right-2 rounded-full bg-good/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-good">{o.badge}</span> : null}
+              {o.badge ? <span className="absolute top-2 right-2 rounded-full bg-good/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-good">{o.badge}</span> : null}
               <div className="text-2xl">{o.emoji}</div>
               <div className={cx('mt-1 font-semibold leading-tight', mode === o.id && 'text-ember')}>{o.title}</div>
               <div className="mt-0.5 text-xs text-muted">{o.text}</div>
@@ -254,6 +320,8 @@ export default function RemindersPage() {
                 </button>
               ) : null}
             </Card>
+
+            {exported ? <CalendarCleanup series={leftover} total={exported.events} onDone={() => void forgetCalendarExport()} /> : null}
 
             {cfg && !cfg.ok ? (
               <Card className="mt-3 border-amber/40 text-sm">

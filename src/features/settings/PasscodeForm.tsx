@@ -30,6 +30,7 @@ export function PasscodeForm({ className }: { className?: string }) {
           Save
         </Button>
       </div>
+      <p className="mt-1.5 text-xs text-faint">Forgot it? It’s in Vercel: your project → Settings → Environment Variables → APP_PASSCODE.</p>
     </form>
   )
 }

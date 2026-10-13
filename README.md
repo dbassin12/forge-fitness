@@ -75,9 +75,11 @@ deployed. Install it the same way as Forge (below), starting from that address.
   switches for sounds, vibration, confetti and animations.
 - **Reminders, two ways.** **Phone reminders** need no setup at all: Forge puts your workout,
   streak-saver, water, meal, movement-snack, check-in, weigh-in and weekly-review reminders in
-  your phone's calendar, which alerts you even when Forge is closed. **Smart notifications**
-  are optional: personalized push notifications that skip themselves once you've trained, for
-  when the server below is set up.
+  your phone's calendar as repeating events, which alert you even when Forge is closed.
+  **Smart notifications** are optional: personalized push notifications that skip themselves
+  once you've trained, with nothing added to your calendar, for when the server below is set
+  up. Switching from phone reminders, **Settings → Reminders** lists the calendar events to
+  delete (Forge can't remove them itself).
 - **Feels like a phone app.** Bottom sheets you drag down to close, swipe from the left edge
   to go back (iPhone Home Screen apps don't have that gesture on their own), light haptic taps
   on iPhone (iOS 18 and later) as well as Android, and a Search key on the keyboard when you
